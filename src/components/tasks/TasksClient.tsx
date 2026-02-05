@@ -51,7 +51,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [allTeams, setAllTeams] = useState<any[]>([]);
 
-    const isAdmin = activeRole?.toUpperCase() === 'ADMINISTRATOR';
+    const isAdmin = activeRole?.toUpperCase() === "ADMINISTRATOR";
     const isCoord = activeRole?.toUpperCase() === 'KOORDYNATORKA';
     // Logic: If settings allow, Coord can have personal tasks.
     const canCoordHaveTasks = isCoord && settings?.coordinatorTasks;
@@ -160,7 +160,20 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
 
         // Do weryfikacji - tasks with pending submissions
         const doWeryfikacji = tasks.filter(t => {
-            return t.executions.some((e: any) => e.status === "OCZEKUJACE");
+            return t.executions.some((e: any) => {
+                if (e.status !== "OCZEKUJACE") return false;
+                if (isAdmin) {
+                    // Admin view: show all pending submissions
+                    return true;
+                }
+
+                // Coordinator view: show only participant submissions
+                const teamRole = t.teamId
+                    ? e.user?.zespoly?.find((ut: any) => ut.teamId === t.teamId)?.rola
+                    : e.user?.rola; // Fallback for global tasks if user has a global role
+                const isSubmitterParticipant = teamRole?.toUpperCase() === 'UCZESTNICZKA';
+                return isSubmitterParticipant;
+            });
         });
 
         return { zlecone, doWeryfikacji };
@@ -571,6 +584,33 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                             </button>
                                         );
                                     })}
+                                    {/* New Admin Folder for Coordinator Tasks */}
+                                    {settings?.coordinatorTasks && (
+                                        <button
+                                            onClick={() => setAdminTeamFilter(-1)} // Use -1 to denote "Coordinator Tasks" folder
+                                            className={cn(
+                                                "w-full text-left p-6 rounded-[28px] transition-all flex items-center justify-between border-2",
+                                                adminTeamFilter === -1 ? "bg-white shadow-xl border-primary/20" : "bg-white border-transparent hover:border-gray-100 shadow-sm"
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg", adminTeamFilter === -1 ? "lux-gradient" : "bg-gray-100 text-gray-400")}>
+                                                    <Users size={22} />
+                                                </div>
+                                                <div>
+                                                    <span className="font-bold text-gray-800 block">Zadania koordynatorek</span>
+                                                    <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">
+                                                        {initialTasks.filter(t => t.executions.some((e: any) => {
+                                                            const userTeamRole = t.teamId
+                                                                ? e.user?.zespoly?.find((ut: any) => ut.teamId === t.teamId)?.rola
+                                                                : e.user?.rola;
+                                                            return userTeamRole?.toUpperCase() === "KOORDYNATORKA";
+                                                        })).length} zadań
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </button>
+                                    )}
                                 </>
                             ) : (
                                 <>
@@ -972,11 +1012,12 @@ function ParticipantTaskCard({ task, userId, onClick, status }: any) {
 
 
 function AdminTaskCard({ task, onDelete, onApprove, onReject, isCoord, isAdmin }: any) {
-    // USER REQUEST FIX: Global progress should only count Participants based on TEAM ROLE
+    // USER REQUEST FIX: Global progress should only count Participants based on TEAM ROLE (or global role for global tasks)
     const participantExecutions = task.executions.filter((e: any) => {
-        // Find role in this specific team
-        const teamRole = e.user?.zespoly?.find((ut: any) => ut.teamId === task.teamId)?.rola;
-        return teamRole?.toLowerCase() === 'uczestniczka';
+        const role = task.teamId
+            ? e.user?.zespoly?.find((ut: any) => ut.teamId === task.teamId)?.rola
+            : e.user?.rola;
+        return role?.toUpperCase() === 'UCZESTNICZKA';
     });
 
     const doneCount = participantExecutions.filter((e: any) => e.status === "ZAAKCEPTOWANE").length;

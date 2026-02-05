@@ -42,9 +42,11 @@ export default function SubmissionsClient({ initialTasks, teams = [], isAdmin, o
                 // 1. Status check
                 if (ex.status !== activeTab) return false;
 
-                // 2. Determine submitter's role in the specific team
-                const userTeamRole = ex.user?.zespoly?.find((ut: any) => ut.teamId === task.teamId)?.rola;
-                const isSubmitterCoord = userTeamRole === "KOORDYNATORKA";
+                // 2. Determine submitter's role in the specific team (or global role for global tasks)
+                const userTeamRole = task.teamId
+                    ? ex.user?.zespoly?.find((ut: any) => ut.teamId === task.teamId)?.rola
+                    : ex.user?.rola;
+                const isSubmitterCoord = userTeamRole?.toUpperCase() === "KOORDYNATORKA";
 
                 if (isAdmin) {
                     if (selectedTeam === -1) {

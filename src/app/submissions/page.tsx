@@ -67,7 +67,7 @@ export default function SubmissionsPage() {
         );
     }
 
-    const isAdmin = activeRole === "ADMINISTRATOR" || user.role === "ADMINISTRATOR";
+    const isAdmin = user.role?.toUpperCase() === "ADMINISTRATOR";
 
     return (
         <SubmissionsClient
