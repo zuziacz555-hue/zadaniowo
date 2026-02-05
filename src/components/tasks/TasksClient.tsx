@@ -48,6 +48,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
     const [coordViewMode, setCoordViewMode] = useState<"MANAGEMENT" | "PERSONAL">("MANAGEMENT");
 
     const [showAddForm, setShowAddForm] = useState(false);
+    const [showCloseConfirmation, setShowCloseConfirmation] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [allTeams, setAllTeams] = useState<any[]>([]);
 
@@ -182,6 +183,12 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
     const { doZrobienia, wykonane, doPoprawy } = getParticipantTasks();
     const { zlecone, doWeryfikacji } = getReferenceTasks();
 
+    const resetAddForm = () => {
+        setNewTask({ tytul: "", opis: "", termin: "", priorytet: "NORMALNY", teamId: "-1", typPrzypisania: "CALY_ZESPOL", includeCoordinators: false });
+        setAssignedUserIds([]);
+        setUserSearchTerm("");
+    };
+
     const handleAddTask = async () => {
         setIsSubmitting(true);
         if (!newTask.tytul) return;
@@ -197,7 +204,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
 
         if (res.success) {
             setShowAddForm(false);
-            setNewTask({ tytul: "", opis: "", termin: "", priorytet: "NORMALNY", teamId: "-1", typPrzypisania: "CALY_ZESPOL", includeCoordinators: false });
+            resetAddForm();
             onRefresh();
         } else {
             alert("Błąd: " + res.error);
@@ -317,7 +324,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto"
-                        onClick={(e) => { if (e.target === e.currentTarget) setShowAddForm(false); }}
+                        onClick={(e) => { if (e.target === e.currentTarget) setShowCloseConfirmation(true); }}
                     >
                         <div className="bg-white p-8 rounded-[32px] w-full max-w-2xl shadow-2xl relative my-8">
                             <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
@@ -509,13 +516,59 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                     </div>
                                 </div>
                                 <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-gray-100">
-                                    <button onClick={() => setShowAddForm(false)} className="px-6 py-3 font-bold text-gray-400 hover:text-gray-600 transition-colors">Anuluj</button>
+                                    <button onClick={() => setShowCloseConfirmation(true)} className="px-6 py-3 font-bold text-gray-400 hover:text-gray-600 transition-colors">Anuluj</button>
                                     <button className="lux-btn shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all" onClick={handleAddTask} disabled={isSubmitting}>
                                         {newTask.teamId === "-1" ? "Opublikuj wszędzie" : "Zapisz zadanie"}
                                     </button>
                                 </div>
                             </div>
                         </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Close Confirmation Modal */}
+            <AnimatePresence>
+                {showCloseConfirmation && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+                        onClick={(e) => { if (e.target === e.currentTarget) setShowCloseConfirmation(false); }}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-white p-8 rounded-[30px] w-full max-w-sm shadow-2xl text-center"
+                        >
+                            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                <AlertTriangle size={32} />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">Czy chcesz zamknąć to zadanie?</h3>
+                            <p className="text-sm text-muted-foreground mb-8">
+                                Twoje niezapisane zmiany zostaną utracone, a formularz zostanie wyczyszczony.
+                            </p>
+                            <div className="space-y-3">
+                                <button
+                                    onClick={() => {
+                                        resetAddForm();
+                                        setShowAddForm(false);
+                                        setShowCloseConfirmation(false);
+                                    }}
+                                    className="w-full py-4 bg-red-500 hover:bg-red-600 text-white font-bold rounded-2xl transition-all shadow-lg shadow-red-200"
+                                >
+                                    Tak, zamknij
+                                </button>
+                                <button
+                                    onClick={() => setShowCloseConfirmation(false)}
+                                    className="w-full py-4 bg-gray-50 hover:bg-gray-100 text-gray-600 font-bold rounded-2xl transition-all"
+                                >
+                                    Nie, kontynuuj
+                                </button>
+                            </div>
+                        </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>

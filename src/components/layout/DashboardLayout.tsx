@@ -3,7 +3,6 @@
 import Link from "next/link";
 import Navbar from "./Navbar";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getUserById } from "@/lib/actions/users";
@@ -110,23 +109,6 @@ export default function DashboardLayout({
             />
 
             <main className="flex-1 w-full max-w-[1200px] mx-auto px-6 py-10">
-                {!isDashboard && (
-                    <motion.div
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="mb-6"
-                    >
-                        <Link
-                            href="/dashboard"
-                            className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-primary transition-colors group"
-                        >
-                            <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
-                                <ArrowLeft size={16} />
-                            </div>
-                            Wróć do pulpitu
-                        </Link>
-                    </motion.div>
-                )}
                 <AnimatePresence mode="wait">
                     <motion.div
                         initial={{ opacity: 0, y: 18 }}

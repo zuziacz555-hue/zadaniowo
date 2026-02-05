@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut, ArrowLeft } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { motion } from "framer-motion";
 import { slideFromLeft, slideUp } from "@/lib/animations";
 import { useRouter } from "next/navigation";
@@ -116,14 +116,6 @@ export default function Navbar({ userName: initialUserName, activeTeamName, acti
                             </span>
                         )}
                     </motion.div>
-
-                    <button
-                        onClick={() => router.back()}
-                        className="lux-btn flex items-center gap-2 text-xs uppercase tracking-widest group font-bold mr-4"
-                    >
-                        <ArrowLeft size={16} className="transition-transform group-hover:-translate-x-1" />
-                        Wróć
-                    </button>
 
                     <button
                         onClick={handleLogout}
