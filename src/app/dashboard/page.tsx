@@ -14,7 +14,7 @@ export default function DashboardPage() {
             const user = JSON.parse(storedUser);
             getUserTeams(user.id).then(res => {
                 if (res.success) {
-                    setUserTeams(res.data);
+                    setUserTeams(res.data || []);
                 }
                 setIsLoading(false);
             });
