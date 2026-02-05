@@ -237,7 +237,7 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
                     <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent" />
                     <div className="relative z-10 flex flex-col items-center text-center max-w-4xl mx-auto">
                         <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-b from-gray-900 to-gray-600 pb-2">
-                            Panel zarządzania
+                            Zadaniowo
                         </h1>
                         <p className="text-xl text-muted-foreground max-w-2xl font-medium leading-relaxed">
                             Twoje spokojne centrum organizacji. Planuj wydarzenia, wspieraj zespół i twórz przestrzeń do współpracy z lekkością.

@@ -11,7 +11,7 @@ const manrope = Manrope({
 
 export const metadata: Metadata = {
   title: "Zadaniowo - Twój Panel",
-  description: "Panel zarządzania zespołami i wydarzeniami",
+  description: "Zadaniowo - zarządzanie zespołami i wydarzeniami",
 };
 
 export default function RootLayout({
