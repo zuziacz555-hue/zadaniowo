@@ -85,9 +85,8 @@ export default function Navbar({ userName: initialUserName, activeTeamName, acti
                         initial="hidden"
                         animate="show"
                         variants={slideFromLeft}
-                        className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-[0_10px_20px_rgba(84,0,255,0.15)] bg-gradient-to-br from-[#5400FF] to-[#8B5CF6] group-hover:rotate-3 transition-all"
                     >
-                        <span className="text-white text-lg font-bold">Z</span>
+                        <img src="/logo.svg" alt="Zadaniowo Logo" className="w-12 h-12 rounded-2xl shadow-[0_10px_20px_rgba(84,0,255,0.15)] group-hover:rotate-3 transition-all" />
                     </motion.div>
                     <motion.div
                         initial={{ opacity: 0, x: -20 }}
@@ -98,7 +97,6 @@ export default function Navbar({ userName: initialUserName, activeTeamName, acti
                         <span className="text-xl font-bold tracking-tight text-foreground leading-tight">
                             Zadaniowo
                         </span>
-                        {/* Dynamic User Info for Mobile/Left side if needed, currently requested logic is simpler */}
                     </motion.div>
                 </Link>
 

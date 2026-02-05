@@ -10,8 +10,8 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "Zadaniowo - Twój Panel",
-  description: "Zadaniowo - zarządzanie zespołami i wydarzeniami",
+  title: "Logowanie | Zadaniowo",
+  description: "Zaloguj się do systemu zarządzania zadaniami",
 };
 
 export default function RootLayout({

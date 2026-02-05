@@ -229,42 +229,44 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                                         </td>
 
                                         <td className="px-6 py-8 align-top min-w-[300px]">
-                                            <div className="bg-white/80 p-6 rounded-2xl border border-gray-100 space-y-4 shadow-inner">
-                                                <div className="space-y-1">
-                                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Zespół</label>
-                                                    <select
-                                                        className="w-full lux-select text-sm font-semibold"
-                                                        value={assignments[user.id]?.teamId || ""}
-                                                        onChange={(e) => setAssignments(prev => ({
-                                                            ...prev,
-                                                            [user.id]: { teamId: e.target.value, role: prev[user.id]?.role || "uczestniczka" }
-                                                        }))}
+                                            {user.rola !== "ADMINISTRATOR" && (
+                                                <div className="bg-white/80 p-6 rounded-2xl border border-gray-100 space-y-4 shadow-inner">
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Zespół</label>
+                                                        <select
+                                                            className="w-full lux-select text-sm font-semibold"
+                                                            value={assignments[user.id]?.teamId || ""}
+                                                            onChange={(e) => setAssignments(prev => ({
+                                                                ...prev,
+                                                                [user.id]: { teamId: e.target.value, role: prev[user.id]?.role || "uczestniczka" }
+                                                            }))}
+                                                        >
+                                                            <option value="">-- Wybierz zespół --</option>
+                                                            {teams.map(t => <option key={t.id} value={t.id}>{t.nazwa}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Rola w zespole</label>
+                                                        <select
+                                                            className="w-full lux-select text-sm font-semibold"
+                                                            value={assignments[user.id]?.role || "uczestniczka"}
+                                                            onChange={(e) => setAssignments(prev => ({
+                                                                ...prev,
+                                                                [user.id]: { teamId: prev[user.id]?.teamId || "", role: e.target.value }
+                                                            }))}
+                                                        >
+                                                            <option value="uczestniczka">uczestniczka</option>
+                                                            <option value="koordynatorka">koordynatorka</option>
+                                                        </select>
+                                                    </div>
+                                                    <button
+                                                        className="w-full lux-btn text-xs flex items-center justify-center gap-2"
+                                                        onClick={() => handleAssignTeam(user.id)}
                                                     >
-                                                        <option value="">-- Wybierz zespół --</option>
-                                                        {teams.map(t => <option key={t.id} value={t.id}>{t.nazwa}</option>)}
-                                                    </select>
+                                                        <Plus size={16} /> Dodaj do zespołu
+                                                    </button>
                                                 </div>
-                                                <div className="space-y-1">
-                                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Rola w zespole</label>
-                                                    <select
-                                                        className="w-full lux-select text-sm font-semibold"
-                                                        value={assignments[user.id]?.role || "uczestniczka"}
-                                                        onChange={(e) => setAssignments(prev => ({
-                                                            ...prev,
-                                                            [user.id]: { teamId: prev[user.id]?.teamId || "", role: e.target.value }
-                                                        }))}
-                                                    >
-                                                        <option value="uczestniczka">uczestniczka</option>
-                                                        <option value="koordynatorka">koordynatorka</option>
-                                                    </select>
-                                                </div>
-                                                <button
-                                                    className="w-full lux-btn text-xs flex items-center justify-center gap-2"
-                                                    onClick={() => handleAssignTeam(user.id)}
-                                                >
-                                                    <Plus size={16} /> Dodaj do zespołu
-                                                </button>
-                                            </div>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}

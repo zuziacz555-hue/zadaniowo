@@ -60,15 +60,14 @@ export default function LoginPage() {
         <div className="lux-card-strong p-12 backdrop-blur-3xl bg-white/60 border border-white/50 shadow-[0_30px_60px_rgba(0,0,0,0.05)]">
           <motion.div variants={loginItemVariant} className="text-center mb-10">
             <motion.div
-              whileHover={{ scale: 1.1, rotate: 5 }}
+              whileHover={{ scale: 1.05 }}
               transition={{ type: "spring", stiffness: 300 }}
-              className="w-20 h-20 lux-gradient rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-[0_12px_30px_rgba(84,0,255,0.25)]"
+              className="mx-auto mb-6"
             >
-              <Lock className="text-white" size={36} />
+              <img src="/logo-text.svg" alt="Zadaniowo Logo" className="h-20 mx-auto" />
             </motion.div>
-            <h1 className="text-4xl font-bold mb-3 tracking-tight text-foreground">Witaj ponownie</h1>
-            <p className="text-muted-foreground font-medium">
-              Zaloguj się do platformy <span className="text-primary font-bold">Zadaniowo</span>
+            <p className="text-muted-foreground font-medium mt-4">
+              Twoje centrum zarządzania
             </p>
           </motion.div>
 

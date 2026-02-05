@@ -158,6 +158,14 @@ export async function deleteTeam(id: number) {
 
 export async function addUserToTeam(userId: number, teamId: number, rola: string = 'uczestniczka') {
     try {
+        // 1. Check user role - Admins cannot be added to teams
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if (!user) return { success: false, error: 'Użytkownik nie istnieje.' };
+
+        if (user.rola === 'ADMINISTRATOR') {
+            return { success: false, error: 'Administratorzy nie mogą być przypisywani do zespołów.' };
+        }
+
         const userTeam = await prisma.userTeam.create({
             data: {
                 userId,
