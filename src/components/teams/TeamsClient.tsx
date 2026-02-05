@@ -40,6 +40,18 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
     const [newTeamName, setNewTeamName] = useState("");
     const [newTeamColor, setNewTeamColor] = useState("#5400FF");
 
+    const getContrastColor = (hexcolor: string) => {
+        if (!hexcolor) return 'white';
+        // If it's a variable or short hex, default to white
+        if (hexcolor.startsWith('var')) return 'white';
+
+        const r = parseInt(hexcolor.slice(1, 3), 16);
+        const g = parseInt(hexcolor.slice(3, 5), 16);
+        const b = parseInt(hexcolor.slice(5, 7), 16);
+        const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+        return (yiq >= 128) ? 'black' : 'white';
+    };
+
     // Add Member State
     const [showAddMember, setShowAddMember] = useState(false);
     const [allUsers, setAllUsers] = useState<any[]>([]);
@@ -306,8 +318,8 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
                                                     <CalendarIcon size={18} />
                                                 </Link>
                                             </div>
-                                            <h3 className="text-xl font-bold pr-16">{team.nazwa}</h3>
-                                            <p className="text-xs font-bold text-white/70 uppercase tracking-widest mt-2">
+                                            <h3 className="text-xl font-bold pr-16" style={{ color: getContrastColor(team.kolor || '#5400FF') }}>{team.nazwa}</h3>
+                                            <p className="text-xs font-bold uppercase tracking-widest mt-2" style={{ color: getContrastColor(team.kolor || '#5400FF'), opacity: 0.7 }}>
                                                 {team.users?.length || 0} członków
                                             </p>
                                         </div>
@@ -378,7 +390,7 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
                                     </button>
                                     <div className="space-y-4">
                                         <div className="flex items-center gap-4">
-                                            <h3 className="text-3xl font-bold flex items-center gap-3">
+                                            <h3 className="text-3xl font-bold flex items-center gap-3" style={{ color: getContrastColor(selectedTeam.kolor || '#5400FF') }}>
                                                 <Users size={32} /> {selectedTeam.nazwa}
                                             </h3>
                                             {isAdmin && (
@@ -403,7 +415,7 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
                                                 </div>
                                             )}
                                         </div>
-                                        <p className="text-[10px] text-white/70 font-bold uppercase tracking-[0.2em]">Przegląd aktywności zespołu</p>
+                                        <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: getContrastColor(selectedTeam.kolor || '#5400FF'), opacity: 0.7 }}>Przegląd aktywności zespołu</p>
                                     </div>
                                 </div>
 
