@@ -18,12 +18,19 @@ import { useRouter } from "next/navigation";
 
 export default function UsersClient({ initialUsers, initialTeams }: { initialUsers: any[], initialTeams: any[] }) {
     const router = useRouter();
-    const [showAddForm, setShowAddForm] = useState(false);
-    const [newUser, setNewUser] = useState({ name: "", password: "", role: "UCZESTNICZKA", teamId: "", teamRole: "uczestniczka" });
-    const [assignments, setAssignments] = useState<Record<number, { teamId: string; role: string }>>({});
+    const [searchTerm, setSearchTerm] = useState("");
+    const [filterTeam, setFilterTeam] = useState("");
+    const [filterRole, setFilterRole] = useState("");
 
     const users = initialUsers;
     const teams = initialTeams;
+
+    const filteredUsers = users.filter(user => {
+        const matchesSearch = user.imieNazwisko.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesRole = !filterRole || user.rola === filterRole;
+        const matchesTeam = !filterTeam || user.zespoly?.some((ut: any) => ut.teamId === Number(filterTeam));
+        return matchesSearch && matchesRole && matchesTeam;
+    });
 
     // Get current user info from localStorage
     const storedUser = typeof window !== 'undefined' ? localStorage.getItem("user") : null;
@@ -197,6 +204,51 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                     )}
                 </AnimatePresence>
 
+                {/* Filter Bar */}
+                <div className="lux-card p-6 flex flex-wrap gap-4 items-end bg-white/50 border-white/60">
+                    <div className="flex-1 min-w-[200px] space-y-2">
+                        <label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Szukaj użytkownika</label>
+                        <input
+                            type="text"
+                            placeholder="Wpisz imię i nazwisko..."
+                            className="lux-input text-sm"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <div className="w-full md:w-48 space-y-2">
+                        <label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Filtruj po roli</label>
+                        <select
+                            className="lux-select text-sm font-semibold"
+                            value={filterRole}
+                            onChange={(e) => setFilterRole(e.target.value)}
+                        >
+                            <option value="">Wszystkie role</option>
+                            <option value="UCZESTNICZKA">Uczestniczka</option>
+                            <option value="ADMINISTRATOR">Administrator</option>
+                        </select>
+                    </div>
+                    <div className="w-full md:w-64 space-y-2">
+                        <label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Filtruj po zespole</label>
+                        <select
+                            className="lux-select text-sm font-semibold"
+                            value={filterTeam}
+                            onChange={(e) => setFilterTeam(e.target.value)}
+                        >
+                            <option value="">Wszystkie zespoły</option>
+                            {teams.map(t => <option key={t.id} value={t.id}>{t.nazwa}</option>)}
+                        </select>
+                    </div>
+                    {(searchTerm || filterRole || filterTeam) && (
+                        <button
+                            onClick={() => { setSearchTerm(""); setFilterRole(""); setFilterTeam(""); }}
+                            className="px-4 py-3 text-[10px] font-black uppercase text-primary hover:underline"
+                        >
+                            Wyczyść filtry
+                        </button>
+                    )}
+                </div>
+
                 {/* Users Table */}
                 <div className="lux-card p-8 overflow-hidden">
                     <h2 className="text-2xl font-bold mb-8 pb-4 border-b-4 border-primary inline-block">Lista użytkowników</h2>
@@ -211,7 +263,7 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                                 </tr>
                             </thead>
                             <tbody>
-                                {users.map((user) => (
+                                {filteredUsers.map((user) => (
                                     <tr key={user.id} className="border-b border-gray-100 hover:bg-white/60 transition-colors group">
                                         <td className="px-6 py-8 align-top min-w-[250px]">
                                             <div className="space-y-4">
@@ -307,6 +359,13 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                                         </td>
                                     </tr>
                                 ))}
+                                {filteredUsers.length === 0 && (
+                                    <tr>
+                                        <td colSpan={3} className="px-6 py-12 text-center text-muted-foreground italic font-medium opacity-50">
+                                            Nie znaleziono użytkowników spełniających kryteria.
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>
