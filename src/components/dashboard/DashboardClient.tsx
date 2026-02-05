@@ -3,7 +3,7 @@
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
+import { cn, getContrastColor } from "@/lib/utils";
 import { staggerContainer, popIn, slideUp, scaleIn } from "@/lib/animations";
 import { useEffect, useState } from "react";
 import {
@@ -353,13 +353,13 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
                                                     <Sparkles size={14} className="text-white animate-pulse" />
                                                 </div>
                                             )}
-                                            <div className={cn("text-4xl mb-3 font-light opacity-80", ut.team.nazwa === currentActive ? "text-white" : "text-primary")}>
+                                            <div className={cn("text-4xl mb-3 font-light opacity-80", ut.team.nazwa === currentActive ? "text-white" : "text-primary")} style={ut.team.nazwa === currentActive ? { color: getContrastColor(ut.team.kolor || '#5400FF') } : {}}>
                                                 {ut.rola === "koordynatorka" ? "✦" : "•"}
                                             </div>
-                                            <h3 className={cn("font-bold text-xl leading-tight", ut.team.nazwa === currentActive ? "text-white" : "text-foreground")}>
+                                            <h3 className={cn("font-bold text-xl leading-tight", ut.team.nazwa === currentActive ? "text-white" : "text-foreground")} style={ut.team.nazwa === currentActive ? { color: getContrastColor(ut.team.kolor || '#5400FF') } : {}}>
                                                 {ut.team.nazwa}
                                             </h3>
-                                            <p className={cn("text-xs font-bold mt-2 uppercase tracking-widest", ut.team.nazwa === currentActive ? "text-blue-100/80" : "text-muted-foreground")}>
+                                            <p className={cn("text-xs font-bold mt-2 uppercase tracking-widest", ut.team.nazwa === currentActive ? "text-blue-100/80" : "text-muted-foreground")} style={ut.team.nazwa === currentActive ? { color: getContrastColor(ut.team.kolor || '#5400FF'), opacity: 0.7 } : {}}>
                                                 {ut.rola}
                                             </p>
                                         </div>

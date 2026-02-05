@@ -3,7 +3,7 @@
 import { useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn, hexToHSL } from "@/lib/utils";
+import { cn, hexToHSL, getContrastColor } from "@/lib/utils";
 import {
     ChevronLeft,
     ChevronRight,
@@ -348,11 +348,12 @@ export default function MeetingsClient({
                                                     onClick={() => setSelectedMeeting(meeting)}
                                                     className={cn(
                                                         "w-full text-left p-1.5 rounded-lg text-[10px] font-bold truncate transition-all shadow-sm",
-                                                        isMarked ? "text-white ring-2 ring-white" : "text-white opacity-90 hover:opacity-100"
+                                                        isMarked ? "ring-2 ring-white" : "opacity-90 hover:opacity-100"
                                                     )}
                                                     style={{
                                                         background: `linear-gradient(135deg, ${teamColor} 0%, ${teamColor}dd 100%)`,
-                                                        backgroundColor: teamColor
+                                                        backgroundColor: teamColor,
+                                                        color: getContrastColor(teamColor)
                                                     }}
                                                 >
                                                     {new Date(meeting.data).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {meeting.opis}
@@ -426,10 +427,11 @@ export default function MeetingsClient({
                                 exit={{ scale: 0.9, y: 20, opacity: 0 }}
                                 className="relative bg-white w-full max-w-[550px] rounded-[30px] shadow-[0_20px_60px_rgba(0,0,0,0.3)] overflow-hidden"
                             >
-                                <div className="gradient-bg p-8 text-white relative">
+                                <div className="gradient-bg p-8 relative" style={{ color: getContrastColor(selectedMeeting.team?.kolor || '#5400FF') }}>
                                     <button
                                         onClick={() => setSelectedMeeting(null)}
                                         className="absolute top-6 right-6 p-2 bg-white/20 rounded-full hover:bg-white/30 transition-all"
+                                        style={{ color: getContrastColor(selectedMeeting.team?.kolor || '#5400FF') }}
                                     >
                                         <X size={20} />
                                     </button>

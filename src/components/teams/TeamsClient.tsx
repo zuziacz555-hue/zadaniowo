@@ -3,7 +3,7 @@
 import { useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { cn, getContrastColor } from "@/lib/utils";
 import {
     Users,
     Trash2,
@@ -40,17 +40,7 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
     const [newTeamName, setNewTeamName] = useState("");
     const [newTeamColor, setNewTeamColor] = useState("#5400FF");
 
-    const getContrastColor = (hexcolor: string) => {
-        if (!hexcolor) return 'white';
-        // If it's a variable or short hex, default to white
-        if (hexcolor.startsWith('var')) return 'white';
-
-        const r = parseInt(hexcolor.slice(1, 3), 16);
-        const g = parseInt(hexcolor.slice(3, 5), 16);
-        const b = parseInt(hexcolor.slice(5, 7), 16);
-        const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-        return (yiq >= 128) ? 'black' : 'white';
-    };
+    // Add Member State
 
     // Add Member State
     const [showAddMember, setShowAddMember] = useState(false);
@@ -295,7 +285,7 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
                                             </div>
                                         </div>
                                     </div>
-                                    <button className="lux-btn whitespace-nowrap px-8" onClick={handleAddTeam} style={{ backgroundColor: newTeamColor }}>
+                                    <button className="lux-btn whitespace-nowrap px-8" onClick={handleAddTeam} style={{ backgroundColor: newTeamColor, color: getContrastColor(newTeamColor) }}>
                                         Utwórz zespół
                                     </button>
                                 </div>

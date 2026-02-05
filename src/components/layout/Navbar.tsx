@@ -86,7 +86,7 @@ export default function Navbar({ userName: initialUserName, activeTeamName, acti
                         animate="show"
                         variants={slideFromLeft}
                     >
-                        <img src="/logo.svg" alt="Zadaniowo Logo" className="w-12 h-12 rounded-2xl shadow-[0_10px_20px_rgba(84,0,255,0.15)] group-hover:rotate-3 transition-all" />
+                        <img src="/app-logo.jpg" alt="Zadaniowo Logo" className="w-12 h-12 rounded-2xl shadow-[0_10px_20px_rgba(84,0,255,0.15)] group-hover:rotate-3 transition-all object-cover" />
                     </motion.div>
                     <motion.div
                         initial={{ opacity: 0, x: -20 }}

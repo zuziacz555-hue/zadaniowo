@@ -64,7 +64,7 @@ export default function LoginPage() {
               transition={{ type: "spring", stiffness: 300 }}
               className="mx-auto mb-6"
             >
-              <img src="/logo-text.svg" alt="Zadaniowo Logo" className="h-20 mx-auto" />
+              <img src="/app-logo.jpg" alt="Zadaniowo Logo" className="h-24 mx-auto rounded-3xl shadow-xl object-cover" />
             </motion.div>
             <p className="text-muted-foreground font-medium mt-4">
               Twoje centrum zarządzania

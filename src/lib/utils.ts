@@ -30,3 +30,22 @@ export function hexToHSL(hex: string) {
   }
   return { h: Math.round(h * 360), s: Math.round(s * 100) + '%', l: Math.round(l * 100) + '%' };
 }
+
+export function getContrastColor(hexcolor: string) {
+  if (!hexcolor || hexcolor === 'transparent') return 'white';
+  if (hexcolor.startsWith('var')) return 'white';
+
+  let color = hexcolor.startsWith('#') ? hexcolor.slice(1) : hexcolor;
+  if (color.length === 3) {
+    color = color.split('').map(c => c + c).join('');
+  }
+
+  const r = parseInt(color.slice(0, 2), 16);
+  const g = parseInt(color.slice(2, 4), 16);
+  const b = parseInt(color.slice(4, 6), 16);
+
+  if (isNaN(r) || isNaN(g) || isNaN(b)) return 'white';
+
+  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+  return (yiq >= 128) ? 'black' : 'white';
+}
