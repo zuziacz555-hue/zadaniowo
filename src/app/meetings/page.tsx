@@ -27,7 +27,10 @@ export default function MeetingsPage() {
             if (storedUser) {
                 const parsedUser = JSON.parse(storedUser);
                 setUser(parsedUser);
-                setActiveRole(storedRole?.toUpperCase() || parsedUser.role);
+
+                // Normalize role similar to DashboardLayout
+                const userRole = (parsedUser.rola || parsedUser.role || "").toUpperCase();
+                setActiveRole(storedRole?.toUpperCase() || userRole);
 
                 const teamId = storedTeamId ? Number(storedTeamId) : undefined;
                 const meetingsRes = await getMeetings(teamId);
@@ -58,7 +61,8 @@ export default function MeetingsPage() {
         );
     }
 
-    const isAdmin = activeRole === "ADMINISTRATOR" || user.role === "ADMINISTRATOR";
+    const normalizedUserRole = (user.rola || user.role || "").toUpperCase();
+    const isAdmin = activeRole === "ADMINISTRATOR" || normalizedUserRole === "ADMINISTRATOR";
     const isCoord = activeRole === "KOORDYNATORKA" || isAdmin;
 
     return (

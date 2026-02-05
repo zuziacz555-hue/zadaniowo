@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn, getContrastColor } from "@/lib/utils";
@@ -36,6 +37,13 @@ interface TeamsClientProps {
 
 export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeamId, onRefresh, currentUserId }: TeamsClientProps) {
     const router = useRouter();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        console.log("TeamsClient mounted", { isAdmin, isCoord, initialTeamsCount: initialTeams.length });
+        setMounted(true);
+    }, []);
+
     const [selectedTeam, setSelectedTeam] = useState<any>(null);
     const [newTeamName, setNewTeamName] = useState("");
     const [newTeamColor, setNewTeamColor] = useState("#5400FF");
@@ -49,14 +57,29 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
     const teams = initialTeams;
 
     const handleAddTeam = async () => {
-        const name = newTeamName.trim();
-        if (!name) return;
+        if (!newTeamName.trim()) {
+            alert("Nazwa zespołu nie może być pusta.");
+            return;
+        }
 
-        await createTeam(name, newTeamColor);
-        setNewTeamName("");
-        setNewTeamColor("#5400FF");
-        router.refresh();
-        onRefresh?.();
+        console.log("Adding team", { name: newTeamName, color: newTeamColor });
+
+        try {
+            const res = await createTeam(newTeamName, newTeamColor);
+            if (res.success) {
+                console.log("Team created successfully", res.data);
+                setNewTeamName("");
+                setNewTeamColor("#5400FF"); // Reset color on success
+                router.refresh();
+                onRefresh?.();
+            } else {
+                console.error("Create team failed", res.error);
+                alert("Błąd podczas tworzenia zespołu: " + (res.error || "Nieznany błąd"));
+            }
+        } catch (err) {
+            console.error("Create team exception", err);
+            alert("Wystąpił nieoczekiwany błąd podczas tworzenia zespołu.");
+        }
     };
 
     const handleDeleteTeam = async (id: number) => {
@@ -285,7 +308,14 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
                                             </div>
                                         </div>
                                     </div>
-                                    <button className="lux-btn whitespace-nowrap px-8" onClick={handleAddTeam} style={{ backgroundColor: newTeamColor, color: getContrastColor(newTeamColor) }}>
+                                    <button
+                                        className="lux-btn whitespace-nowrap px-8"
+                                        onClick={(e) => {
+                                            console.log("Utwórz zespół click");
+                                            handleAddTeam();
+                                        }}
+                                        style={{ backgroundColor: newTeamColor, color: getContrastColor(newTeamColor) }}
+                                    >
                                         Utwórz zespół
                                     </button>
                                 </div>
@@ -363,8 +393,8 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
 
                 {/* Member List Details Modal */}
                 <AnimatePresence>
-                    {selectedTeam && (
-                        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md">
+                    {mounted && selectedTeam && createPortal(
+                        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-xl">
                             <motion.div
                                 initial={{ scale: 0.95, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
@@ -506,7 +536,8 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
                                     )}
                                 </div>
                             </motion.div>
-                        </div>
+                        </div>,
+                        document.body
                     )}
                 </AnimatePresence>
             </div>

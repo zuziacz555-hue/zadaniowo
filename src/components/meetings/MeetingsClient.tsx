@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn, hexToHSL, getContrastColor } from "@/lib/utils";
@@ -21,7 +22,6 @@ import {
 } from "lucide-react";
 import { createMeeting, deleteMeeting, updateMeeting, addAttendance, removeAttendance, getMeetings } from "@/lib/actions/meetings";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 
 const MIESIACE = [
     'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
@@ -50,6 +50,12 @@ export default function MeetingsClient({
     onRefresh?: () => void
 }) {
     const router = useRouter();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
     const [view, setView] = useState<'month' | 'year'>('month');
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedMeeting, setSelectedMeeting] = useState<any>(null);
@@ -411,305 +417,323 @@ export default function MeetingsClient({
                 )}
 
                 {/* Meeting Detail Modal */}
-                <AnimatePresence>
-                    {selectedMeeting && (
-                        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6">
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                onClick={() => setSelectedMeeting(null)}
-                                className="absolute inset-0 bg-black/60 backdrop-blur-md"
-                            />
-                            <motion.div
-                                initial={{ scale: 0.9, y: 20, opacity: 0 }}
-                                animate={{ scale: 1, y: 0, opacity: 1 }}
-                                exit={{ scale: 0.9, y: 20, opacity: 0 }}
-                                className="relative bg-white w-full max-w-[550px] rounded-[30px] shadow-[0_20px_60px_rgba(0,0,0,0.3)] overflow-hidden"
-                            >
-                                <div className="gradient-bg p-8 relative" style={{ color: getContrastColor(selectedMeeting.team?.kolor || '#5400FF') }}>
-                                    <button
-                                        onClick={() => setSelectedMeeting(null)}
-                                        className="absolute top-6 right-6 p-2 bg-white/20 rounded-full hover:bg-white/30 transition-all"
-                                        style={{ color: getContrastColor(selectedMeeting.team?.kolor || '#5400FF') }}
-                                    >
-                                        <X size={20} />
-                                    </button>
-                                    <h3 className="text-2xl font-bold pr-10">{selectedMeeting.opis}</h3>
-                                </div>
-                                <div className="p-8 space-y-8">
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-3 text-primary font-bold text-lg">
-                                            <CalendarIcon size={20} />
-                                            {new Date(selectedMeeting.data).toLocaleDateString()}
-                                            <span className="ml-2 px-3 py-1 bg-primary/10 rounded-lg text-sm flex items-center gap-1.5">
-                                                <Clock size={16} /> {new Date(selectedMeeting.data).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </span>
+                {mounted && createPortal(
+                    <AnimatePresence>
+                        {selectedMeeting && (
+                            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6">
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    onClick={() => setSelectedMeeting(null)}
+                                    className="absolute inset-0 bg-black/60 backdrop-blur-[20px]"
+                                />
+                                <motion.div
+                                    initial={{ scale: 0.9, y: 20, opacity: 0 }}
+                                    animate={{ scale: 1, y: 0, opacity: 1 }}
+                                    exit={{ scale: 0.9, y: 20, opacity: 0 }}
+                                    className="relative bg-white w-full max-w-[550px] rounded-[30px] shadow-[0_20px_60px_rgba(0,0,0,0.3)] overflow-hidden"
+                                >
+                                    <div className="gradient-bg p-8 relative" style={{ color: getContrastColor(selectedMeeting.team?.kolor || '#5400FF') }}>
+                                        <button
+                                            onClick={() => setSelectedMeeting(null)}
+                                            className="absolute top-6 right-6 p-2 bg-white/20 rounded-full hover:bg-white/30 transition-all"
+                                            style={{ color: getContrastColor(selectedMeeting.team?.kolor || '#5400FF') }}
+                                        >
+                                            <X size={20} />
+                                        </button>
+                                        <h3 className="text-2xl font-bold pr-10">{selectedMeeting.opis}</h3>
+                                    </div>
+                                    <div className="p-8 space-y-8">
+                                        <div className="space-y-4">
+                                            <div className="flex items-center gap-3 text-primary font-bold text-lg">
+                                                <CalendarIcon size={20} />
+                                                {new Date(selectedMeeting.data).toLocaleDateString()}
+                                                <span className="ml-2 px-3 py-1 bg-primary/10 rounded-lg text-sm flex items-center gap-1.5">
+                                                    <Clock size={16} /> {new Date(selectedMeeting.data).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                            </div>
+
+                                            {selectedMeeting.opisDodatkowy && (
+                                                <div className="bg-[#f7f8fc] p-6 rounded-2xl border-l-[6px] border-primary text-[#444] leading-relaxed font-medium">
+                                                    {selectedMeeting.opisDodatkowy}
+                                                </div>
+                                            )}
                                         </div>
 
-                                        {selectedMeeting.opisDodatkowy && (
-                                            <div className="bg-[#f7f8fc] p-6 rounded-2xl border-l-[6px] border-primary text-[#444] leading-relaxed font-medium">
-                                                {selectedMeeting.opisDodatkowy}
+                                        <div className="space-y-4">
+                                            <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                                                <Users size={14} /> Uczestnicy ({selectedMeeting.attendance?.length || 0})
+                                            </h4>
+                                            <div className="flex flex-wrap gap-2">
+                                                {selectedMeeting.attendance && selectedMeeting.attendance.length > 0 ? (
+                                                    selectedMeeting.attendance.map((att: any) => (
+                                                        <span key={att.id} className={cn(
+                                                            "px-4 py-2 rounded-full text-xs font-bold shadow-sm border",
+                                                            att.imieNazwisko === currentUser
+                                                                ? "bg-primary/5 text-primary border-primary/20"
+                                                                : "bg-gray-100 text-muted-foreground border-gray-200"
+                                                        )}>
+                                                            {att.imieNazwisko} {att.imieNazwisko === currentUser && "(Ty)"}
+                                                        </span>
+                                                    ))
+                                                ) : (
+                                                    <p className="text-muted-foreground italic text-sm">Brak zapisanych osób</p>
+                                                )}
                                             </div>
-                                        )}
-                                    </div>
+                                        </div>
 
-                                    <div className="space-y-4">
-                                        <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                                            <Users size={14} /> Uczestnicy ({selectedMeeting.attendance?.length || 0})
-                                        </h4>
-                                        <div className="flex flex-wrap gap-2">
-                                            {selectedMeeting.attendance && selectedMeeting.attendance.length > 0 ? (
-                                                selectedMeeting.attendance.map((att: any) => (
-                                                    <span key={att.id} className={cn(
-                                                        "px-4 py-2 rounded-full text-xs font-bold shadow-sm border",
-                                                        att.imieNazwisko === currentUser
-                                                            ? "bg-primary/5 text-primary border-primary/20"
-                                                            : "bg-gray-100 text-muted-foreground border-gray-200"
-                                                    )}>
-                                                        {att.imieNazwisko} {att.imieNazwisko === currentUser && "(Ty)"}
-                                                    </span>
-                                                ))
-                                            ) : (
-                                                <p className="text-muted-foreground italic text-sm">Brak zapisanych osób</p>
+                                        <div className="pt-6 border-t border-gray-100 space-y-3">
+                                            {!isCoord && (
+                                                <button
+                                                    disabled={selectedMeeting.attendance?.some((a: any) => a.imieNazwisko === currentUser)}
+                                                    className={cn(
+                                                        "w-full py-4 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2",
+                                                        selectedMeeting.attendance?.some((a: any) => a.imieNazwisko === currentUser)
+                                                            ? "bg-gray-100 text-muted-foreground cursor-not-allowed"
+                                                            : "lux-gradient text-white shadow-[0_12px_30px_rgba(61,15,26,0.2)] hover:-translate-y-1"
+                                                    )}
+                                                    onClick={() => handleMarkAttendance(selectedMeeting.id)}
+                                                >
+                                                    {selectedMeeting.attendance?.some((a: any) => a.imieNazwisko === currentUser) ? "Obecność oznaczona" : "Oznacz obecność"}
+                                                </button>
+                                            )}
+
+                                            {(isAdmin || isCoord) && (
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <button
+                                                        className="bg-[#f8f9fa] text-[#555] py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#eef1ff] hover:text-primary transition-all"
+                                                        onClick={() => handleEditMeeting(selectedMeeting)}
+                                                    >
+                                                        <Edit2 size={16} /> Edytuj
+                                                    </button>
+                                                    <button
+                                                        className="lux-btn-outline py-3 flex items-center justify-center gap-2"
+                                                        onClick={() => handleDeleteMeeting(selectedMeeting.id)}
+                                                    >
+                                                        <Trash2 size={16} /> Usuń
+                                                    </button>
+                                                </div>
                                             )}
                                         </div>
                                     </div>
-
-                                    <div className="pt-6 border-t border-gray-100 space-y-3">
-                                        {!isCoord && (
-                                            <button
-                                                disabled={selectedMeeting.attendance?.some((a: any) => a.imieNazwisko === currentUser)}
-                                                className={cn(
-                                                    "w-full py-4 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2",
-                                                    selectedMeeting.attendance?.some((a: any) => a.imieNazwisko === currentUser)
-                                                        ? "bg-gray-100 text-muted-foreground cursor-not-allowed"
-                                                        : "lux-gradient text-white shadow-[0_12px_30px_rgba(61,15,26,0.2)] hover:-translate-y-1"
-                                                )}
-                                                onClick={() => handleMarkAttendance(selectedMeeting.id)}
-                                            >
-                                                {selectedMeeting.attendance?.some((a: any) => a.imieNazwisko === currentUser) ? "Obecność oznaczona" : "Oznacz obecność"}
-                                            </button>
-                                        )}
-
-                                        {(isAdmin || isCoord) && (
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <button
-                                                    className="bg-[#f8f9fa] text-[#555] py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#eef1ff] hover:text-primary transition-all"
-                                                    onClick={() => handleEditMeeting(selectedMeeting)}
-                                                >
-                                                    <Edit2 size={16} /> Edytuj
-                                                </button>
-                                                <button
-                                                    className="lux-btn-outline py-3 flex items-center justify-center gap-2"
-                                                    onClick={() => handleDeleteMeeting(selectedMeeting.id)}
-                                                >
-                                                    <Trash2 size={16} /> Usuń
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </motion.div>
-                        </div>
-                    )}
-                </AnimatePresence>
+                                </motion.div>
+                            </div>
+                        )}
+                    </AnimatePresence>,
+                    document.body
+                )}
 
                 {/* Add Meeting Form */}
-                <AnimatePresence>
-                    {showAddMeeting && (
-                        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6">
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                onClick={() => setShowAddMeeting(false)}
-                                className="absolute inset-0 bg-black/60 backdrop-blur-md"
-                            />
-                            <motion.div
-                                initial={{ scale: 0.95, y: 20, opacity: 0 }}
-                                animate={{ scale: 1, y: 0, opacity: 1 }}
-                                exit={{ scale: 0.95, y: 20, opacity: 0 }}
-                                className="relative bg-white w-full max-w-[520px] rounded-[30px] shadow-[0_20px_60px_rgba(0,0,0,0.3)] overflow-hidden"
-                            >
-                                <div className="gradient-bg p-8 text-white relative">
-                                    <button
-                                        onClick={() => setShowAddMeeting(false)}
-                                        className="absolute top-6 right-6 p-2 bg-white/20 rounded-full hover:bg-white/30 transition-all"
-                                    >
-                                        <X size={20} />
-                                    </button>
-                                    <h3 className="text-2xl font-bold pr-10">Nowe spotkanie</h3>
-                                </div>
-                                <div className="p-8 space-y-6">
-                                    <div className="grid grid-cols-2 gap-4">
+                {mounted && createPortal(
+                    <AnimatePresence>
+                        {showAddMeeting && (
+                            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6">
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    onClick={() => setShowAddMeeting(false)}
+                                    className="absolute inset-0 bg-black/60 backdrop-blur-[20px]"
+                                />
+                                <motion.div
+                                    initial={{ scale: 0.95, y: 20, opacity: 0 }}
+                                    animate={{ scale: 1, y: 0, opacity: 1 }}
+                                    exit={{ scale: 0.95, y: 20, opacity: 0 }}
+                                    className="relative bg-white w-full max-w-[520px] rounded-[30px] shadow-[0_20px_60px_rgba(0,0,0,0.3)] overflow-hidden"
+
+                                >
+                                    <div className="gradient-bg p-8 text-white relative">
+                                        <button
+                                            onClick={() => setShowAddMeeting(false)}
+                                            className="absolute top-6 right-6 p-2 bg-white/20 rounded-full hover:bg-white/30 transition-all"
+                                        >
+                                            <X size={20} />
+                                        </button>
+                                        <h3 className="text-2xl font-bold pr-10">Nowe spotkanie</h3>
+                                    </div>
+                                    <div className="p-8 space-y-6">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Data</label>
+                                                <input
+                                                    type="date"
+                                                    className="lux-input"
+                                                    value={newMeeting.data}
+                                                    onChange={(e) => setNewMeeting(prev => ({ ...prev, data: e.target.value }))}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Godzina</label>
+                                                <input
+                                                    type="time"
+                                                    className="lux-input"
+                                                    value={newMeeting.godzina}
+                                                    onChange={(e) => setNewMeeting(prev => ({ ...prev, godzina: e.target.value }))}
+                                                />
+                                            </div>
+                                        </div>
                                         <div className="space-y-2">
-                                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Data</label>
+                                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Tytuł spotkania</label>
                                             <input
-                                                type="date"
+                                                type="text"
                                                 className="lux-input"
-                                                value={newMeeting.data}
-                                                onChange={(e) => setNewMeeting(prev => ({ ...prev, data: e.target.value }))}
+                                                placeholder="np. Spotkanie operacyjne"
+                                                value={newMeeting.opis}
+                                                onChange={(e) => setNewMeeting(prev => ({ ...prev, opis: e.target.value }))}
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Godzina</label>
-                                            <input
-                                                type="time"
-                                                className="lux-input"
-                                                value={newMeeting.godzina}
-                                                onChange={(e) => setNewMeeting(prev => ({ ...prev, godzina: e.target.value }))}
-                                            />
+                                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Opis dodatkowy</label>
+                                            <textarea
+                                                className="lux-textarea h-24 resize-none"
+                                                placeholder="Opcjonalnie"
+                                                value={newMeeting.opis_dodatkowy}
+                                                onChange={(e) => setNewMeeting(prev => ({ ...prev, opis_dodatkowy: e.target.value }))}
+                                            ></textarea>
+                                        </div>
+
+                                        {/* Recurrence Options */}
+                                        <div className="space-y-4 pt-4 border-t border-gray-100">
+                                            <label className="flex items-center gap-2 cursor-pointer group">
+                                                <input
+                                                    type="checkbox"
+                                                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary transition-all"
+                                                    checked={isRecurring}
+                                                    onChange={(e) => setIsRecurring(e.target.checked)}
+                                                />
+                                                <span className="text-sm font-bold text-gray-700 group-hover:text-primary transition-colors">Spotkanie cykliczne</span>
+                                            </label>
+
+                                            <AnimatePresence>
+                                                {isRecurring && (
+                                                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="grid grid-cols-2 gap-4 pl-6 overflow-hidden">
+                                                        <div className="space-y-2">
+                                                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Powtarzaj co (dni)</label>
+                                                            <input
+                                                                type="number"
+                                                                min="1"
+                                                                className="lux-input"
+                                                                value={recurrenceInterval}
+                                                                onChange={(e) => setRecurrenceInterval(parseInt(e.target.value) || 1)}
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Do kiedy</label>
+                                                            <input
+                                                                type="date"
+                                                                className="lux-input"
+                                                                value={recurrenceEndDate}
+                                                                onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                                                            />
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+                                        <div className="flex justify-end gap-3 pt-2">
+                                            <button className="lux-btn-outline px-6 py-3" onClick={() => setShowAddMeeting(false)}>
+                                                Anuluj
+                                            </button>
+                                            <button className="lux-btn px-6 py-3" onClick={handleAddMeeting}>
+                                                Zapisz spotkanie
+                                            </button>
                                         </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Tytuł spotkania</label>
-                                        <input
-                                            type="text"
-                                            className="lux-input"
-                                            placeholder="np. Spotkanie operacyjne"
-                                            value={newMeeting.opis}
-                                            onChange={(e) => setNewMeeting(prev => ({ ...prev, opis: e.target.value }))}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Opis dodatkowy</label>
-                                        <textarea
-                                            className="lux-textarea h-24 resize-none"
-                                            placeholder="Opcjonalnie"
-                                            value={newMeeting.opis_dodatkowy}
-                                            onChange={(e) => setNewMeeting(prev => ({ ...prev, opis_dodatkowy: e.target.value }))}
-                                        ></textarea>
-                                    </div>
-
-                                    {/* Recurrence Options */}
-                                    <div className="space-y-4 pt-4 border-t border-gray-100">
-                                        <label className="flex items-center gap-2 cursor-pointer group">
-                                            <input
-                                                type="checkbox"
-                                                className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary transition-all"
-                                                checked={isRecurring}
-                                                onChange={(e) => setIsRecurring(e.target.checked)}
-                                            />
-                                            <span className="text-sm font-bold text-gray-700 group-hover:text-primary transition-colors">Spotkanie cykliczne</span>
-                                        </label>
-
-                                        <AnimatePresence>
-                                            {isRecurring && (
-                                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="grid grid-cols-2 gap-4 pl-6 overflow-hidden">
-                                                    <div className="space-y-2">
-                                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Powtarzaj co (dni)</label>
-                                                        <input
-                                                            type="number"
-                                                            min="1"
-                                                            className="lux-input"
-                                                            value={recurrenceInterval}
-                                                            onChange={(e) => setRecurrenceInterval(parseInt(e.target.value) || 1)}
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Do kiedy</label>
-                                                        <input
-                                                            type="date"
-                                                            className="lux-input"
-                                                            value={recurrenceEndDate}
-                                                            onChange={(e) => setRecurrenceEndDate(e.target.value)}
-                                                        />
-                                                    </div>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
-                                    <div className="flex justify-end gap-3 pt-2">
-                                        <button className="lux-btn-outline px-6 py-3" onClick={() => setShowAddMeeting(false)}>
-                                            Anuluj
-                                        </button>
-                                        <button className="lux-btn px-6 py-3" onClick={handleAddMeeting}>
-                                            Zapisz spotkanie
-                                        </button>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        </div>
-                    )}
-                </AnimatePresence>
+                                </motion.div>
+                            </div>
+                        )}
+                    </AnimatePresence>,
+                    document.body
+                )}
 
                 {/* Edit Meeting Modal */}
-                <AnimatePresence>
-                    {showEditMeeting && (
-                        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6">
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                onClick={() => setShowEditMeeting(false)}
-                                className="absolute inset-0 bg-black/60 backdrop-blur-md"
-                            />
-                            <motion.div
-                                initial={{ scale: 0.95, y: 20, opacity: 0 }}
-                                animate={{ scale: 1, y: 0, opacity: 1 }}
-                                exit={{ scale: 0.95, y: 20, opacity: 0 }}
-                                className="relative bg-white w-full max-w-[520px] rounded-[30px] shadow-[0_20px_60px_rgba(0,0,0,0.3)] overflow-hidden"
-                            >
-                                <div className="gradient-bg p-8 text-white relative">
-                                    <button
-                                        onClick={() => setShowEditMeeting(false)}
-                                        className="absolute top-6 right-6 p-2 rounded-full hover:bg-white/10"
-                                    >
-                                        <X size={24} />
-                                    </button>
-                                    <div className="flex items-center gap-4">
-                                        <Edit2 size={32} />
-                                        <div>
-                                            <h3 className="text-2xl font-bold">Edytuj spotkanie</h3>
-                                            <p className="text-sm opacity-80">Zaktualizuj dane spotkania</p>
+                {mounted && createPortal(
+                    <AnimatePresence>
+                        {showEditMeeting && (
+                            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6">
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    onClick={() => setShowEditMeeting(false)}
+                                    className="absolute inset-0 bg-black/60 backdrop-blur-[20px]"
+                                />
+                                <motion.div
+                                    initial={{ scale: 0.95, y: 20, opacity: 0 }}
+
+                                    animate={{ scale: 1, y: 0, opacity: 1 }}
+                                    exit={{ scale: 0.95, y: 20, opacity: 0 }}
+                                    className="relative bg-white w-full max-w-[520px] rounded-[30px] shadow-[0_20px_60px_rgba(0,0,0,0.3)] overflow-hidden"
+                                >
+                                    <div className="gradient-bg p-8 text-white relative">
+                                        <button
+                                            onClick={() => setShowEditMeeting(false)}
+                                            className="absolute top-6 right-6 p-2 rounded-full hover:bg-white/10"
+                                        >
+                                            <X size={24} />
+                                        </button>
+                                        <div className="flex items-center gap-4">
+                                            <Edit2 size={32} />
+                                            <div>
+                                                <h3 className="text-2xl font-bold">Edytuj spotkanie</h3>
+                                                <p className="text-sm opacity-80">Zaktualizuj dane spotkania</p>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div className="p-8 space-y-6">
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Tytuł spotkania</label>
-                                        <input
-                                            type="text"
-                                            className="lux-input"
-                                            placeholder="np. Spotkanie operacyjne"
-                                            value={editMeetingData.opis}
-                                            onChange={(e) => setEditMeetingData(prev => ({ ...prev, opis: e.target.value }))}
-                                        />
+                                    <div className="p-8 space-y-6">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Tytuł spotkania</label>
+                                            <input
+                                                type="text"
+                                                className="lux-input"
+                                                placeholder="np. Spotkanie operacyjne"
+                                                value={editMeetingData.opis}
+                                                onChange={(e) => setEditMeetingData(prev => ({ ...prev, opis: e.target.value }))}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Opis dodatkowy</label>
+                                            <textarea
+                                                className="lux-textarea h-24 resize-none"
+                                                placeholder="Opcjonalnie"
+                                                value={editMeetingData.opisDodatkowy}
+                                                onChange={(e) => setEditMeetingData(prev => ({ ...prev, opisDodatkowy: e.target.value }))}
+                                            ></textarea>
+                                        </div>
+                                        <div className="flex justify-end gap-3 pt-2">
+                                            <button className="lux-btn-outline px-6 py-3" onClick={() => setShowEditMeeting(false)}>
+                                                Anuluj
+                                            </button>
+                                            <button className="lux-btn px-6 py-3" onClick={handleSaveEditMeeting}>
+                                                Zapisz zmiany
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Opis dodatkowy</label>
-                                        <textarea
-                                            className="lux-textarea h-24 resize-none"
-                                            placeholder="Opcjonalnie"
-                                            value={editMeetingData.opisDodatkowy}
-                                            onChange={(e) => setEditMeetingData(prev => ({ ...prev, opisDodatkowy: e.target.value }))}
-                                        ></textarea>
-                                    </div>
-                                    <div className="flex justify-end gap-3 pt-2">
-                                        <button className="lux-btn-outline px-6 py-3" onClick={() => setShowEditMeeting(false)}>
-                                            Anuluj
-                                        </button>
-                                        <button className="lux-btn px-6 py-3" onClick={handleSaveEditMeeting}>
-                                            Zapisz zmiany
-                                        </button>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        </div>
-                    )}
-                </AnimatePresence>
+                                </motion.div>
+                            </div>
+                        )}
+                    </AnimatePresence>,
+                    document.body
+                )}
 
                 {/* Admin/Coord FAB */}
-                {(isAdmin || isCoord) && (
-                    <button
-                        className="fixed bottom-10 right-10 w-16 h-16 lux-gradient text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50"
-                        onClick={() => setShowAddMeeting(true)}
-                    >
-                        <Plus size={32} />
-                    </button>
-                )}
+                {(isAdmin || isCoord) && (() => {
+                    const selectedTeam = teams.find(t => t.id === selectedTeamId);
+                    const fabColor = selectedTeam?.kolor || '#5400FF'; // Default purple
+                    return (
+                        <button
+                            className="fixed bottom-10 right-10 w-20 h-20 rounded-full shadow-[0_10px_40px_rgba(84,0,255,0.3)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50 overflow-hidden"
+                            style={{ backgroundColor: fabColor }}
+                            onClick={() => setShowAddMeeting(true)}
+                        >
+                            <Plus size={24} color={getContrastColor(fabColor)} />
+                        </button>
+                    );
+                })()}
+
             </div>
         </DashboardLayout>
+
     );
 }

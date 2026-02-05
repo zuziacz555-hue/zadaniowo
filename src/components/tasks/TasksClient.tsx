@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -43,6 +44,11 @@ interface TasksClientProps {
 
 export default function TasksClient({ initialTasks, userId, userRole: activeRole, userName, teamId, settings, onRefresh }: TasksClientProps) {
     const router = useRouter();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
     const [activeTab, setActiveTab] = useState("do-zrobienia");
     // New: Coordinator Mode Toggle (MANAGEMENT vs PERSONAL)
     const [coordViewMode, setCoordViewMode] = useState<"MANAGEMENT" | "PERSONAL">("MANAGEMENT");
@@ -318,12 +324,12 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
 
             {/* Add Form (Admin / Coord) */}
             <AnimatePresence>
-                {showAddForm && (
+                {mounted && showAddForm && createPortal(
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto"
+                        className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-[20px] flex items-center justify-center p-4 overflow-y-auto"
                         onClick={(e) => { if (e.target === e.currentTarget) setShowCloseConfirmation(true); }}
                     >
                         <div className="bg-white p-8 rounded-[32px] w-full max-w-2xl shadow-2xl relative my-8">
@@ -523,18 +529,19 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                 </div>
                             </div>
                         </div>
-                    </motion.div>
+                    </motion.div>,
+                    document.body
                 )}
             </AnimatePresence>
 
             {/* Close Confirmation Modal */}
             <AnimatePresence>
-                {showCloseConfirmation && (
+                {mounted && showCloseConfirmation && createPortal(
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+                        className="fixed inset-0 z-[10000] bg-black/60 backdrop-blur-[20px] flex items-center justify-center p-4"
                         onClick={(e) => { if (e.target === e.currentTarget) setShowCloseConfirmation(false); }}
                     >
                         <motion.div
@@ -569,7 +576,8 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                 </button>
                             </div>
                         </motion.div>
-                    </motion.div>
+                    </motion.div>,
+                    document.body
                 )}
             </AnimatePresence>
 
@@ -881,9 +889,9 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
 
             {/* Submission Modal for Participant / Coordinator in Personal Mode */}
             <AnimatePresence>
-                {selectedTask && (showParticipantView || (!isAdmin && !isCoord)) && activeTab !== "wykonane" && (
-                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedTask(null)} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+                {mounted && selectedTask && (showParticipantView || (!isAdmin && !isCoord)) && activeTab !== "wykonane" && createPortal(
+                    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedTask(null)} className="absolute inset-0 bg-black/40 backdrop-blur-xl" />
                         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="lux-card p-10 max-w-lg w-full relative z-10 shadow-2xl">
                             <div className="flex justify-between items-start mb-6">
                                 <div>
@@ -925,15 +933,16 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                 </button>
                             </div>
                         </motion.div>
-                    </div>
+                    </div>,
+                    document.body
                 )}
             </AnimatePresence>
 
             {/* Rejection Modal for Coord/Admin */}
             <AnimatePresence>
-                {selectedTask && (isCoord || isAdmin) && rejectionNotes !== null && selectedTask.targetUserId && (
-                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { setSelectedTask(null); setRejectionNotes(""); }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+                {mounted && selectedTask && (isCoord || isAdmin) && rejectionNotes !== null && selectedTask.targetUserId && createPortal(
+                    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { setSelectedTask(null); setRejectionNotes(""); }} className="absolute inset-0 bg-black/40 backdrop-blur-xl" />
                         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="lux-card p-10 max-w-lg w-full relative z-10 shadow-2xl">
                             <h3 className="text-2xl font-bold mb-2 text-red-600">Odrzuć do poprawy</h3>
                             <p className="text-muted-foreground mb-6">Uczestniczka: <span className="font-bold text-foreground">{selectedTask.targetUserName}</span></p>
@@ -977,7 +986,8 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                 </button>
                             </div>
                         </motion.div>
-                    </div>
+                    </div>,
+                    document.body
                 )}
             </AnimatePresence>
         </DashboardLayout>
