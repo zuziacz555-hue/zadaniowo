@@ -367,7 +367,16 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
                                             <div className="flex justify-between items-center border-b border-gray-100 pb-3">
                                                 <span className="text-sm text-muted-foreground">Zadania do zrobienia</span>
                                                 <span className="lux-chip">
-                                                    {ut.team._count?.tasks || 0}
+                                                    {ut.toDoCount || 0}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+                                                <span className="text-sm text-muted-foreground">Do poprawy</span>
+                                                <span className={cn(
+                                                    "lux-chip",
+                                                    (ut.toFixCount || 0) > 0 ? "bg-red-50 text-red-600 border-red-100" : ""
+                                                )}>
+                                                    {ut.toFixCount || 0}
                                                 </span>
                                             </div>
                                             <div className="flex justify-between items-center">

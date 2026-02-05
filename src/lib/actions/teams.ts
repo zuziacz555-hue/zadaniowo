@@ -81,15 +81,23 @@ export async function getUserTeams(userId: number) {
         endOfWeek.setDate(startOfWeek.getDate() + 6);
         endOfWeek.setHours(23, 59, 59, 999);
 
-        const userTeams = await prisma.userTeam.findMany({
+        const userTeamsRaw = await prisma.userTeam.findMany({
             where: { userId },
             include: {
                 team: {
                     include: {
-                        _count: {
-                            select: {
-                                tasks: true,
+                        tasks: {
+                            where: {
+                                executions: {
+                                    some: { userId }
+                                }
                             },
+                            select: {
+                                executions: {
+                                    where: { userId },
+                                    select: { status: true }
+                                }
+                            }
                         },
                         meetings: {
                             where: {
@@ -103,6 +111,19 @@ export async function getUserTeams(userId: number) {
                 },
             },
         })
+
+        const userTeams = userTeamsRaw.map(ut => {
+            const executions = ut.team.tasks.flatMap(t => t.executions);
+            const toDoCount = executions.filter(ex => ex.status === 'AKTYWNE').length;
+            const toFixCount = executions.filter(ex => ex.status === 'ODRZUCONE').length;
+
+            return {
+                ...ut,
+                toDoCount,
+                toFixCount
+            };
+        });
+
         return { success: true, data: userTeams }
     } catch (error) {
         console.error('Error fetching user teams:', error)
