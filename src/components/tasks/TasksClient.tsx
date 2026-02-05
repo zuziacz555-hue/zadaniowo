@@ -226,7 +226,15 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
         if (targetTeamId) {
             getTeamById(targetTeamId).then(res => {
                 if (res.success && res.data) {
-                    setTeamMembers(res.data.users.map((u: any) => u.user));
+                    const members = res.data.users
+                        .filter((u: any) => {
+                            if (isCoord && !isAdmin) {
+                                return u.rola?.toLowerCase() === 'uczestniczka';
+                            }
+                            return true;
+                        })
+                        .map((u: any) => u.user);
+                    setTeamMembers(members);
                 }
             });
         } else {
