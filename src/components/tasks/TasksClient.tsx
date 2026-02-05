@@ -797,6 +797,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                     </div>
                 )}
             </AnimatePresence>
+        </div>
         </DashboardLayout >
     );
 }
