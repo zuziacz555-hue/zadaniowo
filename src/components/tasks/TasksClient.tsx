@@ -19,7 +19,8 @@ import {
     History,
     Check,
     Users,
-    Folder
+    Folder,
+    X
 } from "lucide-react";
 import {
     createTask,
@@ -70,6 +71,8 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
 
     // Admin Filter State
     const [adminTeamFilter, setAdminTeamFilter] = useState<number | "ALL">("ALL");
+    // Verification Tab State (for the collapsible verification section)
+    const [verificationTab, setVerificationTab] = useState<"oczekujace" | "zaakceptowane" | "doPoprawy">("oczekujace");
 
     // UI States for Modals/Forms
     const [newTask, setNewTask] = useState({ tytul: "", opis: "", termin: "", priorytet: "NORMALNY", teamId: "-1", typPrzypisania: "CALY_ZESPOL", includeCoordinators: false });
@@ -165,29 +168,37 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
             return true;
         });
 
-        // Do weryfikacji - tasks with pending submissions
-        const doWeryfikacji = tasks.filter(t => {
-            return t.executions.some((e: any) => {
-                if (e.status !== "OCZEKUJACE") return false;
-                if (isAdmin) {
-                    // Admin view: show all pending submissions
-                    return true;
-                }
+        // Verification section: Get all executions grouped by status
+        // Helper to check if execution should be visible to this user
+        const isVisibleExecution = (e: any, t: any) => {
+            if (isAdmin) return true;
+            // Coordinator view: show only participant submissions
+            const teamRole = t.teamId
+                ? e.user?.zespoly?.find((ut: any) => ut.teamId === t.teamId)?.rola
+                : e.user?.rola;
+            return teamRole?.toUpperCase() === 'UCZESTNICZKA';
+        };
 
-                // Coordinator view: show only participant submissions
-                const teamRole = t.teamId
-                    ? e.user?.zespoly?.find((ut: any) => ut.teamId === t.teamId)?.rola
-                    : e.user?.rola; // Fallback for global tasks if user has a global role
-                const isSubmitterParticipant = teamRole?.toUpperCase() === 'UCZESTNICZKA';
-                return isSubmitterParticipant;
+        // Get all visible executions with their parent task info
+        const allExecutions: any[] = [];
+        tasks.forEach(t => {
+            t.executions.forEach((e: any) => {
+                if (isVisibleExecution(e, t)) {
+                    allExecutions.push({ ...e, task: t });
+                }
             });
         });
 
-        return { zlecone, doWeryfikacji };
+        // Split into three categories
+        const weryfikacja_oczekujace = allExecutions.filter(e => e.status === "OCZEKUJACE");
+        const weryfikacja_zaakceptowane = allExecutions.filter(e => e.status === "ZAAKCEPTOWANE");
+        const weryfikacja_doPoprawy = allExecutions.filter(e => e.status === "ODRZUCONE");
+
+        return { zlecone, weryfikacja_oczekujace, weryfikacja_zaakceptowane, weryfikacja_doPoprawy };
     };
 
     const { doZrobienia, wykonane, doPoprawy } = getParticipantTasks();
-    const { zlecone, doWeryfikacji } = getReferenceTasks();
+    const { zlecone, weryfikacja_oczekujace, weryfikacja_zaakceptowane, weryfikacja_doPoprawy } = getReferenceTasks();
 
     const resetAddForm = () => {
         setNewTask({ tytul: "", opis: "", termin: "", priorytet: "NORMALNY", teamId: "-1", typPrzypisania: "CALY_ZESPOL", includeCoordinators: false });
@@ -786,12 +797,84 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                             ) : (
                                 /* --- MANAGEMENT VIEW --- */
                                 <>
+                                    {/* DO SPRAWDZENIA - Verification Section with Tabs */}
+                                    <div className="mb-8">
+                                        <div className="flex flex-col items-start mb-4">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center">
+                                                    <Clock size={16} className="text-white" />
+                                                </div>
+                                                <h2 className="lux-kicker">Do sprawdzenia</h2>
+                                            </div>
+                                            <div className="h-1 w-12 bg-amber-200 rounded-full" />
+                                        </div>
+
+                                        {/* Tab Buttons */}
+                                        <div className="flex bg-gray-100/80 rounded-2xl p-1.5 mb-6">
+                                            {[
+                                                { id: "oczekujace", label: "Oczekujące", count: weryfikacja_oczekujace.length, color: "amber" },
+                                                { id: "zaakceptowane", label: "Zaakceptowane", count: weryfikacja_zaakceptowane.length, color: "emerald" },
+                                                { id: "doPoprawy", label: "Do poprawy", count: weryfikacja_doPoprawy.length, color: "red" }
+                                            ].map((tab) => (
+                                                <div
+                                                    key={tab.id}
+                                                    role="button"
+                                                    tabIndex={0}
+                                                    onClick={() => setVerificationTab(tab.id as any)}
+                                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setVerificationTab(tab.id as any); }}
+                                                    className={cn(
+                                                        "flex-1 py-3 px-4 font-bold transition-all rounded-xl flex items-center justify-center gap-2 cursor-pointer text-sm",
+                                                        verificationTab === tab.id ? "bg-white text-gray-900 shadow-sm" : "text-muted-foreground hover:bg-white/50"
+                                                    )}
+                                                >
+                                                    {tab.label}
+                                                    <span className={cn(
+                                                        "px-2 py-0.5 rounded-full text-[10px] font-black",
+                                                        verificationTab === tab.id
+                                                            ? tab.color === "amber" ? "bg-amber-500 text-white" :
+                                                                tab.color === "emerald" ? "bg-emerald-500 text-white" :
+                                                                    "bg-red-500 text-white"
+                                                            : "bg-gray-200 text-gray-600"
+                                                    )}>{tab.count}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Content based on selected tab */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                            {(verificationTab === "oczekujace" ? weryfikacja_oczekujace :
+                                                verificationTab === "zaakceptowane" ? weryfikacja_zaakceptowane :
+                                                    weryfikacja_doPoprawy).map((exec: any) => (
+                                                        <CollapsibleExecutionCard
+                                                            key={exec.id}
+                                                            execution={exec}
+                                                            onApprove={handleApproveWork}
+                                                            onReject={(task: any, userId: number) => setSelectedTask({ ...task, targetUserId: userId, targetUserName: exec.user?.imieNazwisko })}
+                                                            isAdmin={isAdmin}
+                                                            tabType={verificationTab}
+                                                        />
+                                                    ))}
+                                            {(verificationTab === "oczekujace" ? weryfikacja_oczekujace :
+                                                verificationTab === "zaakceptowane" ? weryfikacja_zaakceptowane :
+                                                    weryfikacja_doPoprawy).length === 0 && (
+                                                    <div className="col-span-full py-12 text-center text-muted-foreground font-medium italic opacity-50">
+                                                        {verificationTab === "oczekujace" ? "Brak oczekujących zgłoszeń" :
+                                                            verificationTab === "zaakceptowane" ? "Brak zaakceptowanych zgłoszeń" :
+                                                                "Brak zgłoszeń do poprawy"}
+                                                    </div>
+                                                )}
+                                        </div>
+                                    </div>
+
+
+                                    {/* ZLECONE - Assigned Tasks Section */}
                                     <div className="flex flex-col items-start mb-6">
                                         <h2 className="lux-kicker mb-2">
                                             {isAdmin ? (adminTeamFilter === "ALL" ? "Wszystkie zlecone zadania" : "Zadania wybranego zespołu") : "Zlecone zadania zespołu"}
                                         </h2>
                                         <div className="h-1 w-12 bg-primary/20 rounded-full" />
                                     </div>
+
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
                                         {zlecone.map((t: any) => (
@@ -828,11 +911,14 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                 { id: "wykonane", label: "Wykonane", count: wykonane.length },
                                 { id: "do-poprawy", label: "Do poprawy", count: doPoprawy.length }
                             ].map((tab) => (
-                                <button
+                                <div
                                     key={tab.id}
+                                    role="button"
+                                    tabIndex={0}
                                     onClick={() => setActiveTab(tab.id)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setActiveTab(tab.id); }}
                                     className={cn(
-                                        "flex-1 py-4 font-bold transition-all rounded-2xl flex items-center justify-center gap-3 relative",
+                                        "flex-1 py-4 font-bold transition-all rounded-2xl flex items-center justify-center gap-3 relative cursor-pointer",
                                         activeTab === tab.id ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:bg-white/50"
                                     )}
                                 >
@@ -872,7 +958,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                             )}
                                         </div>
                                     )}
-                                </button>
+                                </div>
                             ))}
                         </div>
                         <div className="p-8">
@@ -898,109 +984,114 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
             {/* MODALS */}
 
             {/* Submission Modal for Participant / Coordinator in Personal Mode */}
-            <AnimatePresence>
-                {mounted && selectedTask && (showParticipantView || (!isAdmin && !isCoord)) && activeTab !== "wykonane" && createPortal(
-                    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6">
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedTask(null)} className="absolute inset-0 bg-black/40 backdrop-blur-xl" />
-                        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="lux-card p-10 max-w-lg w-full relative z-10 shadow-2xl">
-                            <div className="flex justify-between items-start mb-6">
-                                <div>
-                                    <h3 className="text-2xl font-bold">{activeTab === "do-poprawy" ? "Wyślij poprawkę" : "Oznacz jako wykonane"}</h3>
-                                    <p className="text-muted-foreground mt-1">Zadanie: <span className="font-bold text-foreground">{selectedTask.tytul}</span></p>
-                                </div>
-                                <div className="p-3 rounded-2xl bg-primary/5 text-primary">
-                                    <MessageSquare size={24} />
-                                </div>
-                            </div>
-
-                            <div className="space-y-6">
-                                {activeTab === "do-poprawy" && (
-                                    <div className="bg-red-50 p-4 rounded-2xl border-l-4 border-red-500">
-                                        <p className="text-[10px] font-black uppercase text-red-600 mb-1">Poprzednie uwagi</p>
-                                        <p className="text-sm text-red-900">{selectedTask.executions.find((e: any) => e.userId === userId)?.uwagiOdrzucenia}</p>
+            {mounted && createPortal(
+                <AnimatePresence>
+                    {selectedTask && (showParticipantView || (!isAdmin && !isCoord)) && activeTab !== "wykonane" && (
+                        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6">
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedTask(null)} className="absolute inset-0 bg-black/60 backdrop-blur-[20px]" />
+                            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="lux-card p-10 max-w-lg w-full relative z-10 shadow-2xl">
+                                <div className="flex justify-between items-start mb-6">
+                                    <div>
+                                        <h3 className="text-2xl font-bold">{activeTab === "do-poprawy" ? "Wyślij poprawkę" : "Oznacz jako wykonane"}</h3>
+                                        <p className="text-muted-foreground mt-1">Zadanie: <span className="font-bold text-foreground">{selectedTask.tytul}</span></p>
                                     </div>
-                                )}
-
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Opis wykonania / Poprawki</label>
-                                    <textarea
-                                        className="lux-textarea h-40"
-                                        placeholder="Opisz co zostało zrobione..."
-                                        value={submissionText}
-                                        onChange={e => setSubmissionText(e.target.value)}
-                                    />
+                                    <div className="p-3 rounded-2xl bg-primary/5 text-primary">
+                                        <MessageSquare size={24} />
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div className="flex gap-4 mt-8">
-                                <button onClick={() => setSelectedTask(null)} className="flex-1 py-4 font-bold text-muted-foreground hover:bg-gray-50 rounded-2xl transition-all">Anuluj</button>
-                                <button
-                                    onClick={() => handleSubmitWork(selectedTask.id, submissionText, activeTab === "do-poprawy")}
-                                    className="flex-[2] lux-btn"
-                                    disabled={!submissionText.trim() || isSubmitting}
-                                >
-                                    {isSubmitting ? "Wysyłanie..." : activeTab === "do-poprawy" ? "Wyślij poprawkę" : "Zgłoś wykonanie"}
-                                </button>
-                            </div>
-                        </motion.div>
-                    </div>,
-                    document.body
-                )}
-            </AnimatePresence>
+                                <div className="space-y-6">
+                                    {activeTab === "do-poprawy" && (
+                                        <div className="bg-red-50 p-4 rounded-2xl border-l-4 border-red-500">
+                                            <p className="text-[10px] font-black uppercase text-red-600 mb-1">Poprzednie uwagi</p>
+                                            <p className="text-sm text-red-900">{selectedTask.executions.find((e: any) => e.userId === userId)?.uwagiOdrzucenia}</p>
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Opis wykonania / Poprawki</label>
+                                        <textarea
+                                            className="lux-textarea h-40"
+                                            placeholder="Opisz co zostało zrobione..."
+                                            value={submissionText}
+                                            onChange={e => setSubmissionText(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-4 mt-8">
+                                    <button onClick={() => setSelectedTask(null)} className="flex-1 py-4 font-bold text-muted-foreground hover:bg-gray-50 rounded-2xl transition-all">Anuluj</button>
+                                    <button
+                                        onClick={() => handleSubmitWork(selectedTask.id, submissionText, activeTab === "do-poprawy")}
+                                        className="flex-[2] lux-btn"
+                                        disabled={!submissionText.trim() || isSubmitting}
+                                    >
+                                        {isSubmitting ? "Wysyłanie..." : activeTab === "do-poprawy" ? "Wyślij poprawkę" : "Zgłoś wykonanie"}
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
 
             {/* Rejection Modal for Coord/Admin */}
-            <AnimatePresence>
-                {mounted && selectedTask && (isCoord || isAdmin) && rejectionNotes !== null && selectedTask.targetUserId && createPortal(
-                    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6">
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { setSelectedTask(null); setRejectionNotes(""); }} className="absolute inset-0 bg-black/40 backdrop-blur-xl" />
-                        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="lux-card p-10 max-w-lg w-full relative z-10 shadow-2xl">
-                            <h3 className="text-2xl font-bold mb-2 text-red-600">Odrzuć do poprawy</h3>
-                            <p className="text-muted-foreground mb-6">Uczestniczka: <span className="font-bold text-foreground">{selectedTask.targetUserName}</span></p>
+            {mounted && createPortal(
+                <AnimatePresence>
+                    {selectedTask && (isCoord || isAdmin) && rejectionNotes !== null && selectedTask.targetUserId && (
+                        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6">
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { setSelectedTask(null); setRejectionNotes(""); }} className="absolute inset-0 bg-black/60 backdrop-blur-[20px]" />
+                            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="lux-card p-10 max-w-lg w-full relative z-10 shadow-2xl">
+                                <h3 className="text-2xl font-bold mb-2 text-red-600">Odrzuć do poprawy</h3>
+                                <p className="text-muted-foreground mb-6">Uczestniczka: <span className="font-bold text-foreground">{selectedTask.targetUserName}</span></p>
 
-                            <label className="text-[10px] font-black uppercase text-muted-foreground ml-1 mb-2 block">Uwagi do poprawy</label>
-                            <textarea
-                                className="lux-textarea h-40 mb-6 border-red-100 focus:border-red-500"
-                                placeholder="Wypisz co dokładnie trzeba poprawić..."
-                                value={rejectionNotes}
-                                onChange={e => setRejectionNotes(e.target.value)}
-                            />
+                                <label className="text-[10px] font-black uppercase text-muted-foreground ml-1 mb-2 block">Uwagi do poprawy</label>
+                                <textarea
+                                    className="lux-textarea h-40 mb-6 border-red-100 focus:border-red-500"
+                                    placeholder="Wypisz co dokładnie trzeba poprawić..."
+                                    value={rejectionNotes}
+                                    onChange={e => setRejectionNotes(e.target.value)}
+                                />
 
-                            <div className="mb-6 space-y-2">
-                                <label className="text-[10px] font-black uppercase text-muted-foreground ml-1 block">Termin na poprawkę (opcjonalnie)</label>
-                                <div className="flex gap-2 items-center">
-                                    <input
-                                        type="date"
-                                        className="lux-input flex-1"
-                                        value={rejectionDeadline}
-                                        onChange={(e) => setRejectionDeadline(e.target.value)}
-                                    />
-                                    {rejectionDeadline && (
-                                        <button
-                                            onClick={() => setRejectionDeadline("")}
-                                            className="text-[10px] text-red-500 font-bold hover:underline"
-                                        >
-                                            WYCZYŚĆ
-                                        </button>
-                                    )}
+                                <div className="mb-6 space-y-2">
+                                    <label className="text-[10px] font-black uppercase text-muted-foreground ml-1 block">Termin na poprawkę (opcjonalnie)</label>
+                                    <div className="flex gap-2 items-center">
+                                        <input
+                                            type="date"
+                                            className="lux-input flex-1"
+                                            value={rejectionDeadline}
+                                            onChange={(e) => setRejectionDeadline(e.target.value)}
+                                        />
+                                        {rejectionDeadline && (
+                                            <button
+                                                onClick={() => setRejectionDeadline("")}
+                                                className="text-[10px] text-red-500 font-bold hover:underline"
+                                            >
+                                                WYCZYŚĆ
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div className="flex gap-4">
-                                <button onClick={() => { setSelectedTask(null); setRejectionNotes(""); setRejectionDeadline(""); }} className="flex-1 py-4 font-bold text-muted-foreground rounded-2xl transition-all">Anuluj</button>
-                                <button
-                                    onClick={() => handleRejectWork(selectedTask.id, selectedTask.targetUserId)}
-                                    className="flex-[2] bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 transition-all shadow-lg shadow-red-500/20"
-                                    disabled={!rejectionNotes.trim()}
-                                >
-                                    Odrzuć i wyślij uwagi
-                                </button>
-                            </div>
-                        </motion.div>
-                    </div>,
-                    document.body
-                )}
-            </AnimatePresence>
-        </DashboardLayout >
+                                <div className="flex gap-4">
+                                    <button onClick={() => { setSelectedTask(null); setRejectionNotes(""); setRejectionDeadline(""); }} className="flex-1 py-4 font-bold text-muted-foreground rounded-2xl transition-all">Anuluj</button>
+                                    <button
+                                        onClick={() => handleRejectWork(selectedTask.id, selectedTask.targetUserId)}
+                                        className="flex-[2] bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 transition-all shadow-lg shadow-red-500/20"
+                                        disabled={!rejectionNotes.trim()}
+                                    >
+                                        Odrzuć i wyślij uwagi
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
+        </DashboardLayout>
+
     );
 }
 
@@ -1173,5 +1264,163 @@ function AdminTaskCard({ task, onDelete, onApprove, onReject, isCoord, isAdmin }
                 </div>
             </div>
         </div>
+    );
+}
+
+// Collapsible Verification Card for specific Execution (Tabbed View)
+function CollapsibleExecutionCard({ execution, onApprove, onReject, isAdmin, tabType }: any) {
+    const [isExpanded, setIsExpanded] = useState(false);
+    const task = execution.task;
+
+    const deadline = task.termin ? new Date(task.termin) : null;
+    const isOverdue = deadline && deadline < new Date() && task.status === "AKTYWNE";
+
+    // Dynamic styles based on tab/status
+    const statusColor =
+        tabType === "oczekujace" ? "amber" :
+            tabType === "zaakceptowane" ? "emerald" : "red";
+
+    const StatusIcon =
+        tabType === "oczekujace" ? Clock :
+            tabType === "zaakceptowane" ? CheckCircle : AlertTriangle;
+
+    return (
+        <motion.div
+            layout
+            className={cn(
+                "rounded-[20px] overflow-hidden transition-all cursor-pointer border-2",
+                isExpanded
+                    ? `bg-white shadow-xl border-${statusColor}-500/20`
+                    : `bg-gradient-to-br from-${statusColor}-50 to-white border-${statusColor}-100 hover:border-${statusColor}-300 shadow-sm hover:shadow-md`,
+                // Overdue styling only for pending
+                tabType === "oczekujace" && isOverdue && !isExpanded && "from-red-50 to-red-100 border-red-200/50"
+            )}
+            onClick={() => setIsExpanded(!isExpanded)}
+        >
+            {/* Collapsed View - Small Tile */}
+            <div className={cn("p-4 flex items-center justify-between gap-3", isExpanded && `border-b border-gray-100 bg-${statusColor}-50/30`)}>
+                <div className="flex items-center gap-3 min-w-0">
+                    <div className={cn(
+                        "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-white shadow-sm",
+                        tabType === "oczekujace" ? (isOverdue ? "bg-red-500" : "bg-amber-500") :
+                            tabType === "zaakceptowane" ? "bg-emerald-500" : "bg-red-500"
+                    )}>
+                        <StatusIcon size={18} />
+                    </div>
+                    <div className="min-w-0">
+                        <div className="flex items-baseline gap-2 mb-0.5">
+                            <h4 className="font-bold text-gray-900 truncate text-sm">{task.tytul}</h4>
+                        </div>
+                        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                            <span>{execution.user?.imieNazwisko}</span>
+                            {execution.terminPoprawki && tabType === "doPoprawy" && (
+                                <span className="text-red-500 flex items-center gap-1">
+                                    <Clock size={10} /> Poprawa: {new Date(execution.terminPoprawki).toLocaleDateString()}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                </div>
+                <motion.div
+                    animate={{ rotate: isExpanded ? 180 : 0 }}
+                    className="text-gray-400 flex-shrink-0"
+                >
+                    <ChevronDown size={20} />
+                </motion.div>
+            </div>
+
+            {/* Expanded View - Full Details */}
+            <AnimatePresence>
+                {isExpanded && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="overflow-hidden"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="p-5 space-y-4 bg-white">
+                            {/* Task & Exec Info */}
+                            <div className="space-y-3">
+                                <div className="flex flex-wrap gap-2 text-[9px] font-black uppercase tracking-widest">
+                                    <span className={cn(
+                                        "px-2 py-0.5 rounded-full border",
+                                        task.priorytet === "WYSOKI" ? "bg-red-50 text-red-600 border-red-100" :
+                                            task.priorytet === "NISKI" ? "bg-blue-50 text-blue-600 border-blue-100" :
+                                                "bg-gray-50 text-gray-600 border-gray-100"
+                                    )}>
+                                        Priorytet: {task.priorytet}
+                                    </span>
+                                    {deadline && (
+                                        <span className={cn("flex items-center gap-1", isOverdue ? "text-red-600" : "text-muted-foreground")}>
+                                            <Clock size={9} />
+                                            Termin: {deadline.toLocaleDateString()}
+                                        </span>
+                                    )}
+                                    <span className="bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                                        Wysłano: {new Date(execution.dataWyslania || execution.updatedAt).toLocaleString()}
+                                    </span>
+                                </div>
+                                {task.opis && (
+                                    <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">Opis zadania</span>
+                                        <p className="text-xs text-gray-600">{task.opis}</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* User Response */}
+                            <div className="space-y-2">
+                                <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest pl-1">Odpowiedź uczestnika</p>
+                                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 text-sm text-gray-800">
+                                    {execution.odpowiedz ? execution.odpowiedz : <span className="italic text-gray-400">Brak opisu tekstowego</span>}
+                                </div>
+                            </div>
+
+                            {/* Previous Rejection Notes (if any) */}
+                            {execution.uwagiOdrzucenia && (
+                                <div className="space-y-2">
+                                    <p className="text-[9px] font-black uppercase text-red-400 tracking-widest pl-1">Uwagi odrzucenia</p>
+                                    <div className="bg-red-50 rounded-xl p-4 border border-red-100 text-sm text-red-800 italic">
+                                        "{execution.uwagiOdrzucenia}"
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Actions - Only for Pending or if we want to allow re-evaluation */}
+                            {tabType === "oczekujace" && (
+                                <div className="flex gap-2 pt-2">
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onApprove(task.id, execution.userId); }}
+                                        className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"
+                                    >
+                                        <CheckCircle size={16} /> Akceptuj
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onReject({ ...task, targetExecution: execution }, execution.userId); }}
+                                        className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-200"
+                                    >
+                                        <X size={16} /> Odrzuć
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Actions for Accepted/Rejected - Revert possibility? For now maybe just read-only or status change */}
+                            {tabType !== "oczekujace" && (
+                                <div className="flex justify-end pt-2">
+                                    <span className={cn(
+                                        "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5",
+                                        tabType === "zaakceptowane" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+                                    )}>
+                                        {tabType === "zaakceptowane" ? <CheckCircle size={12} /> : <AlertTriangle size={12} />}
+                                        {tabType === "zaakceptowane" ? "ZAAKCEPTOWANE" : "ODRZUCONE DO POPRAWY"}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </motion.div>
     );
 }
