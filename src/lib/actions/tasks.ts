@@ -59,66 +59,47 @@ export async function getTasks(filters?: {
         const isCoord = role === "KOORDYNATORKA" || role === "koordynatorka";
 
         if (isAdmin) {
-            // Admins see all tasks, optionally filtered by team
+            // Admins see all tasks. If teamId is provided, we still include global tasks (teamId: null)
             if (teamId) {
-                query.where.teamId = teamId;
-            }
-        } else if (isCoord) {
-            // Coordinators see ALL tasks for their team OR tasks they are explicitly assigned to (for personal view)
-            if (teamId && userId) {
                 query.where = {
                     OR: [
-                        { teamId: teamId }, // Management: Team tasks
-                        { assignments: { some: { userId: userId } } }, // Personal: Explicit assignment
-                        { executions: { some: { userId: userId } } } // Personal: Execution record
+                        { teamId: teamId },
+                        { teamId: null }
                     ]
                 };
-            } else if (teamId) {
-                query.where.teamId = teamId;
+            }
+        } else if (isCoord) {
+            // Coordinators see ALL tasks for their team OR tasks they are explicitly involved in
+            query.where = {
+                OR: [
+                    { teamId: teamId },
+                    { teamId: null },
+                    { assignments: { some: { userId: userId } } },
+                    { executions: { some: { userId: userId } } }
+                ]
+            };
+        } else {
+            // Participants see:
+            // 1. Tasks assigned to their team (or global) with typPrzypisania CALY_ZESPOL
+            // 2. Tasks assigned explicitly to them
+            if (teamId && userId) {
+                query.where = {
+                    AND: [
+                        { OR: [{ teamId: teamId }, { teamId: null }] },
+                        {
+                            OR: [
+                                { typPrzypisania: "CALY_ZESPOL" },
+                                { assignments: { some: { userId: userId } } },
+                                { executions: { some: { userId: userId } } }
+                            ]
+                        }
+                    ]
+                };
             } else if (userId) {
                 query.where = {
                     OR: [
                         { assignments: { some: { userId: userId } } },
                         { executions: { some: { userId: userId } } }
-                    ]
-                };
-            }
-        } else {
-            // Participants see:
-            // 1. Tasks assigned to EVERYONE in their team
-            // 2. Tasks assigned explicitly to them via TaskAssignment
-            // 3. Tasks they already have an execution record for (legacy/fallback)
-            if (teamId && userId) {
-                query.where = {
-                    teamId: teamId,
-                    OR: [
-                        { typPrzypisania: "WSZYSCY" },
-                        {
-                            assignments: {
-                                some: { userId: userId }
-                            }
-                        },
-                        {
-                            executions: {
-                                some: { userId: userId }
-                            }
-                        }
-                    ]
-                };
-            } else if (userId) {
-                // If no team context, just find tasks they are involved in across any team
-                query.where = {
-                    OR: [
-                        {
-                            assignments: {
-                                some: { userId: userId }
-                            }
-                        },
-                        {
-                            executions: {
-                                some: { userId: userId }
-                            }
-                        }
                     ]
                 };
             }
@@ -210,34 +191,50 @@ export async function createTask(data: {
         });
 
         // 2. Create TaskExecutions (Critical for visibility/status)
-        if (data.typPrzypisania === "CALY_ZESPOL" && task.teamId) {
-            // Fetch team members
+        if (data.typPrzypisania === "CALY_ZESPOL") {
             const rolesToInclude = ["uczestniczka"];
             if (includeCoordinators) {
                 rolesToInclude.push("koordynatorka");
             }
 
-            const teamMembers = await prisma.userTeam.findMany({
-                where: {
-                    teamId: task.teamId,
-                    rola: { in: rolesToInclude }
-                },
-                include: { user: true }
-            });
+            let membersToAssign: { userId: number, imieNazwisko: string }[] = [];
 
-            if (teamMembers.length > 0) {
+            if (task.teamId) {
+                const teamMembers = await prisma.userTeam.findMany({
+                    where: {
+                        teamId: task.teamId,
+                        rola: { in: rolesToInclude }
+                    },
+                    include: { user: true }
+                });
+                membersToAssign = teamMembers.map(m => ({
+                    userId: m.userId,
+                    imieNazwisko: m.user.imieNazwisko || "Użytkownik"
+                }));
+            } else {
+                const allRelevantUsers = await prisma.user.findMany({
+                    where: {
+                        rola: { in: rolesToInclude.map(r => r.toUpperCase()) }
+                    }
+                });
+                membersToAssign = allRelevantUsers.map(u => ({
+                    userId: u.id,
+                    imieNazwisko: u.imieNazwisko || "Użytkownik"
+                }));
+            }
+
+            if (membersToAssign.length > 0) {
                 await prisma.taskExecution.createMany({
-                    data: teamMembers.map(m => ({
+                    data: membersToAssign.map(m => ({
                         taskId: task.id,
                         userId: m.userId,
                         status: "AKTYWNE",
-                        imieNazwisko: m.user.imieNazwisko || "Użytkownik",
+                        imieNazwisko: m.imieNazwisko,
                         dataOznaczenia: new Date()
                     }))
                 });
             }
         } else if (data.typPrzypisania === "OSOBY" && assignedUserIds && assignedUserIds.length > 0) {
-            // Fetch names for assigned users
             const users = await prisma.user.findMany({
                 where: { id: { in: assignedUserIds } }
             });
@@ -252,6 +249,7 @@ export async function createTask(data: {
                 }))
             });
         }
+
         revalidatePath('/tasks')
         revalidatePath('/dashboard')
         revalidatePath('/admin-teams')
