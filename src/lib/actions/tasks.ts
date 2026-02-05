@@ -77,7 +77,8 @@ export async function getTasks(filters?: {
                     { teamId: teamId },
                     { teamId: null },
                     { assignments: { some: { userId: userId } } },
-                    { executions: { some: { userId: userId } } }
+                    { executions: { some: { userId: userId } } },
+                    { utworzonePrzezId: userId }
                 ]
             };
         } else {

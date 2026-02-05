@@ -190,6 +190,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
             ...newTask,
             teamId: newTask.teamId === "-1" ? undefined : Number(newTask.teamId),
             utworzonePrzez: userName,
+            utworzonePrzezId: userId,
             assignedUserIds: newTask.typPrzypisania === "OSOBY" ? assignedUserIds : undefined,
             includeCoordinators: newTask.includeCoordinators
         });
