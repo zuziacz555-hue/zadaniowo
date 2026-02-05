@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { getUsers } from "@/lib/actions/users";
-import { createTeam, deleteTeam, removeUserFromTeam, addUserToTeam } from "@/lib/actions/teams";
+import { createTeam, deleteTeam, removeUserFromTeam, addUserToTeam, updateTeam } from "@/lib/actions/teams";
 import { useRouter } from "next/navigation";
 
 interface TeamsClientProps {
@@ -38,6 +38,7 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
     const router = useRouter();
     const [selectedTeam, setSelectedTeam] = useState<any>(null);
     const [newTeamName, setNewTeamName] = useState("");
+    const [newTeamColor, setNewTeamColor] = useState("#5400FF");
 
     // Add Member State
     const [showAddMember, setShowAddMember] = useState(false);
@@ -49,8 +50,9 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
         const name = newTeamName.trim();
         if (!name) return;
 
-        await createTeam(name);
+        await createTeam(name, newTeamColor);
         setNewTeamName("");
+        setNewTeamColor("#5400FF");
         router.refresh();
         onRefresh?.();
     };
@@ -256,15 +258,25 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
                                 <div className="flex flex-wrap gap-4 items-end">
                                     <div className="flex-1 min-w-[300px] space-y-2">
                                         <label className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Nazwa zespołu</label>
-                                        <input
-                                            type="text"
-                                            placeholder="np. Zespół Kreatywny"
-                                            className="lux-input font-semibold"
-                                            value={newTeamName}
-                                            onChange={(e) => setNewTeamName(e.target.value)}
-                                        />
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder="np. Zespół Kreatywny"
+                                                className="lux-input font-semibold flex-1"
+                                                value={newTeamName}
+                                                onChange={(e) => setNewTeamName(e.target.value)}
+                                            />
+                                            <div className="flex flex-col gap-1 items-center">
+                                                <input
+                                                    type="color"
+                                                    value={newTeamColor}
+                                                    onChange={(e) => setNewTeamColor(e.target.value)}
+                                                    className="w-12 h-12 rounded-xl cursor-pointer border-2 border-gray-200 p-1"
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
-                                    <button className="lux-btn whitespace-nowrap px-8" onClick={handleAddTeam}>
+                                    <button className="lux-btn whitespace-nowrap px-8" onClick={handleAddTeam} style={{ backgroundColor: newTeamColor }}>
                                         Utwórz zespół
                                     </button>
                                 </div>
@@ -281,7 +293,7 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
                                         whileHover={{ y: -8 }}
                                         className="lux-card overflow-hidden border border-white/70 hover:border-primary/50 transition-all flex flex-col group relative shadow-md"
                                     >
-                                        <div className="lux-gradient p-8 text-white relative">
+                                        <div className="p-8 text-white relative" style={{ backgroundColor: team.kolor || '#5400FF', background: `linear-gradient(135deg, ${team.kolor || '#5400FF'} 0%, ${team.kolor ? team.kolor + 'dd' : '#704df5'} 100%)` }}>
                                             <div className="absolute top-0 right-0 p-4 flex gap-2">
                                                 <Link href={`/meetings?zespol_id=${team.id}`} className="bg-white/20 p-2 rounded-lg hover:bg-white/30 transition-all">
                                                     <CalendarIcon size={18} />
@@ -350,17 +362,40 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
                                 exit={{ scale: 0.95, opacity: 0 }}
                                 className="relative bg-white w-full max-w-[800px] rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
                             >
-                                <div className="lux-gradient p-10 text-white relative flex-shrink-0">
+                                <div className="p-10 text-white relative flex-shrink-0 transition-colors duration-500" style={{ backgroundColor: selectedTeam.kolor || '#5400FF' }}>
                                     <button
                                         onClick={() => setSelectedTeam(null)}
                                         className="absolute top-8 right-8 p-3 bg-white/20 rounded-full hover:bg-white/30 transition-all"
                                     >
                                         <X size={20} />
                                     </button>
-                                    <div className="space-y-2">
-                                        <h3 className="text-3xl font-bold flex items-center gap-3">
-                                            <Users size={32} /> {selectedTeam.nazwa}
-                                        </h3>
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-4">
+                                            <h3 className="text-3xl font-bold flex items-center gap-3">
+                                                <Users size={32} /> {selectedTeam.nazwa}
+                                            </h3>
+                                            {isAdmin && (
+                                                <div className="relative group">
+                                                    <label htmlFor="team-color-picker" className="p-2 bg-white/20 rounded-xl hover:bg-white/30 cursor-pointer transition-all flex items-center gap-2">
+                                                        <Palette size={16} /> <span className="text-[10px] font-bold uppercase">Zmień kolor</span>
+                                                    </label>
+                                                    <input
+                                                        id="team-color-picker"
+                                                        type="color"
+                                                        className="absolute opacity-0 inset-0 cursor-pointer w-full h-full"
+                                                        value={selectedTeam.kolor || "#5400FF"}
+                                                        onChange={async (e) => {
+                                                            const newColor = e.target.value;
+                                                            // Optimistic update
+                                                            setSelectedTeam((prev: any) => ({ ...prev, kolor: newColor }));
+                                                            await updateTeam(selectedTeam.id, selectedTeam.nazwa, newColor);
+                                                            router.refresh();
+                                                            onRefresh?.();
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
                                         <p className="text-[10px] text-white/70 font-bold uppercase tracking-[0.2em]">Przegląd aktywności zespołu</p>
                                     </div>
                                 </div>

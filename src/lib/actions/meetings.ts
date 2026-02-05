@@ -32,21 +32,57 @@ export async function createMeeting(data: {
     godzina: string
     opis: string
     opisDodatkowy?: string
+    recurrence?: {
+        intervalDays: number
+        endDate: string
+    }
 }) {
     try {
-        const meeting = await prisma.meeting.create({
-            data: {
-                ...data,
-                data: new Date(`${data.data}T${data.godzina}`),
-                godzina: new Date(`1970-01-01T${data.godzina}`),
-            },
-        })
+        const meetingsToCreate = [];
+        const baseDate = new Date(data.data);
+        const timeDate = new Date(`1970-01-01T${data.godzina}`);
+
+        // Always create the first meeting
+        meetingsToCreate.push({
+            data: new Date(`${data.data}T${data.godzina}`),
+            godzina: timeDate,
+            opis: data.opis,
+            opisDodatkowy: data.opisDodatkowy,
+            teamId: data.teamId
+        });
+
+        // If recurrence is enabled, generate future dates
+        if (data.recurrence && data.recurrence.intervalDays > 0 && data.recurrence.endDate) {
+            const endDate = new Date(data.recurrence.endDate);
+            let nextDate = new Date(baseDate);
+            nextDate.setDate(nextDate.getDate() + data.recurrence.intervalDays);
+
+            while (nextDate <= endDate) {
+                const dateStr = nextDate.toISOString().split('T')[0];
+                meetingsToCreate.push({
+                    data: new Date(`${dateStr}T${data.godzina}`),
+                    godzina: timeDate,
+                    opis: data.opis,
+                    opisDodatkowy: data.opisDodatkowy,
+                    teamId: data.teamId
+                });
+
+                // Advance to next interval
+                nextDate.setDate(nextDate.getDate() + data.recurrence.intervalDays);
+            }
+        }
+
+        // Use transaction to create all meetings
+        const result = await prisma.$transaction(
+            meetingsToCreate.map(meeting => prisma.meeting.create({ data: meeting }))
+        );
+
         revalidatePath('/meetings')
         revalidatePath('/reports')
-        return { success: true, data: meeting }
+        return { success: true, count: result.length, data: result[0] } // Return first meeting as reference
     } catch (error) {
         console.error('Error creating meeting:', error)
-        return { success: false, error: 'Failed to create meeting' }
+        return { success: false, error: 'Failed to create meeting(s)' }
     }
 }
 

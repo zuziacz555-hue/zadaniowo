@@ -4,11 +4,18 @@
   --color-background: #ffffff;
   --color-foreground: #111111;
 
-  --color-primary: #5400FF;
+  /* Base colors - purple default */
+  --primary-h: 260;
+  --primary-s: 100%;
+  --primary-l: 50%;
+
+  --color-primary: hsl(var(--primary-h), var(--primary-s), var(--primary-l));
   --color-primary-foreground: #ffffff;
+
   --color-secondary: #F3F4F6;
   --color-secondary-foreground: #111111;
-  --color-accent-purple: #8B5CF6;
+
+  --color-accent-purple: hsl(var(--primary-h), var(--primary-s), 60%);
   --color-accent-blue: #3B82F6;
 
   --color-card: rgba(255, 255, 255, 0.8);
@@ -81,44 +88,45 @@
   }
 
   .lux-btn {
-    @apply bg-[#5400FF] text-white px-8 py-3.5 rounded-full font-semibold shadow-btn hover:bg-[#4300CC] hover:shadow-btn-hover hover:-translate-y-0.5 transition-all active:scale-95;
+    @apply bg-[var(--color-primary)] text-white px-8 py-3.5 rounded-full font-semibold shadow-btn hover:brightness-110 hover:shadow-btn-hover hover:-translate-y-0.5 transition-all active:scale-95;
   }
 
   .lux-btn-outline {
-    @apply border-2 border-gray-200 text-foreground bg-white px-7 py-3 rounded-full font-bold hover:border-[#5400FF] hover:text-[#5400FF] transition-all;
+    @apply border-2 border-gray-200 text-foreground bg-white px-7 py-3 rounded-full font-bold hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition-all;
   }
 
   .lux-chip {
-    @apply px-3 py-1 rounded-full text-[11px] uppercase tracking-widest bg-blue-50 text-[#5400FF] font-bold;
+    @apply px-3 py-1 rounded-full text-[11px] uppercase tracking-widest bg-blue-50 text-[var(--color-primary)] font-bold;
   }
 
   .lux-input {
-    @apply w-full bg-gray-50 border border-gray-200 rounded-xl px-5 py-3.5 outline-none focus:border-[#5400FF] focus:ring-4 focus:ring-[#5400FF]/10 transition-all text-foreground font-medium placeholder:text-gray-400;
+    @apply w-full bg-gray-50 border border-gray-200 rounded-xl px-5 py-3.5 outline-none focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 transition-all text-foreground font-medium placeholder:text-gray-400;
   }
 
   .lux-select {
-    @apply w-full bg-gray-50 border border-gray-200 rounded-xl px-5 py-3.5 outline-none focus:border-[#5400FF] focus:ring-4 focus:ring-[#5400FF]/10 transition-all text-foreground font-medium;
+    @apply w-full bg-gray-50 border border-gray-200 rounded-xl px-5 py-3.5 outline-none focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 transition-all text-foreground font-medium;
   }
 
   .lux-textarea {
-    @apply w-full bg-gray-50 border border-gray-200 rounded-xl px-5 py-3.5 outline-none focus:border-[#5400FF] focus:ring-4 focus:ring-[#5400FF]/10 transition-all text-foreground font-medium placeholder:text-gray-400;
+    @apply w-full bg-gray-50 border border-gray-200 rounded-xl px-5 py-3.5 outline-none focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 transition-all text-foreground font-medium placeholder:text-gray-400;
   }
 
   .lux-gradient {
-    @apply bg-gradient-to-br from-[#5400FF] via-[#704df5] to-[#8B5CF6];
+    background-image: linear-gradient(to bottom right, var(--color-primary), hsl(var(--primary-h), var(--primary-s), 60%), hsl(var(--primary-h), var(--primary-s), 70%));
   }
 
   .lux-gradient-soft {
-    @apply bg-gradient-to-br from-[#5400FF]/80 to-[#8B5CF6]/80;
+    background-image: linear-gradient(to bottom right, hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.8), hsla(var(--primary-h), var(--primary-s), 70%, 0.8));
   }
 }
 
 .gradient-text {
-  @apply bg-clip-text text-transparent bg-gradient-to-r from-[#5400FF] to-[#8B5CF6];
+  @apply bg-clip-text text-transparent;
+  background-image: linear-gradient(to right, var(--color-primary), hsl(var(--primary-h), var(--primary-s), 65%));
 }
 
 .gradient-bg {
-  @apply bg-gradient-to-r from-[#5400FF] to-[#8B5CF6];
+  background-image: linear-gradient(to right, var(--color-primary), hsl(var(--primary-h), var(--primary-s), 65%));
 }
 
 @keyframes float {

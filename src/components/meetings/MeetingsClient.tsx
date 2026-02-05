@@ -3,10 +3,14 @@
 import { useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { cn, hexToHSL } from "@/lib/utils";
 import {
     ChevronLeft,
     ChevronRight,
+    // ... (keep structure) -> Actually I need to be careful with imports.
+    // I'll update the imports first, then the component body.
+    // Better to do safe replace.
+
     Plus,
     X,
     Edit2,
@@ -58,6 +62,11 @@ export default function MeetingsClient({
         opis: "",
         opis_dodatkowy: ""
     });
+
+    // Recurrence State
+    const [isRecurring, setIsRecurring] = useState(false);
+    const [recurrenceInterval, setRecurrenceInterval] = useState(7);
+    const [recurrenceEndDate, setRecurrenceEndDate] = useState("");
 
     // Edit meeting modal state
     const [showEditMeeting, setShowEditMeeting] = useState(false);
@@ -127,12 +136,22 @@ export default function MeetingsClient({
     const handleAddMeeting = async () => {
         if (!newMeeting.data || !newMeeting.godzina || !newMeeting.opis.trim() || !selectedTeamId) return;
 
+        // Validation for recurrence
+        if (isRecurring && !recurrenceEndDate) {
+            alert("Proszę podać datę końcową dla spotkania cyklicznego.");
+            return;
+        }
+
         const res = await createMeeting({
             teamId: selectedTeamId,
             data: newMeeting.data,
             godzina: newMeeting.godzina,
             opis: newMeeting.opis.trim(),
-            opisDodatkowy: newMeeting.opis_dodatkowy.trim()
+            opisDodatkowy: newMeeting.opis_dodatkowy.trim(),
+            recurrence: isRecurring ? {
+                intervalDays: recurrenceInterval,
+                endDate: recurrenceEndDate
+            } : undefined
         });
 
         if (res.success) {
@@ -142,8 +161,13 @@ export default function MeetingsClient({
             }
             setShowAddMeeting(false);
             setNewMeeting({ data: "", godzina: "", opis: "", opis_dodatkowy: "" });
+            setIsRecurring(false);
+            setRecurrenceEndDate("");
+            setRecurrenceInterval(7);
             router.refresh();
             onRefresh?.();
+        } else {
+            alert("Błąd podczas tworzenia spotkania");
         }
     };
 
@@ -202,9 +226,20 @@ export default function MeetingsClient({
         ? (teams.find(t => t.id === selectedTeamId)?.nazwa || "Zespół")
         : "Wszystkie zespoły";
 
+    const selectedTeamColor = selectedTeamId ? teams.find(t => t.id === selectedTeamId)?.kolor : null;
+    const teamTheme = selectedTeamColor ? hexToHSL(selectedTeamColor) : null;
+
+    // Apply theme locally to this container if team is selected
+    const containerStyle = teamTheme ? {
+        '--primary-h': teamTheme.h,
+        '--primary-s': teamTheme.s,
+        '--primary-l': teamTheme.l,
+        '--color-primary': `hsl(${teamTheme.h}, ${teamTheme.s}, ${teamTheme.l})`
+    } as React.CSSProperties : {};
+
     return (
         <DashboardLayout>
-            <div className="space-y-8 animate-slide-in">
+            <div className="space-y-8 animate-slide-in" style={containerStyle}>
                 {/* Header Section */}
                 <div className="lux-card p-8 flex flex-wrap justify-between items-center gap-6">
                     <div className="space-y-1">
@@ -304,16 +339,21 @@ export default function MeetingsClient({
                                     <div className="space-y-1">
                                         {item.meetings?.map(meeting => {
                                             const isMarked = meeting.attendance?.some((a: any) => a.imieNazwisko === currentUser);
+                                            // Get team color from meeting.team.kolor (if available from backend) or fallback
+                                            const teamColor = meeting.team?.kolor || '#5400FF';
+
                                             return (
                                                 <button
                                                     key={meeting.id}
                                                     onClick={() => setSelectedMeeting(meeting)}
                                                     className={cn(
                                                         "w-full text-left p-1.5 rounded-lg text-[10px] font-bold truncate transition-all shadow-sm",
-                                                        isMarked
-                                                            ? "lux-gradient text-white"
-                                                            : "lux-gradient-soft text-white"
+                                                        isMarked ? "text-white ring-2 ring-white" : "text-white opacity-90 hover:opacity-100"
                                                     )}
+                                                    style={{
+                                                        background: `linear-gradient(135deg, ${teamColor} 0%, ${teamColor}dd 100%)`,
+                                                        backgroundColor: teamColor
+                                                    }}
                                                 >
                                                     {new Date(meeting.data).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {meeting.opis}
                                                 </button>
@@ -538,6 +578,45 @@ export default function MeetingsClient({
                                             value={newMeeting.opis_dodatkowy}
                                             onChange={(e) => setNewMeeting(prev => ({ ...prev, opis_dodatkowy: e.target.value }))}
                                         ></textarea>
+                                    </div>
+
+                                    {/* Recurrence Options */}
+                                    <div className="space-y-4 pt-4 border-t border-gray-100">
+                                        <label className="flex items-center gap-2 cursor-pointer group">
+                                            <input
+                                                type="checkbox"
+                                                className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary transition-all"
+                                                checked={isRecurring}
+                                                onChange={(e) => setIsRecurring(e.target.checked)}
+                                            />
+                                            <span className="text-sm font-bold text-gray-700 group-hover:text-primary transition-colors">Spotkanie cykliczne</span>
+                                        </label>
+
+                                        <AnimatePresence>
+                                            {isRecurring && (
+                                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="grid grid-cols-2 gap-4 pl-6 overflow-hidden">
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Powtarzaj co (dni)</label>
+                                                        <input
+                                                            type="number"
+                                                            min="1"
+                                                            className="lux-input"
+                                                            value={recurrenceInterval}
+                                                            onChange={(e) => setRecurrenceInterval(parseInt(e.target.value) || 1)}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Do kiedy</label>
+                                                        <input
+                                                            type="date"
+                                                            className="lux-input"
+                                                            value={recurrenceEndDate}
+                                                            onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                                                        />
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
                                     </div>
                                     <div className="flex justify-end gap-3 pt-2">
                                         <button className="lux-btn-outline px-6 py-3" onClick={() => setShowAddMeeting(false)}>

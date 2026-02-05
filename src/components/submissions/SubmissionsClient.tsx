@@ -120,8 +120,11 @@ export default function SubmissionsClient({ initialTasks, teams = [], isAdmin, o
                                         )}
                                     >
                                         <div className="flex items-center gap-4">
-                                            <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg", selectedTeam === team.id ? "lux-gradient" : "bg-gray-100 text-gray-400")}>
-                                                <Folder size={22} />
+                                            <div
+                                                className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg transition-all", selectedTeam === team.id ? "scale-105" : "bg-gray-100 text-gray-400")}
+                                                style={selectedTeam === team.id ? { backgroundColor: team.kolor || '#5400FF', background: `linear-gradient(135deg, ${team.kolor || '#5400FF'} 0%, ${team.kolor ? team.kolor + 'dd' : '#704df5'} 100%)` } : {}}
+                                            >
+                                                <Folder size={22} style={selectedTeam !== team.id ? { color: team.kolor || '#9ca3af' } : {}} />
                                             </div>
                                             <div>
                                                 <span className="font-bold text-gray-800 block">{team.nazwa}</span>
@@ -230,81 +233,78 @@ export default function SubmissionsClient({ initialTasks, teams = [], isAdmin, o
                                                 <h4 className="text-xs font-black uppercase text-primary tracking-[0.2em] mb-4">Zgłoszenia użytkowników:</h4>
                                                 <div className="grid grid-cols-1 gap-4">
                                                     {task.activeExecutions.map((ex: any) => (
-                                                        <div key={ex.id} className="bg-white border-2 border-gray-50 rounded-3xl p-6 transition-all hover:border-primary/20 hover:shadow-xl group/ex">
-                                                            <div className="flex flex-wrap justify-between items-center gap-6">
+                                                        <div key={ex.id} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm transition-all hover:shadow-md group/ex">
+                                                            {/* HEADER: User Info */}
+                                                            <div className="flex justify-between items-start mb-6">
                                                                 <div className="flex items-center gap-4">
-                                                                    <div className="w-12 h-12 rounded-2xl lux-gradient flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                                                                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-base">
                                                                         {ex.imieNazwisko[0]}
                                                                     </div>
                                                                     <div>
                                                                         <div className="flex items-center gap-2">
-                                                                            <p className="font-bold text-lg text-gray-900">{ex.imieNazwisko}</p>
+                                                                            <p className="font-bold text-gray-900">{ex.imieNazwisko}</p>
                                                                             {ex.poprawione && (
-                                                                                <span className="bg-emerald-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter shadow-sm animate-pulse">
+                                                                                <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
                                                                                     Poprawione
                                                                                 </span>
                                                                             )}
                                                                         </div>
-                                                                        <div className="flex flex-col gap-1">
-                                                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Wysłano: {new Date(ex.dataOznaczenia).toLocaleString()}</p>
-                                                                            {ex.terminPoprawki && (
-                                                                                <span className="text-[9px] font-bold text-red-500 flex items-center gap-1">
-                                                                                    <Clock size={10} />
-                                                                                    Poprawa do: {new Date(ex.terminPoprawki).toLocaleDateString()}
-                                                                                </span>
-                                                                            )}
-                                                                        </div>
+                                                                        <p className="text-xs text-muted-foreground">
+                                                                            Przesłano: {new Date(ex.dataOznaczenia).toLocaleString()}
+                                                                        </p>
                                                                     </div>
                                                                 </div>
 
+                                                                {ex.terminPoprawki && (
+                                                                    <div className="text-right">
+                                                                        <span className="text-[10px] font-black uppercase text-red-500 tracking-widest block">Termin poprawy</span>
+                                                                        <span className="text-xs font-bold text-red-700">{new Date(ex.terminPoprawki).toLocaleDateString()}</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            {/* BODY: Content */}
+                                                            <div className="pl-14 mb-6">
+                                                                <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap font-medium">
+                                                                    {task.submissions.find((s: any) => s.userId === ex.userId)?.opis || <span className="text-muted-foreground italic">Brak opisu wykonania.</span>}
+                                                                </div>
+
+                                                                {/* Rejection Feedback Display */}
+                                                                {ex.status === "ODRZUCONE" && ex.uwagiOdrzucenia && (
+                                                                    <div className="mt-4 p-4 bg-red-50 rounded-lg border border-red-100">
+                                                                        <p className="text-[10px] font-black uppercase text-red-600 tracking-widest mb-1">Twoje uwagi:</p>
+                                                                        <p className="text-sm font-medium text-red-900">{ex.uwagiOdrzucenia}</p>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            {/* FOOTER: Actions */}
+                                                            <div className="pl-14 pt-4 border-t border-gray-100 flex flex-wrap gap-3 justify-end items-center">
                                                                 {(activeTab === "OCZEKUJACE" || activeTab === "ZAAKCEPTOWANE") && (
-                                                                    <div className="flex gap-3">
+                                                                    <>
                                                                         {rejectionMode?.taskId === task.id && rejectionMode?.userId === ex.userId ? (
-                                                                            <div className="flex flex-col items-end gap-2 p-4 bg-red-50 rounded-2xl border border-red-100 w-full animate-in fade-in slide-in-from-right-4">
-                                                                                <span className="text-xs font-bold text-red-500 uppercase self-start">Co wymaga poprawy?</span>
+                                                                            <div className="w-full bg-gray-50 p-4 rounded-xl border border-gray-200 animate-in fade-in slide-in-from-top-2">
+                                                                                <p className="text-xs font-bold mb-2">Powód odrzucenia:</p>
                                                                                 <textarea
                                                                                     autoFocus
-                                                                                    className="w-full min-w-[300px] p-3 rounded-xl border border-red-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 bg-white"
-                                                                                    rows={3}
-                                                                                    placeholder="Opisz co należy poprawić..."
+                                                                                    className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-red-500 mb-2"
+                                                                                    rows={2}
+                                                                                    placeholder="Wpisz uwagi..."
                                                                                     value={rejectionNote}
                                                                                     onChange={(e) => setRejectionNote(e.target.value)}
                                                                                 />
-
-                                                                                <div className="w-full space-y-1 mt-2">
-                                                                                    <label className="text-[10px] font-black text-red-400 uppercase tracking-widest ml-1">Termin poprawki</label>
-                                                                                    <div className="flex items-center gap-2">
-                                                                                        <input
-                                                                                            type="date"
-                                                                                            className={cn(
-                                                                                                "flex-1 p-2 rounded-xl border border-red-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 bg-white",
-                                                                                                !rejectionDeadline && "text-muted-foreground italic"
-                                                                                            )}
-                                                                                            value={rejectionDeadline}
-                                                                                            onChange={(e) => setRejectionDeadline(e.target.value)}
-                                                                                        />
-                                                                                        <button
-                                                                                            onClick={() => setRejectionDeadline("")}
-                                                                                            className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-red-400 bg-white border border-red-100 rounded-xl hover:bg-red-100 hover:text-red-600 transition-colors"
-                                                                                        >
-                                                                                            Bezterminowo
-                                                                                        </button>
-                                                                                    </div>
+                                                                                <div className="flex gap-2 items-center mb-3">
+                                                                                    <span className="text-xs font-medium text-muted-foreground">Termin:</span>
+                                                                                    <input
+                                                                                        type="date"
+                                                                                        className="text-xs p-1 border rounded"
+                                                                                        value={rejectionDeadline}
+                                                                                        onChange={(e) => setRejectionDeadline(e.target.value)}
+                                                                                    />
                                                                                 </div>
-
-                                                                                <div className="flex gap-2 w-full justify-end mt-2">
-                                                                                    <button
-                                                                                        onClick={cancelRejection}
-                                                                                        className="px-4 py-2 text-xs font-bold text-red-400 hover:text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                                                                                    >
-                                                                                        Anuluj
-                                                                                    </button>
-                                                                                    <button
-                                                                                        onClick={submitRejection}
-                                                                                        className="px-6 py-2 bg-red-500 text-white text-xs font-bold rounded-xl hover:bg-red-600 shadow-md shadow-red-500/20 transition-all flex items-center gap-2"
-                                                                                    >
-                                                                                        <RefreshCcw size={14} /> Wyślij do poprawy
-                                                                                    </button>
+                                                                                <div className="flex justify-end gap-2">
+                                                                                    <button onClick={cancelRejection} className="text-xs font-bold text-gray-500 px-3 py-1.5 hover:bg-gray-200 rounded">Anuluj</button>
+                                                                                    <button onClick={submitRejection} className="text-xs font-bold bg-red-600 text-white px-3 py-1.5 rounded hover:bg-red-700 shadow-sm">Wyślij uwagi</button>
                                                                                 </div>
                                                                             </div>
                                                                         ) : (
@@ -312,65 +312,36 @@ export default function SubmissionsClient({ initialTasks, teams = [], isAdmin, o
                                                                                 {activeTab === "ZAAKCEPTOWANE" ? (
                                                                                     <button
                                                                                         onClick={async () => {
-                                                                                            if (confirm("Czy na pewno chcesz usunąć to zgłoszenie z listy zaakceptowanych? To cofnie status wykonania dla tej osoby.")) {
+                                                                                            if (confirm("Cofnąć akceptację?")) {
                                                                                                 await deleteTaskExecution(task.id, ex.userId);
                                                                                                 if (onRefresh) onRefresh();
                                                                                             }
                                                                                         }}
-                                                                                        className="px-4 py-2 bg-gray-100 text-gray-500 rounded-xl font-bold text-xs hover:bg-red-50 hover:text-red-600 transition-all flex items-center gap-2"
-                                                                                        title="Usuń z listy"
+                                                                                        className="text-xs font-bold text-muted-foreground hover:text-red-500 px-3 py-2 flex items-center gap-1 transition-colors"
                                                                                     >
-                                                                                        <Trash2 size={16} /> Usuń
+                                                                                        <Trash2 size={14} /> Cofnij
                                                                                     </button>
                                                                                 ) : (
-                                                                                    <button
-                                                                                        onClick={() => handleAccept(task.id, ex.userId)}
-                                                                                        className="px-8 py-3 bg-emerald-500 text-white rounded-2xl font-bold text-sm hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 transition-all active:scale-95 flex items-center gap-2"
-                                                                                    >
-                                                                                        <CheckCircle2 size={18} /> Akceptuj
-                                                                                    </button>
-                                                                                )}
-                                                                                {activeTab !== "ZAAKCEPTOWANE" && (
-                                                                                    <button
-                                                                                        onClick={() => handleRejectClick(task.id, ex.userId)}
-                                                                                        className="px-8 py-3 bg-white border-2 border-red-100 text-red-500 rounded-2xl font-bold text-sm hover:bg-red-50 transition-all flex items-center gap-2"
-                                                                                    >
-                                                                                        <RefreshCcw size={18} /> Do poprawy
-                                                                                    </button>
+                                                                                    <>
+                                                                                        <button
+                                                                                            onClick={() => handleRejectClick(task.id, ex.userId)}
+                                                                                            className="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg font-bold text-xs hover:bg-gray-50 hover:border-red-200 hover:text-red-600 transition-all"
+                                                                                        >
+                                                                                            Do poprawy
+                                                                                        </button>
+                                                                                        <button
+                                                                                            onClick={() => handleAccept(task.id, ex.userId)}
+                                                                                            className="px-6 py-2 bg-black text-white rounded-lg font-bold text-xs hover:bg-gray-800 shadow-sm hover:shadow transition-all flex items-center gap-2"
+                                                                                        >
+                                                                                            <CheckCircle2 size={14} /> Zaakceptuj
+                                                                                        </button>
+                                                                                    </>
                                                                                 )}
                                                                             </>
                                                                         )}
-                                                                    </div>
+                                                                    </>
                                                                 )}
                                                             </div>
-
-                                                            {/* Execution details / Submission note */}
-                                                            <div className="mt-6 p-5 bg-gray-50 rounded-2xl border border-gray-100">
-                                                                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-2 flex items-center gap-2">
-                                                                    <MessageSquare size={12} /> Opis wykonania:
-                                                                </p>
-                                                                <p className="text-sm font-medium text-gray-700 leading-relaxed italic">
-                                                                    "{task.submissions.find((s: any) => s.userId === ex.userId)?.opis || "Brak opisu."}"
-                                                                </p>
-                                                            </div>
-
-                                                            {ex.status === "ODRZUCONE" && (
-                                                                <div className="mt-4 p-5 bg-red-50 rounded-2xl border border-red-100 space-y-3">
-                                                                    {ex.uwagiOdrzucenia && (
-                                                                        <div>
-                                                                            <p className="text-[10px] font-black uppercase text-red-600 tracking-widest mb-1">Twoje uwagi:</p>
-                                                                            <p className="text-sm font-bold text-red-900">"{ex.uwagiOdrzucenia}"</p>
-                                                                        </div>
-                                                                    )}
-                                                                    <div className="flex items-center gap-2 pt-3 border-t border-red-100/50">
-                                                                        <Clock size={14} className="text-red-500" />
-                                                                        <span className="text-[10px] font-black uppercase text-red-400 tracking-widest">Wymagana poprawa do:</span>
-                                                                        <span className="text-xs font-bold text-red-700">
-                                                                            {ex.terminPoprawki ? new Date(ex.terminPoprawki).toLocaleDateString() : "Bezterminowo"}
-                                                                        </span>
-                                                                    </div>
-                                                                </div>
-                                                            )}
                                                         </div>
                                                     ))}
                                                 </div>

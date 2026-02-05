@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
+import ThemeController from "@/components/layout/ThemeController";
 
 const manrope = Manrope({
   variable: "--font-sans",
@@ -21,6 +22,7 @@ export default function RootLayout({
   return (
     <html lang="pl">
       <body className={`${manrope.variable} antialiased`}>
+        <ThemeController />
         {children}
       </body>
     </html>

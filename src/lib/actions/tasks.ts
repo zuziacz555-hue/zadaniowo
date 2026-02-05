@@ -166,9 +166,10 @@ export async function createTask(data: {
     utworzonePrzezId?: number
     typPrzypisania?: string
     assignedUserIds?: number[]
+    includeCoordinators?: boolean
 }) {
     try {
-        const { assignedUserIds, teamId, ...rest } = data;
+        const { assignedUserIds, teamId, includeCoordinators, ...rest } = data;
 
         const task = await prisma.task.create({
             data: {
@@ -187,11 +188,16 @@ export async function createTask(data: {
 
         // 2. Create TaskExecutions (Critical for visibility/status)
         if (data.typPrzypisania === "CALY_ZESPOL" && task.teamId) {
-            // Fetch all team members with names, strictly PARTICIPANTS
+            // Fetch team members
+            const rolesToInclude = ["uczestniczka"];
+            if (includeCoordinators) {
+                rolesToInclude.push("koordynatorka");
+            }
+
             const teamMembers = await prisma.userTeam.findMany({
                 where: {
                     teamId: task.teamId,
-                    rola: "uczestniczka"
+                    rola: { in: rolesToInclude }
                 },
                 include: { user: true }
             });

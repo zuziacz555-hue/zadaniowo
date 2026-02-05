@@ -1,6 +1,7 @@
 "use client";
 
 import TasksClient from "@/components/tasks/TasksClient";
+import { getSystemSettings } from "@/lib/actions/settings";
 import { getTasks } from "@/lib/actions/tasks";
 import { getUserTeams } from "@/lib/actions/teams";
 import { useEffect, useState } from "react";
@@ -8,6 +9,7 @@ import { useEffect, useState } from "react";
 export default function TasksPage() {
     const [tasks, setTasks] = useState<any[]>([]);
     const [user, setUser] = useState<any>(null);
+    const [settings, setSettings] = useState<any>(null);
     const [activeTeamId, setActiveTeamId] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -15,6 +17,12 @@ export default function TasksPage() {
         try {
             const storedUser = localStorage.getItem("user");
             const storedTeamName = localStorage.getItem("activeTeam");
+
+            // Fetch settings
+            const settingsRes = await getSystemSettings();
+            if (settingsRes.success) {
+                setSettings(settingsRes.data);
+            }
 
             if (storedUser) {
                 const parsedUser = JSON.parse(storedUser);
@@ -109,6 +117,7 @@ export default function TasksPage() {
             userRole={localStorage.getItem("activeRole") || user.role}
             userName={user.imieNazwisko || user.name}
             teamId={activeTeamId}
+            settings={settings}
             onRefresh={loadData}
         />
     );

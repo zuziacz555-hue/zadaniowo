@@ -37,23 +37,35 @@ interface TasksClientProps {
     userRole: string;
     userName: string;
     teamId: number | null;
+    settings?: any;
     onRefresh: () => void;
 }
 
-export default function TasksClient({ initialTasks, userId, userRole: activeRole, userName, teamId, onRefresh }: TasksClientProps) {
+export default function TasksClient({ initialTasks, userId, userRole: activeRole, userName, teamId, settings, onRefresh }: TasksClientProps) {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState("do-zrobienia");
+    // New: Coordinator Mode Toggle (MANAGEMENT vs PERSONAL)
+    const [coordViewMode, setCoordViewMode] = useState<"MANAGEMENT" | "PERSONAL">("MANAGEMENT");
+
     const [showAddForm, setShowAddForm] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [allTeams, setAllTeams] = useState<any[]>([]);
 
     const isAdmin = activeRole?.toUpperCase() === 'ADMINISTRATOR';
     const isCoord = activeRole?.toUpperCase() === 'KOORDYNATORKA';
+    // Logic: If settings allow, Coord can have personal tasks.
+    const canCoordHaveTasks = isCoord && settings?.coordinatorTasks;
+    // NOTE: If checking tasks, show participant view if in PERSONAL mode
+    // If Admin: always management.
+    // If Coord: Management unless in PERSONAL mode.
+    // If Participant: always participant (handled by !isAdmin && !isCoord check mostly, but logic below refines it)
+    const showParticipantView = !isAdmin && (!isCoord || (canCoordHaveTasks && coordViewMode === "PERSONAL"));
 
     // Admin Filter State
     const [adminTeamFilter, setAdminTeamFilter] = useState<number | "ALL">("ALL");
 
     // UI States for Modals/Forms
+    const [newTask, setNewTask] = useState({ tytul: "", opis: "", termin: "", priorytet: "NORMALNY", teamId: "-1", typPrzypisania: "CALY_ZESPOL", includeCoordinators: false });
     const [selectedTask, setSelectedTask] = useState<any>(null);
     const [submissionText, setSubmissionText] = useState("");
     const [rejectionNotes, setRejectionNotes] = useState("");
@@ -157,15 +169,27 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
     const { doZrobienia, wykonane, doPoprawy } = getParticipantTasks();
     const { zlecone, doWeryfikacji } = getReferenceTasks();
 
-    // --- ACTIONS ---
-    const [newTask, setNewTask] = useState({
-        title: "",
-        deadline: "",
-        priority: "NORMALNY",
-        description: "",
-        teamId: teamId?.toString() || "",
-        typPrzypisania: "CALY_ZESPOL"
-    });
+    const handleAddTask = async () => {
+        setIsSubmitting(true);
+        if (!newTask.tytul) return;
+
+        const res = await createTask({
+            ...newTask,
+            teamId: newTask.teamId === "-1" ? undefined : Number(newTask.teamId),
+            utworzonePrzez: userName,
+            assignedUserIds: newTask.typPrzypisania === "OSOBY" ? assignedUserIds : undefined,
+            includeCoordinators: newTask.includeCoordinators
+        });
+
+        if (res.success) {
+            setShowAddForm(false);
+            setNewTask({ tytul: "", opis: "", termin: "", priorytet: "NORMALNY", teamId: "-1", typPrzypisania: "CALY_ZESPOL", includeCoordinators: false });
+            onRefresh();
+        } else {
+            alert("Błąd: " + res.error);
+        }
+        setIsSubmitting(false);
+    };
 
     // Load teams and members
     useEffect(() => {
@@ -184,8 +208,6 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
         }
 
         // FIX: Fetch members if we are Coord (using teamId prop) OR Admin (using selected newTask.teamId)
-        // If Admin selects "All Teams" (-1), we can't show members easily unless we fetch ALL users. 
-        // For simplicity/safety, targeting specific people is only allowed when a specific team is selected.
         const targetTeamId = isCoord ? teamId : (newTask.teamId && newTask.teamId !== "-1" ? Number(newTask.teamId) : null);
 
         if (targetTeamId) {
@@ -198,102 +220,6 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
             setTeamMembers([]);
         }
     }, [isAdmin, isCoord, teamId, newTask.teamId]);
-
-
-    const handleAddTask = async () => {
-        if (!newTask.title.trim()) return;
-
-        // Validation for targeted assignment
-        if (newTask.typPrzypisania === "OSOBY" && assignedUserIds.length === 0) {
-            alert("Wybierz przynajmniej jedną osobę.");
-            return;
-        }
-
-        setIsSubmitting(true);
-
-        // Safety check for Coordinators
-        if (isCoord && !isAdmin && !teamId) {
-            alert("Błąd: Nie wykryto Twojego zespołu. Proszę odświeżyć stronę.");
-            setIsSubmitting(false);
-            return;
-        }
-
-        try {
-            // ADMIN BROADCAST CHECK
-            if (isAdmin && newTask.teamId === "-1") {
-                if (!confirm(`Czy na pewno chcesz dodać to zadanie do WSZYSTKICH ${allTeams.length} zespołów?`)) {
-                    setIsSubmitting(false);
-                    return;
-                }
-
-                const promises = allTeams.map(t => createTask({
-                    tytul: newTask.title,
-                    opis: newTask.description,
-                    termin: newTask.deadline,
-                    priorytet: newTask.priority,
-                    teamId: t.id,
-                    utworzonePrzez: userName,
-                    utworzonePrzezId: userId,
-                    typPrzypisania: "CALY_ZESPOL", // Always whole team for broadcast
-                    assignedUserIds: []
-                }));
-
-                await Promise.all(promises);
-                alert("Zadania zostały dodane do wszystkich zespołów!");
-
-            } else {
-                // NORMAL SINGLE TEAM CREATION
-                const finalTeamId = (isCoord && !isAdmin) ? Number(teamId) : (newTask.teamId ? Number(newTask.teamId) : undefined);
-
-                if (isCoord && !finalTeamId) {
-                    alert("Nie udało się zidentyfikować zespołu. Spróbuj odświeżyć stronę.");
-                    setIsSubmitting(false);
-                    return;
-                }
-
-                if (isAdmin && !finalTeamId) {
-                    alert("Proszę wybrać zespół lub opcję 'Wszystkie zespoły'.");
-                    setIsSubmitting(false);
-                    return;
-                }
-
-                const res = await createTask({
-                    tytul: newTask.title,
-                    opis: newTask.description,
-                    termin: newTask.deadline,
-                    priorytet: newTask.priority,
-                    teamId: finalTeamId || undefined,
-                    utworzonePrzez: userName,
-                    utworzonePrzezId: userId,
-                    typPrzypisania: newTask.typPrzypisania,
-                    assignedUserIds: newTask.typPrzypisania === "OSOBY" ? assignedUserIds : []
-                });
-
-                if (!res.success) {
-                    alert(res.error || "Wystąpił błąd podczas zapisywania zadania.");
-                    setIsSubmitting(false);
-                    return;
-                }
-            }
-
-            setNewTask({
-                title: "",
-                deadline: "",
-                priority: "NORMALNY",
-                description: "",
-                teamId: teamId?.toString() || "",
-                typPrzypisania: "CALY_ZESPOL"
-            });
-            setAssignedUserIds([]);
-            setShowAddForm(false);
-            onRefresh();
-
-        } catch (e) {
-            console.error(e);
-            alert("Wystąpił nieoczekiwany błąd klienta.");
-        }
-        setIsSubmitting(false);
-    };
 
     const handleSubmitWork = async (taskId: number, text: string, isCorrection = false) => {
         if (!text.trim()) return;
@@ -357,167 +283,215 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                         </button>
                     )}
 
-                    {(isAdmin || isCoord) && (
-                        <button
-                            onClick={() => setShowAddForm(!showAddForm)}
-                            className="lux-btn flex items-center gap-2"
-                        >
-                            <Plus size={20} /> Nowe zadanie
-                        </button>
-                    )}
+
                 </div>
             </div>
 
             {/* Add Form (Admin / Coord) */}
             <AnimatePresence>
                 {showAddForm && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                        <div className="lux-card p-8 mb-8 border-primary/20 ring-4 ring-primary/5">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="md:col-span-2 space-y-4">
-                                    <input className="lux-input" placeholder="Tytuł zadania" value={newTask.title} onChange={e => setNewTask(prev => ({ ...prev, title: e.target.value }))} />
-                                    <textarea className="lux-textarea h-32" placeholder="Opis zadania..." value={newTask.description} onChange={e => setNewTask(prev => ({ ...prev, description: e.target.value }))} />
-                                </div>
-                                <div className="space-y-4">
-                                    <div className="space-y-1.5">
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto"
+                        onClick={(e) => { if (e.target === e.currentTarget) setShowAddForm(false); }}
+                    >
+                        <div className="bg-white p-8 rounded-[32px] w-full max-w-2xl shadow-2xl relative my-8">
+                            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+                                <div className="p-2 bg-primary/10 rounded-xl text-primary"><Plus size={24} /></div>
+                                Utwórz nowe zadanie
+                            </h2>
+
+                            <div className="space-y-5">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="col-span-2 space-y-2">
+                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-1">Tytuł zadania</label>
+                                        <input
+                                            className="lux-input text-lg font-bold"
+                                            placeholder="Np. Przygotowanie raportu miesięcznego"
+                                            value={newTask.tytul}
+                                            onChange={e => setNewTask(prev => ({ ...prev, tytul: e.target.value }))}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-1">Zespół</label>
+                                        <div className="relative">
+                                            <select
+                                                className={cn("lux-input appearance-none", newTask.teamId === "-1" && "bg-primary text-white border-primary")}
+                                                value={newTask.teamId}
+                                                onChange={e => setNewTask(prev => ({ ...prev, teamId: e.target.value }))}
+                                                disabled={isCoord && !isAdmin}
+                                            >
+                                                {!isAdmin && teamId && <option value={teamId}>Mój zespół</option>}
+                                                {isAdmin && (
+                                                    <>
+                                                        <option value="-1" className="font-bold bg-gray-100">📢 WSZYSTKIE ZESPOŁY</option>
+                                                        {allTeams.map(t => <option key={t.id} value={t.id}>{t.nazwa}</option>)}
+                                                    </>
+                                                )}
+                                            </select>
+                                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 opacity-50 pointer-events-none" size={16} />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-1">Priorytet</label>
+                                        <div className="flex p-1 bg-gray-50 rounded-xl border border-gray-200">
+                                            {["NISKI", "NORMALNY", "WYSOKI"].map(p => (
+                                                <button
+                                                    key={p}
+                                                    onClick={() => setNewTask(prev => ({ ...prev, priorytet: p }))}
+                                                    className={cn(
+                                                        "flex-1 py-2 text-xs font-bold rounded-lg transition-all",
+                                                        newTask.priorytet === p ? "bg-white shadow-sm text-primary" : "text-muted-foreground hover:bg-white/50"
+                                                    )}
+                                                >
+                                                    {p}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
                                         <div className="flex justify-between items-center">
-                                            <label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Termin</label>
+                                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-1">Termin</label>
                                             <button
-                                                onClick={() => setNewTask(prev => ({ ...prev, deadline: "" }))}
-                                                className="text-[9px] font-bold text-primary hover:underline uppercase"
+                                                onClick={() => setNewTask(prev => ({ ...prev, termin: "" }))}
+                                                className="text-[10px] font-bold text-primary hover:underline uppercase"
                                             >
                                                 Bezterminowo
                                             </button>
                                         </div>
                                         <input
-                                            className={cn("lux-input", !newTask.deadline && "text-muted-foreground italic")}
                                             type="date"
-                                            value={newTask.deadline}
-                                            onChange={e => setNewTask(prev => ({ ...prev, deadline: e.target.value }))}
+                                            className={cn("lux-input", !newTask.termin && "text-muted-foreground italic")}
+                                            value={newTask.termin}
+                                            onChange={e => setNewTask(prev => ({ ...prev, termin: e.target.value }))}
                                         />
                                     </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Priorytet</label>
-                                        <select className="lux-input" value={newTask.priority} onChange={e => setNewTask(prev => ({ ...prev, priority: e.target.value }))}>
-                                            <option value="NORMALNY">Normalny</option>
-                                            <option value="WYSOKI">Wysoki</option>
-                                            <option value="NISKI">Niski</option>
-                                        </select>
+
+                                    <div className="col-span-2 space-y-2">
+                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-1">Opis</label>
+                                        <textarea
+                                            className="lux-textarea h-32"
+                                            placeholder="Szczegóły zadania..."
+                                            value={newTask.opis}
+                                            onChange={e => setNewTask(prev => ({ ...prev, opis: e.target.value }))}
+                                        />
                                     </div>
 
-                                    {isAdmin && (
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Zespół</label>
-                                            <select
-                                                className={cn("lux-input", newTask.teamId === "-1" && "bg-primary text-white border-primary")}
-                                                value={newTask.teamId}
-                                                onChange={e => setNewTask(prev => ({ ...prev, teamId: e.target.value }))}
-                                            >
-                                                <option value="">Wybierz zespół...</option>
-                                                <option value="-1" className="font-bold bg-gray-100">📢 WSZYSTKIE ZESPOŁY (Broadcast)</option>
-                                                {allTeams.map(t => (
-                                                    <option key={t.id} value={t.id}>{t.nazwa}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    )}
-
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Kto</label>
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => setNewTask(prev => ({ ...prev, typPrzypisania: "CALY_ZESPOL" }))}
-                                                className={cn(
-                                                    "flex-1 py-2 rounded-xl text-[10px] font-bold border transition-all flex items-center justify-center gap-1",
-                                                    newTask.typPrzypisania === "CALY_ZESPOL" ? "bg-primary text-white border-primary shadow-sm" : "bg-white text-muted-foreground border-gray-100 hover:bg-gray-50"
-                                                )}
-                                            >
-                                                <Users size={12} />
-                                                {newTask.teamId === "-1" ? "Wszyscy wszędzie" : "Cały zespół"}
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    if (newTask.teamId === "-1") {
-                                                        alert("Wybór konkretnych osób dostępny tylko dla pojedynczego zespołu.");
-                                                        return;
-                                                    }
-                                                    setNewTask(prev => ({ ...prev, typPrzypisania: "OSOBY" }));
-                                                }}
-                                                className={cn(
-                                                    "flex-1 py-2 rounded-xl text-[10px] font-bold border transition-all flex items-center justify-center gap-1",
-                                                    newTask.typPrzypisania === "OSOBY" ? "bg-primary text-white border-primary shadow-sm" : "bg-white text-muted-foreground border-gray-100 hover:bg-gray-50",
-                                                    newTask.teamId === "-1" && "opacity-50 cursor-not-allowed"
-                                                )}
-                                            >
-                                                <Filter size={12} />
-                                                Wybrane osoby
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {newTask.typPrzypisania === "OSOBY" && (
-                                        <div className="space-y-2 animate-slide-in">
-                                            <div className="flex justify-between items-end">
-                                                <label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Wybierz osoby ({assignedUserIds.length})</label>
-                                                <div className="flex gap-2 text-[9px] font-bold">
-                                                    <button
-                                                        onClick={() => setAssignedUserIds(teamMembers.map(u => u.id))}
-                                                        className="text-primary hover:underline"
-                                                    >
-                                                        Wszyscy
-                                                    </button>
-                                                    <span className="text-gray-300">|</span>
-                                                    <button
-                                                        onClick={() => setAssignedUserIds([])}
-                                                        className="text-muted-foreground hover:underline"
-                                                    >
-                                                        Żaden
-                                                    </button>
-                                                </div>
+                                    <div className="col-span-2 pt-4 border-t border-gray-100 space-y-4">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-1">Przypisanie</label>
+                                            <div className="flex gap-4">
+                                                <label className="flex items-center gap-2 cursor-pointer bg-gray-50 p-2 rounded-lg hover:bg-gray-100 transition-colors flex-1">
+                                                    <input
+                                                        type="radio"
+                                                        className="w-4 h-4 text-primary"
+                                                        checked={newTask.typPrzypisania === "CALY_ZESPOL"}
+                                                        onChange={() => setNewTask(prev => ({ ...prev, typPrzypisania: "CALY_ZESPOL", assignedUserIds: [] }))}
+                                                    />
+                                                    <span className="text-sm font-bold text-gray-700">Cały zespół</span>
+                                                </label>
+                                                <label className="flex items-center gap-2 cursor-pointer bg-gray-50 p-2 rounded-lg hover:bg-gray-100 transition-colors flex-1">
+                                                    <input
+                                                        type="radio"
+                                                        className="w-4 h-4 text-primary"
+                                                        checked={newTask.typPrzypisania === "OSOBY"}
+                                                        onChange={() => {
+                                                            if (newTask.teamId === "-1") {
+                                                                alert("Wybór konkretnych osób dostępny tylko dla pojedynczego zespołu.");
+                                                                return;
+                                                            }
+                                                            setNewTask(prev => ({ ...prev, typPrzypisania: "OSOBY" }));
+                                                        }}
+                                                    />
+                                                    <span className="text-sm font-bold text-gray-700">Wybrane osoby</span>
+                                                </label>
                                             </div>
+                                        </div>
 
-                                            <div className="relative">
-                                                <Search className="absolute left-2 top-2 text-muted-foreground" size={14} />
+                                        {/* COORDINATOR ASSIGNMENT CHECKBOX (Admin Only, Global Setting Check) */}
+                                        {settings?.coordinatorTasks && isAdmin && newTask.typPrzypisania === "CALY_ZESPOL" && (
+                                            <label className="flex items-center gap-3 cursor-pointer p-4 bg-purple-50 rounded-xl border border-purple-100 hover:bg-purple-100/50 transition-colors animate-in fade-in slide-in-from-top-2">
+                                                <div className="relative flex items-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="peer w-5 h-5 text-purple-600 rounded focus:ring-purple-500 border-purple-300"
+                                                        checked={newTask.includeCoordinators}
+                                                        onChange={(e) => setNewTask(prev => ({ ...prev, includeCoordinators: e.target.checked }))}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <span className="text-sm font-bold text-purple-900 block flex items-center gap-2">
+                                                        <Users size={16} />
+                                                        Przypisz również koordynatorkom
+                                                    </span>
+                                                    <span className="text-xs text-purple-600/80 mt-0.5 block">Jeśli zaznaczone, koordynatorki zespołu również otrzymają to zadanie do wykonania.</span>
+                                                </div>
+                                            </label>
+                                        )}
+
+                                        {newTask.typPrzypisania === "OSOBY" && (
+                                            <div className="space-y-2 border rounded-xl p-4 bg-gray-50/50">
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <span className="text-xs font-bold text-muted-foreground">Wybierz osoby ({assignedUserIds.length})</span>
+                                                    <div className="flex gap-2">
+                                                        <button onClick={() => setAssignedUserIds(teamMembers.map(u => u.id))} className="text-[10px] font-bold text-primary hover:underline">WSZYSCY</button>
+                                                        <button onClick={() => setAssignedUserIds([])} className="text-[10px] font-bold text-gray-400 hover:text-gray-600">RESET</button>
+                                                    </div>
+                                                </div>
+
                                                 <input
                                                     type="text"
-                                                    placeholder="Szukaj..."
-                                                    className="w-full pl-8 pr-2 py-1.5 text-xs border border-gray-200 rounded-lg mb-2 focus:outline-none focus:border-primary"
+                                                    placeholder="Szukaj osoby..."
+                                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-primary bg-white mb-2"
                                                     value={userSearchTerm}
                                                     onChange={(e) => setUserSearchTerm(e.target.value)}
                                                 />
-                                            </div>
 
-                                            <div className="bg-white border border-gray-100 rounded-xl p-3 max-h-40 overflow-y-auto space-y-2 custom-scrollbar">
-                                                {teamMembers
-                                                    .filter(u => (u.imieNazwisko || u.name || "").toLowerCase().includes(userSearchTerm.toLowerCase()))
-                                                    .map(user => (
-                                                        <label key={user.id} className="flex items-center gap-2 cursor-pointer group hover:bg-gray-50 p-1 rounded-md transition-colors">
-                                                            <input
-                                                                type="checkbox"
-                                                                className="rounded border-gray-300 text-primary focus:ring-primary w-4 h-4"
-                                                                checked={assignedUserIds.includes(user.id)}
-                                                                onChange={(e) => {
-                                                                    if (e.target.checked) setAssignedUserIds(prev => [...prev, user.id]);
-                                                                    else setAssignedUserIds(prev => prev.filter(id => id !== user.id));
-                                                                }}
-                                                            />
-                                                            <div className="flex flex-col">
-                                                                <span className="text-xs font-semibold text-gray-700 group-hover:text-primary transition-colors">{user.imieNazwisko}</span>
-                                                                <span className="text-[9px] text-muted-foreground">{user.rola}</span>
-                                                            </div>
-                                                        </label>
-                                                    ))}
-                                                {teamMembers.length === 0 && <p className="text-xs text-center text-muted-foreground italic">Wybierz zespół aby zobaczyć osoby</p>}
+                                                <div className="max-h-40 overflow-y-auto space-y-1 pr-2 custom-scrollbar">
+                                                    {teamMembers
+                                                        .filter(u => (u.imieNazwisko || u.name || "").toLowerCase().includes(userSearchTerm.toLowerCase()))
+                                                        .map(member => (
+                                                            <label key={member.id} className="flex items-center gap-3 p-2 hover:bg-white rounded-lg cursor-pointer transition-colors border border-transparent hover:border-gray-100 hover:shadow-sm">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className="rounded border-gray-300 text-primary"
+                                                                    checked={assignedUserIds.includes(member.id)}
+                                                                    onChange={e => {
+                                                                        if (e.target.checked) {
+                                                                            setAssignedUserIds(prev => [...prev, member.id]);
+                                                                        } else {
+                                                                            setAssignedUserIds(prev => prev.filter(id => id !== member.id));
+                                                                        }
+                                                                    }}
+                                                                />
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-600 border border-gray-200 shadow-sm">
+                                                                        {member.imieNazwisko?.[0]}
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className="text-sm font-semibold text-gray-700 block leading-tight">{member.imieNazwisko}</span>
+                                                                        <span className="text-[9px] uppercase text-muted-foreground font-bold tracking-wider">{member.rola}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </label>
+                                                        ))}
+                                                    {teamMembers.length === 0 && <p className="text-xs text-center text-muted-foreground italic py-4">Wybierz zespół aby zobaczyć osoby</p>}
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="mt-6 flex justify-end gap-3">
-                                <button onClick={() => setShowAddForm(false)} className="px-6 py-3 font-bold text-muted-foreground">Anuluj</button>
-                                <button className="lux-btn" onClick={handleAddTask} disabled={isSubmitting}>
-                                    {newTask.teamId === "-1" ? "Opublikuj wszędzie" : "Zapisz zadanie"}
-                                </button>
+                                <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-gray-100">
+                                    <button onClick={() => setShowAddForm(false)} className="px-6 py-3 font-bold text-gray-400 hover:text-gray-600 transition-colors">Anuluj</button>
+                                    <button className="lux-btn shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all" onClick={handleAddTask} disabled={isSubmitting}>
+                                        {newTask.teamId === "-1" ? "Opublikuj wszędzie" : "Zapisz zadanie"}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </motion.div>
@@ -567,8 +541,11 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                         )}
                                     >
                                         <div className="flex items-center gap-4">
-                                            <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg", adminTeamFilter === team.id ? "lux-gradient" : "bg-gray-100 text-gray-400")}>
-                                                <Folder size={22} />
+                                            <div
+                                                className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg transition-all duration-300", adminTeamFilter === team.id ? "scale-105" : "bg-gray-100 text-gray-400")}
+                                                style={adminTeamFilter === team.id ? { backgroundColor: team.kolor || '#5400FF', background: `linear-gradient(135deg, ${team.kolor || '#5400FF'} 0%, ${team.kolor ? team.kolor + 'dd' : '#704df5'} 100%)` } : {}}
+                                            >
+                                                <Folder size={22} style={adminTeamFilter !== team.id ? { color: team.kolor || '#9ca3af' } : {}} />
                                             </div>
                                             <div>
                                                 <span className="font-bold text-gray-800 block">{team.nazwa}</span>
@@ -578,7 +555,12 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                             </div>
                                         </div>
                                         {teamTaskCount > 0 && (
-                                            <div className="w-8 h-8 flex items-center justify-center bg-primary/10 text-primary rounded-full font-bold text-xs">
+                                            <div className="w-8 h-8 flex items-center justify-center rounded-full font-bold text-xs transition-colors"
+                                                style={{
+                                                    backgroundColor: adminTeamFilter === team.id ? 'rgba(255,255,255,0.2)' : (team.kolor ? team.kolor + '20' : '#f3f4f6'),
+                                                    color: adminTeamFilter === team.id ? 'white' : (team.kolor || '#5400FF')
+                                                }}
+                                            >
                                                 {teamTaskCount}
                                             </div>
                                         )}

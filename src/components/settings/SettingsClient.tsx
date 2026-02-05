@@ -3,7 +3,7 @@
 import { useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { motion, AnimatePresence } from "framer-motion";
-import { Settings, Bell, AlertTriangle, FileText, CheckCircle, XCircle } from "lucide-react";
+import { Settings, Bell, AlertTriangle, FileText, CheckCircle, XCircle, Users } from "lucide-react";
 import { updateSystemSettings, SystemSettingsData } from "@/lib/actions/settings";
 import { cn } from "@/lib/utils";
 
@@ -62,6 +62,13 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
             title: 'Alerty o raportach',
             description: 'Powiadomienia dla koordynatorek o brakujących sprawozdaniach (wyświetlane na Dashboard)',
             color: 'blue'
+        },
+        {
+            key: 'coordinatorTasks' as const,
+            icon: Users,
+            title: 'Zadania dla koordynatorek',
+            description: 'Zezwól na przydzielanie zadań koordynatorkom (opcja dostępna przy tworzeniu zadania)',
+            color: 'purple'
         }
     ];
 
@@ -121,7 +128,8 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
                                         "w-12 h-12 rounded-xl flex items-center justify-center",
                                         item.color === 'red' && "bg-red-100 text-red-600",
                                         item.color === 'orange' && "bg-orange-100 text-orange-600",
-                                        item.color === 'blue' && "bg-blue-100 text-blue-600"
+                                        item.color === 'blue' && "bg-blue-100 text-blue-600",
+                                        item.color === 'purple' && "bg-purple-100 text-purple-600"
                                     )}>
                                         <item.icon size={24} />
                                     </div>

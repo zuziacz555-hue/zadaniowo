@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./build.db"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 
@@ -37,6 +38,7 @@ model User {
 model Team {
   id          Int        @id @default(autoincrement())
   nazwa       String
+  kolor       String     @default("#5400FF")
   users       UserTeam[]
   announcements Announcement[]
   meetings    Meeting[]
@@ -230,6 +232,7 @@ model SystemSettings {
   alertsTerminy     Boolean  @default(true) @map("alerts_terminy")
   alertsPoprawki    Boolean  @default(true) @map("alerts_poprawki")
   alertsRaporty     Boolean  @default(true) @map("alerts_raporty")
+  coordinatorTasks  Boolean  @default(false) @map("coordinator_tasks")
   
   @@map("ustawienia_systemu")
 }

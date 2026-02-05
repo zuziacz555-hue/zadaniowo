@@ -434,8 +434,11 @@ function AdminView({ teams, reports, meetingsWithoutReports, onSelectTeam, selec
                             )}
                         >
                             <div className="flex items-center gap-4">
-                                <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg", selectedTeam === team.id ? "lux-gradient" : "bg-gray-100 text-gray-400")}>
-                                    <Folder size={22} />
+                                <div
+                                    className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg transition-colors", selectedTeam === team.id ? "scale-105" : "bg-gray-100 text-gray-400")}
+                                    style={selectedTeam === team.id ? { backgroundColor: team.kolor || '#5400FF', background: `linear-gradient(135deg, ${team.kolor || '#5400FF'} 0%, ${team.kolor ? team.kolor + 'dd' : '#704df5'} 100%)` } : {}}
+                                >
+                                    <Folder size={22} style={selectedTeam !== team.id ? { color: team.kolor || '#9ca3af' } : {}} />
                                 </div>
                                 <div>
                                     <span className="font-bold text-gray-800 block">{team.nazwa}</span>

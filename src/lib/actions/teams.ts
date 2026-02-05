@@ -69,6 +69,18 @@ export async function getTeamById(id: number) {
 
 export async function getUserTeams(userId: number) {
     try {
+        // Calculate start and end of current week (Monday to Sunday)
+        const now = new Date();
+        const day = now.getDay(); // 0 is Sunday
+        const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+
+        const startOfWeek = new Date(now.setDate(diff));
+        startOfWeek.setHours(0, 0, 0, 0);
+
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        endOfWeek.setHours(23, 59, 59, 999);
+
         const userTeams = await prisma.userTeam.findMany({
             where: { userId },
             include: {
@@ -77,9 +89,16 @@ export async function getUserTeams(userId: number) {
                         _count: {
                             select: {
                                 tasks: true,
-                                meetings: true,
                             },
                         },
+                        meetings: {
+                            where: {
+                                data: {
+                                    gte: startOfWeek,
+                                    lte: endOfWeek
+                                }
+                            }
+                        }
                     },
                 },
             },
@@ -91,10 +110,10 @@ export async function getUserTeams(userId: number) {
     }
 }
 
-export async function createTeam(nazwa: string) {
+export async function createTeam(nazwa: string, kolor: string = '#5400FF') {
     try {
         const team = await prisma.team.create({
-            data: { nazwa },
+            data: { nazwa, kolor },
         })
         revalidatePath('/admin-teams')
         revalidatePath('/dashboard')
@@ -105,11 +124,14 @@ export async function createTeam(nazwa: string) {
     }
 }
 
-export async function updateTeam(id: number, nazwa: string) {
+export async function updateTeam(id: number, nazwa: string, kolor?: string) {
     try {
         const team = await prisma.team.update({
             where: { id },
-            data: { nazwa },
+            data: {
+                nazwa,
+                ...(kolor && { kolor })
+            },
         })
         revalidatePath('/admin-teams')
         revalidatePath('/dashboard')

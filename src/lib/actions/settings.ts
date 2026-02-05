@@ -8,6 +8,7 @@ export interface SystemSettingsData {
     alertsTerminy: boolean;
     alertsPoprawki: boolean;
     alertsRaporty: boolean;
+    coordinatorTasks: boolean;
 }
 
 // Get current system settings (creates defaults if none exist)
@@ -21,7 +22,8 @@ export async function getSystemSettings(): Promise<{ success: boolean; data?: Sy
                 data: {
                     alertsTerminy: true,
                     alertsPoprawki: true,
-                    alertsRaporty: true
+                    alertsRaporty: true,
+                    coordinatorTasks: false
                 }
             });
         }
@@ -44,7 +46,8 @@ export async function updateSystemSettings(data: Partial<Omit<SystemSettingsData
                 data: {
                     alertsTerminy: data.alertsTerminy ?? true,
                     alertsPoprawki: data.alertsPoprawki ?? true,
-                    alertsRaporty: data.alertsRaporty ?? true
+                    alertsRaporty: data.alertsRaporty ?? true,
+                    coordinatorTasks: data.coordinatorTasks ?? false
                 }
             });
         } else {
@@ -54,7 +57,8 @@ export async function updateSystemSettings(data: Partial<Omit<SystemSettingsData
                 data: {
                     ...(data.alertsTerminy !== undefined && { alertsTerminy: data.alertsTerminy }),
                     ...(data.alertsPoprawki !== undefined && { alertsPoprawki: data.alertsPoprawki }),
-                    ...(data.alertsRaporty !== undefined && { alertsRaporty: data.alertsRaporty })
+                    ...(data.alertsRaporty !== undefined && { alertsRaporty: data.alertsRaporty }),
+                    ...(data.coordinatorTasks !== undefined && { coordinatorTasks: data.coordinatorTasks })
                 }
             });
         }

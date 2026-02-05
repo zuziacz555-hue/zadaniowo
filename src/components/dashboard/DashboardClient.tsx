@@ -82,31 +82,54 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
 
         // --- CRITICAL FIX: Validate Active Team & Role ---
         const storedTeamName = localStorage.getItem("activeTeam");
+        const currentUserData = JSON.parse(localStorage.getItem("user") || "{}");
+        // Check both potential admin flags
+        const isAdmin = currentUserData.rola === "ADMINISTRATOR" || currentUserData.role === "ADMINISTRATOR" || currentUserData.role === "admin";
+
+        if (isAdmin) {
+            // Force clear team/role context for Admins to ensure default theme
+            localStorage.removeItem("activeTeam");
+            localStorage.removeItem("activeRole");
+            localStorage.removeItem("activeTeamId");
+            setActiveTeam(null);
+            setActiveRole("ADMINISTRATOR");
+            // Force clear theme event
+            document.documentElement.style.removeProperty('--primary-h');
+            document.documentElement.style.removeProperty('--primary-s');
+            document.documentElement.style.removeProperty('--primary-l');
+            return; // Stop processing team selection for admin
+        }
 
         if (initialTeams.length > 0) {
-            // Find the team object that corresponds to what's in storage, OR default to the first one
+            // Find the team object that corresponds to what's in storage
             let activeTeamObj = null;
 
             if (storedTeamName) {
                 activeTeamObj = initialTeams.find((ut: any) => ut.team.nazwa === storedTeamName);
             }
 
-            // If stored team invalid or not found, fall back to first team
+            // If stored team invalid or not found, fall back to "Best Role" logic
             if (!activeTeamObj) {
-                activeTeamObj = initialTeams[0];
+                // Priority: KOORDYNATORKA > UCZESTNICZKA
+                const coordinatorTeam = initialTeams.find((ut: any) => ut.rola === "KOORDYNATORKA");
+                activeTeamObj = coordinatorTeam || initialTeams[0];
             }
 
             // FORCE update everything to match the AUTHORITATIVE data from server (initialTeams)
-            // This fixes the bug where a user might be "KOORDYNATORKA" in storage but "UCZESTNICZKA" in reality
             if (activeTeamObj) {
-                const realRole = activeTeamObj.rola.toUpperCase();
+                const teamName = activeTeamObj.team.nazwa;
+                const userRole = activeTeamObj.rola.toUpperCase();
+                const teamId = activeTeamObj.team.id;
 
-                setActiveTeam(activeTeamObj.team.nazwa);
-                setActiveRole(realRole);
+                localStorage.setItem("activeTeam", teamName);
+                localStorage.setItem("activeRole", userRole);
+                localStorage.setItem("activeTeamId", teamId.toString());
 
-                localStorage.setItem("activeTeam", activeTeamObj.team.nazwa);
-                localStorage.setItem("activeTeamId", activeTeamObj.team.id.toString());
-                localStorage.setItem("activeRole", realRole);
+                setActiveTeam(teamName);
+                setActiveRole(userRole);
+
+                // Dispatch event to update ThemeController immediately
+                window.dispatchEvent(new Event("teamChanged"));
             }
         }
 
@@ -348,9 +371,9 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
                                                 </span>
                                             </div>
                                             <div className="flex justify-between items-center">
-                                                <span className="text-sm text-muted-foreground">Spotkania</span>
+                                                <span className="text-sm text-muted-foreground">Spotkania (w tym tyg.)</span>
                                                 <span className="lux-chip">
-                                                    {ut.team._count?.meetings || 0}
+                                                    {ut.team.meetings?.length || 0}
                                                 </span>
                                             </div>
 

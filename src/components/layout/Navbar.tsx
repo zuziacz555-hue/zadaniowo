@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut } from "lucide-react";
+import { LogOut, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import { slideFromLeft, slideUp } from "@/lib/animations";
 import { useRouter } from "next/navigation";
@@ -60,6 +60,11 @@ export default function Navbar({ userName: initialUserName, activeTeamName, acti
             localStorage.removeItem("activeTeam");
             localStorage.removeItem("activeTeamId");
             localStorage.removeItem("activeRole");
+
+            // Immediate visual reset
+            document.documentElement.style.setProperty('--primary-h', '260');
+            document.documentElement.style.setProperty('--primary-s', '100%');
+            document.documentElement.style.setProperty('--primary-l', '50%');
         }
         router.push("/");
     };
@@ -113,6 +118,14 @@ export default function Navbar({ userName: initialUserName, activeTeamName, acti
                             </span>
                         )}
                     </motion.div>
+
+                    <button
+                        onClick={() => router.back()}
+                        className="lux-btn flex items-center gap-2 text-xs uppercase tracking-widest group font-bold mr-4"
+                    >
+                        <ArrowLeft size={16} className="transition-transform group-hover:-translate-x-1" />
+                        Wróć
+                    </button>
 
                     <button
                         onClick={handleLogout}

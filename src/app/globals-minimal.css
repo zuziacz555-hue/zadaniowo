@@ -1,0 +1,106 @@
+@import "tailwindcss";
+
+@theme {
+    --color-background: #ffffff;
+    --color-foreground: #000000;
+
+    /* Minimalist Palette - Notion-like */
+    --color-primary: #000000;
+    --color-primary-foreground: #ffffff;
+
+    --color-secondary: #F3F4F6;
+    --color-secondary-foreground: #111111;
+
+    --color-muted: #F9FAFB;
+    --color-muted-foreground: #6B7280;
+
+    --color-card: #ffffff;
+    --color-card-foreground: #000000;
+
+    --color-border: #E5E7EB;
+    --color-input: #ffffff;
+
+    /* Radii - smaller, sharper */
+    --radius-lg: 8px;
+    --radius-md: 6px;
+    --radius-sm: 4px;
+
+    /* Shadows - Minimal/None */
+    --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-navbar: inset 0 -1px 0 0 #E5E7EB;
+    --shadow-btn: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-btn-hover: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+@layer base {
+    body {
+        @apply text-foreground min-h-screen bg-white text-sm antialiased;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        background: #ffffff;
+        /* Plain white */
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5 {
+        @apply font-semibold text-foreground tracking-tight;
+    }
+}
+
+@layer components {
+
+    /* Resetting Lux styles to Minimal styles */
+    .lux-card {
+        @apply bg-white border border-gray-200 shadow-sm rounded-lg hover:bg-gray-50 transition-colors;
+    }
+
+    .lux-card-strong {
+        @apply bg-white border border-gray-200 shadow-sm rounded-lg;
+    }
+
+    .lux-kicker {
+        @apply text-xs font-medium text-gray-500 uppercase tracking-widest;
+    }
+
+    .lux-title {
+        @apply text-4xl font-bold text-black bg-none text-black;
+    }
+
+    .lux-subtitle {
+        @apply text-gray-600 text-base leading-relaxed;
+    }
+
+    .lux-btn {
+        @apply bg-black text-white px-4 py-2 rounded-md font-medium text-sm shadow-sm hover:bg-gray-800 hover:translate-y-0 active:translate-y-0 transition-colors;
+    }
+
+    .lux-btn-outline {
+        @apply border border-gray-200 text-black bg-white px-4 py-2 rounded-md font-medium text-sm hover:bg-gray-50 transition-colors;
+    }
+
+    .lux-chip {
+        @apply px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600 uppercase border border-gray-200;
+    }
+
+    .lux-input {
+        @apply w-full bg-white border border-gray-200 rounded-md px-3 py-2 text-sm outline-none focus:border-black focus:ring-1 focus:ring-black transition-all;
+    }
+
+    /* Remove gradients */
+    .lux-gradient {
+        background: #f3f4f6;
+        /* Light grey instead of gradient */
+        @apply text-black border border-gray-200;
+    }
+
+    .lux-gradient .text-white {
+        @apply text-black;
+        /* Force text to black */
+    }
+
+    .lux-gradient-soft {
+        background: #ffffff;
+    }
+}
