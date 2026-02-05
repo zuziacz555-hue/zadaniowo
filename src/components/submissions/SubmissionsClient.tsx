@@ -248,7 +248,18 @@ export default function SubmissionsClient({ initialTasks, teams = [], isAdmin, o
                                                     <div className="space-y-4 flex-1">
                                                         <div className="flex flex-wrap gap-3 items-center">
                                                             <h2 className="text-2xl font-bold text-gray-900">{task.tytul}</h2>
-                                                            <span className="lux-chip bg-primary/10 text-primary border-primary/20">{task.team?.nazwa || "Zadanie ogólne"}</span>
+                                                            <div className="flex flex-col gap-1 items-start">
+                                                                <span className="lux-chip bg-primary/10 text-primary border-primary/20">{task.team?.nazwa || "Zadanie ogólne"}</span>
+                                                                {selectedTeam === -1 && (
+                                                                    <div className="flex flex-wrap gap-2">
+                                                                        {task.activeExecutions.map((ex: any) => (
+                                                                            <span key={ex.id} className="text-[10px] font-black text-primary uppercase tracking-widest bg-white border border-primary/20 px-2 py-0.5 rounded-lg shadow-sm">
+                                                                                {ex.imieNazwisko}
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                         <p className="text-sm text-muted-foreground leading-relaxed max-w-3xl italic">"{task.opis || "Brak opisu dodatkowego."}"</p>
                                                     </div>
