@@ -22,7 +22,7 @@ datasource db {
 
 model User {
   id            Int            @id @default(autoincrement())
-  imieNazwisko  String         @map("imie_nazwisko")
+  imieNazwisko  String         @unique @map("imie_nazwisko")
   haslo         String
   rola          String           @default("UCZESTNICZKA")
   zespoly       UserTeam[]

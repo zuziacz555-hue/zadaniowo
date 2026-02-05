@@ -57,16 +57,31 @@ export async function createUser(data: {
     rola: string
 }) {
     try {
+        const name = data.imieNazwisko.trim();
+
+        // 1. Manually check for existing user to provide a better error message
+        const existing = await prisma.user.findFirst({
+            where: { imieNazwisko: name }
+        });
+
+        if (existing) {
+            return { success: false, error: 'Użytkownik o takim imieniu i nazwisku już istnieje.' }
+        }
+
         const user = await prisma.user.create({
             data: {
                 ...data,
+                imieNazwisko: name,
                 rola: data.rola as any,
             },
         })
         revalidatePath('/admin-users')
         return { success: true, data: user }
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error creating user:', error)
+        if (error.code === 'P2002') {
+            return { success: false, error: 'Użytkownik o takim imieniu i nazwisku już istnieje.' }
+        }
         return { success: false, error: 'Failed to create user' }
     }
 }
@@ -93,11 +108,33 @@ export async function updateUser(id: number, data: Partial<{
     }
 }
 
-export async function deleteUser(id: number) {
+export async function deleteUser(id: number, callerId: number) {
     try {
+        // 1. Fetch user to be deleted and the caller
+        const [targetUser, caller] = await Promise.all([
+            prisma.user.findUnique({ where: { id } }),
+            prisma.user.findUnique({ where: { id: callerId } })
+        ]);
+
+        if (!targetUser) return { success: false, error: 'Użytkownik nie istnieje.' };
+        if (!caller) return { success: false, error: 'Błąd autoryzacji.' };
+
+        // 2. CRITICAL PROTECTION: Never delete main SuperAdmin ("Bóg")
+        if (targetUser.imieNazwisko === "Bóg") {
+            return { success: false, error: 'Boga nie można usunąć.' };
+        }
+
+        // 3. HIERARCHY PROTECTION: 
+        // Only "Bóg" can delete other ADMINISTRATORs
+        if (targetUser.rola === "ADMINISTRATOR" && caller.imieNazwisko !== "Bóg") {
+            return { success: false, error: 'Tylko Bóg może usuwać innych administratorów.' };
+        }
+
+        // 4. Perform deletion
         await prisma.user.delete({
             where: { id },
         })
+
         revalidatePath('/admin-users')
         revalidatePath('/admin-teams')
         return { success: true }

@@ -25,6 +25,12 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
     const users = initialUsers;
     const teams = initialTeams;
 
+    // Get current user info from localStorage
+    const storedUser = typeof window !== 'undefined' ? localStorage.getItem("user") : null;
+    const currentUser = storedUser ? JSON.parse(storedUser) : null;
+    const currentUserId = currentUser?.id;
+    const isMainAdmin = currentUser?.name === "Bóg";
+
     const getRoleBadgeClass = (rola: string) => {
         switch (rola) {
             case "ADMINISTRATOR": return "bg-blue-50 text-blue-700 border border-blue-100";
@@ -44,14 +50,22 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
             setNewUser({ name: "", password: "", role: "UCZESTNICZKA" });
             setShowAddForm(false);
             router.refresh();
+        } else {
+            alert(res.error || "Wystąpił błąd przy tworzeniu użytkownika.");
         }
     };
 
     const handleDeleteUser = async (id: number) => {
+        if (!currentUserId) {
+            alert("Błąd autoryzacji. Spróbuj zalogować się ponownie.");
+            return;
+        }
         if (!confirm("Czy na pewno chcesz usunąć tego użytkownika?")) return;
-        const res = await deleteUser(id);
+        const res = await deleteUser(id, currentUserId);
         if (res.success) {
             router.refresh();
+        } else {
+            alert(res.error || "Nie udało się usunąć użytkownika.");
         }
     };
 
@@ -174,12 +188,18 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                                                     </span>
                                                 </div>
 
-                                                <button
-                                                    className="w-full py-3 rounded-xl font-bold text-[11px] uppercase tracking-widest transition-all lux-btn-outline"
-                                                    onClick={() => handleDeleteUser(user.id)}
-                                                >
-                                                    Usuń użytkownika
-                                                </button>
+                                                {((user.rola !== "ADMINISTRATOR" || isMainAdmin) && user.imieNazwisko !== "Bóg") ? (
+                                                    <button
+                                                        className="w-full py-3 rounded-xl font-bold text-[11px] uppercase tracking-widest transition-all lux-btn-outline hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                                                        onClick={() => handleDeleteUser(user.id)}
+                                                    >
+                                                        Usuń użytkownika
+                                                    </button>
+                                                ) : (
+                                                    <div className="w-full py-3 rounded-xl font-bold text-[11px] uppercase tracking-widest bg-gray-100/50 text-gray-400 border border-gray-100 flex items-center justify-center cursor-not-allowed">
+                                                        {user.imieNazwisko === "Bóg" ? "Bóg" : "Brak uprawnień"}
+                                                    </div>
+                                                )}
                                             </div>
                                         </td>
 
