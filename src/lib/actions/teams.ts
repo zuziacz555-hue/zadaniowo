@@ -116,6 +116,7 @@ export async function createTeam(nazwa: string, kolor: string = '#5400FF') {
             data: { nazwa, kolor },
         })
         revalidatePath('/admin-teams')
+        revalidatePath('/admin-users')
         revalidatePath('/dashboard')
         return { success: true, data: team }
     } catch (error) {
@@ -134,6 +135,7 @@ export async function updateTeam(id: number, nazwa: string, kolor?: string) {
             },
         })
         revalidatePath('/admin-teams')
+        revalidatePath('/admin-users')
         revalidatePath('/dashboard')
         return { success: true, data: team }
     } catch (error) {
@@ -148,6 +150,7 @@ export async function deleteTeam(id: number) {
             where: { id },
         })
         revalidatePath('/admin-teams')
+        revalidatePath('/admin-users')
         revalidatePath('/dashboard')
         return { success: true }
     } catch (error) {
@@ -192,6 +195,7 @@ export async function removeUserFromTeam(userId: number, teamId: number) {
             },
         })
         revalidatePath('/admin-teams')
+        revalidatePath('/admin-users')
         revalidatePath('/dashboard')
         return { success: true }
     } catch (error) {

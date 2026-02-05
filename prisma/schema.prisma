@@ -32,6 +32,7 @@ model User {
   taskAssignments TaskAssignment[]
   registrations   EventRegistration[]
   attendance      Attendance[]
+  announcementAssignments AnnouncementAssignment[]
   
   @@map("users")
 }
@@ -82,6 +83,7 @@ model AnnouncementAssignment {
   announcementId Int      @map("ogloszenie_id")
   userId         Int      @map("user_id")
   announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([announcementId])
   @@index([userId])

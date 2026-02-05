@@ -78,6 +78,8 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
         const res = await removeUserFromTeam(userId, teamId);
         if (res.success) {
             router.refresh();
+        } else {
+            alert(res.error || "Błąd podczas usuwania z zespołu.");
         }
     };
 
@@ -221,7 +223,7 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                                                     </span>
                                                 </div>
 
-                                                {((user.rola !== "ADMINISTRATOR" || isMainAdmin) && user.imieNazwisko !== "Bóg") ? (
+                                                {((user.rola?.toUpperCase() !== "ADMINISTRATOR" || isMainAdmin) && user.imieNazwisko !== "Bóg") ? (
                                                     <button
                                                         className="w-full py-3 rounded-xl font-bold text-[11px] uppercase tracking-widest transition-all lux-btn-outline hover:bg-red-50 hover:text-red-600 hover:border-red-200"
                                                         onClick={() => handleDeleteUser(user.id)}

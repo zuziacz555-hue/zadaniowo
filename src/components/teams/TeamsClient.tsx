@@ -59,12 +59,16 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
 
     const handleDeleteTeam = async (id: number) => {
         if (!confirm("Czy na pewno chcesz usunąć ten zespół?")) return;
-        await deleteTeam(id);
-        if (selectedTeam?.id === id) {
-            setSelectedTeam(null);
+        const res = await deleteTeam(id);
+        if (res.success) {
+            if (selectedTeam?.id === id) {
+                setSelectedTeam(null);
+            }
+            router.refresh();
+            onRefresh?.();
+        } else {
+            alert(res.error || "Błąd podczas usuwania zespołu.");
         }
-        router.refresh();
-        onRefresh?.();
     };
 
     const handleRemoveMember = async (teamId: number, userId: number) => {
