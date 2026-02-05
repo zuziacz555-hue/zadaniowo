@@ -56,9 +56,24 @@ export async function getTasks(filters?: {
                 query.where.teamId = teamId;
             }
         } else if (isCoord) {
-            // Coordinators see ALL tasks for their team
-            if (teamId) {
+            // Coordinators see ALL tasks for their team OR tasks they are explicitly assigned to (for personal view)
+            if (teamId && userId) {
+                query.where = {
+                    OR: [
+                        { teamId: teamId }, // Management: Team tasks
+                        { assignments: { some: { userId: userId } } }, // Personal: Explicit assignment
+                        { executions: { some: { userId: userId } } } // Personal: Execution record
+                    ]
+                };
+            } else if (teamId) {
                 query.where.teamId = teamId;
+            } else if (userId) {
+                query.where = {
+                    OR: [
+                        { assignments: { some: { userId: userId } } },
+                        { executions: { some: { userId: userId } } }
+                    ]
+                };
             }
         } else {
             // Participants see:

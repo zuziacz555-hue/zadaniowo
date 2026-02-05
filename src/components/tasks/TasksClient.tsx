@@ -84,7 +84,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
 
         const doZrobienia = tasks.filter(t => {
             const ex = t.executions.find((e: any) => e.userId === Number(userId));
-            return !ex || (ex.status === "AKTYWNE");
+            return ex && (ex.status === "AKTYWNE");
         });
 
         const wykonane = tasks.filter(t => {
@@ -503,105 +503,204 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
             {/* --- UNIFIED ADMIN/COORDINATOR VIEW --- */}
             {(isAdmin || isCoord) && (
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                    {/* LEFT COLUMN: TEAMS FOLDERS (ADMIN ONLY) */}
-                    {isAdmin && (
+                    {/* LEFT COLUMN: NAVIGATION (ADMIN TEAMS / COORD MODES) */}
+                    {(isAdmin || (isCoord && settings?.coordinatorTasks)) && (
                         <div className="lg:col-span-1 space-y-4">
                             <h2 className="text-xl font-bold text-foreground/80 mb-4 flex items-center gap-2 px-2">
-                                <Folder size={20} className="text-primary" /> Zespoły
+                                <Folder size={20} className="text-primary" />
+                                {isAdmin ? "Zespoły" : "Moje widoki"}
                             </h2>
-                            {/* All Teams Option */}
-                            <button
-                                onClick={() => setAdminTeamFilter("ALL")}
-                                className={cn(
-                                    "w-full text-left p-6 rounded-[28px] transition-all flex items-center justify-between border-2",
-                                    adminTeamFilter === "ALL" ? "bg-white shadow-xl border-primary/20" : "bg-white border-transparent hover:border-gray-100 shadow-sm"
-                                )}
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg", adminTeamFilter === "ALL" ? "lux-gradient" : "bg-gray-100 text-gray-400")}>
-                                        <Users size={22} />
-                                    </div>
-                                    <div>
-                                        <span className="font-bold text-gray-800 block">Wszystkie zespoły</span>
-                                        <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">
-                                            {initialTasks.length} zadań łącznie
-                                        </span>
-                                    </div>
-                                </div>
-                            </button>
-                            {allTeams.map((team: any) => {
-                                const teamTaskCount = initialTasks.filter(t => t.teamId === team.id).length;
-                                return (
+
+                            {isAdmin ? (
+                                <>
+                                    {/* All Teams Option */}
                                     <button
-                                        key={team.id}
-                                        onClick={() => setAdminTeamFilter(team.id)}
+                                        onClick={() => setAdminTeamFilter("ALL")}
                                         className={cn(
                                             "w-full text-left p-6 rounded-[28px] transition-all flex items-center justify-between border-2",
-                                            adminTeamFilter === team.id ? "bg-white shadow-xl border-primary/20" : "bg-white border-transparent hover:border-gray-100 shadow-sm"
+                                            adminTeamFilter === "ALL" ? "bg-white shadow-xl border-primary/20" : "bg-white border-transparent hover:border-gray-100 shadow-sm"
                                         )}
                                     >
                                         <div className="flex items-center gap-4">
-                                            <div
-                                                className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg transition-all duration-300", adminTeamFilter === team.id ? "scale-105" : "bg-gray-100 text-gray-400")}
-                                                style={adminTeamFilter === team.id ? { backgroundColor: team.kolor || '#5400FF', background: `linear-gradient(135deg, ${team.kolor || '#5400FF'} 0%, ${team.kolor ? team.kolor + 'dd' : '#704df5'} 100%)` } : {}}
-                                            >
-                                                <Folder size={22} style={adminTeamFilter !== team.id ? { color: team.kolor || '#9ca3af' } : {}} />
+                                            <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg", adminTeamFilter === "ALL" ? "lux-gradient" : "bg-gray-100 text-gray-400")}>
+                                                <Users size={22} />
                                             </div>
                                             <div>
-                                                <span className="font-bold text-gray-800 block">{team.nazwa}</span>
+                                                <span className="font-bold text-gray-800 block">Wszystkie zespoły</span>
                                                 <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">
-                                                    {teamTaskCount} zadań
+                                                    {initialTasks.length} zadań łącznie
                                                 </span>
                                             </div>
                                         </div>
-                                        {teamTaskCount > 0 && (
-                                            <div className="w-8 h-8 flex items-center justify-center rounded-full font-bold text-xs transition-colors"
-                                                style={{
-                                                    backgroundColor: adminTeamFilter === team.id ? 'rgba(255,255,255,0.2)' : (team.kolor ? team.kolor + '20' : '#f3f4f6'),
-                                                    color: adminTeamFilter === team.id ? 'white' : (team.kolor || '#5400FF')
-                                                }}
-                                            >
-                                                {teamTaskCount}
-                                            </div>
-                                        )}
                                     </button>
-                                );
-                            })}
+                                    {allTeams.map((team: any) => {
+                                        const teamTaskCount = initialTasks.filter(t => t.teamId === team.id).length;
+                                        return (
+                                            <button
+                                                key={team.id}
+                                                onClick={() => setAdminTeamFilter(team.id)}
+                                                className={cn(
+                                                    "w-full text-left p-6 rounded-[28px] transition-all flex items-center justify-between border-2",
+                                                    adminTeamFilter === team.id ? "bg-white shadow-xl border-primary/20" : "bg-white border-transparent hover:border-gray-100 shadow-sm"
+                                                )}
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div
+                                                        className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg transition-all duration-300", adminTeamFilter === team.id ? "scale-105" : "bg-gray-100 text-gray-400")}
+                                                        style={adminTeamFilter === team.id ? { backgroundColor: team.kolor || '#5400FF', background: `linear-gradient(135deg, ${team.kolor || '#5400FF'} 0%, ${team.kolor ? team.kolor + 'dd' : '#704df5'} 100%)` } : {}}
+                                                    >
+                                                        <Folder size={22} style={adminTeamFilter !== team.id ? { color: team.kolor || '#9ca3af' } : {}} />
+                                                    </div>
+                                                    <div>
+                                                        <span className="font-bold text-gray-800 block">{team.nazwa}</span>
+                                                        <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">
+                                                            {teamTaskCount} zadań
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                {teamTaskCount > 0 && (
+                                                    <div className="w-8 h-8 flex items-center justify-center rounded-full font-bold text-xs transition-colors"
+                                                        style={{
+                                                            backgroundColor: adminTeamFilter === team.id ? 'rgba(255,255,255,0.2)' : (team.kolor ? team.kolor + '20' : '#f3f4f6'),
+                                                            color: adminTeamFilter === team.id ? 'white' : (team.kolor || '#5400FF')
+                                                        }}
+                                                    >
+                                                        {teamTaskCount}
+                                                    </div>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </>
+                            ) : (
+                                <>
+                                    {/* Coordinator Sidebar (Management vs Personal) */}
+                                    <button
+                                        onClick={() => setCoordViewMode("MANAGEMENT")}
+                                        className={cn(
+                                            "w-full text-left p-6 rounded-[28px] transition-all border-2",
+                                            coordViewMode === "MANAGEMENT" ? "bg-white shadow-xl border-primary/20" : "bg-white border-transparent hover:border-gray-100 shadow-sm"
+                                        )}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg", coordViewMode === "MANAGEMENT" ? "lux-gradient" : "bg-gray-100 text-gray-400")}>
+                                                <Users size={22} />
+                                            </div>
+                                            <div>
+                                                <span className="font-bold text-gray-800 block">Zarządzanie</span>
+                                                <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">
+                                                    Weryfikacja zespołu
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setCoordViewMode("PERSONAL")}
+                                        className={cn(
+                                            "w-full text-left p-6 rounded-[28px] transition-all border-2",
+                                            coordViewMode === "PERSONAL" ? "bg-white shadow-xl border-primary/20" : "bg-white border-transparent hover:border-gray-100 shadow-sm"
+                                        )}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg", coordViewMode === "PERSONAL" ? "lux-gradient" : "bg-gray-100 text-gray-400")}>
+                                                <CheckCircle size={22} />
+                                            </div>
+                                            <div>
+                                                <span className="font-bold text-gray-800 block">Moje zadania</span>
+                                                <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">
+                                                    {doZrobienia.length} do zrobienia
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </button>
+                                </>
+                            )}
                         </div>
                     )}
 
                     {/* RIGHT COLUMN: TASKS CONTENT */}
-                    <div className={cn("space-y-6", isAdmin ? "lg:col-span-3" : "lg:col-span-4")}>
-                        <div className="flex flex-col items-start mb-6">
-                            <h2 className="lux-kicker mb-2">
-                                {isAdmin ? (adminTeamFilter === "ALL" ? "Wszystkie zlecone zadania" : "Zadania wybranego zespołu") : "Zlecone zadania zespołu"}
-                            </h2>
-                            <div className="h-1 w-12 bg-primary/20 rounded-full" />
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                            {zlecone.map((t: any) => (
-                                <AdminTaskCard
-                                    key={t.id}
-                                    task={t}
-                                    onDelete={handleDelete}
-                                    onApprove={handleApproveWork}
-                                    onReject={setSelectedTask}
-                                    isCoord={true}
-                                    isAdmin={isAdmin}
-                                />
-                            ))}
-                            {zlecone.length === 0 && (
-                                <div className="col-span-full lux-card p-12 text-center text-muted-foreground font-medium italic border-dashed">
-                                    {isAdmin && adminTeamFilter !== "ALL" ? "Brak zadań w tym zespole" : "Brak zleconych zadań"}
+                    <div className={cn("space-y-6", (isAdmin || (isCoord && settings?.coordinatorTasks)) ? "lg:col-span-3" : "lg:col-span-4")}>
+                        {showParticipantView ? (
+                            /* --- PARTICIPANT VIEW FOR COORDINATOR --- */
+                            <div className="bg-white rounded-[32px] shadow-[0_10px_30px_rgba(0,0,0,0.03)] border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-right-4">
+                                <div className="flex bg-gray-50/50 p-6 border-b border-gray-100">
+                                    <div className="flex flex-col items-start">
+                                        <h2 className="lux-kicker mb-1">Moje zadania osobiste</h2>
+                                        <div className="h-1 w-8 bg-primary/20 rounded-full" />
+                                    </div>
                                 </div>
-                            )}
-                        </div>
+                                <div className="flex bg-gray-50/50 p-2 border-b border-gray-100">
+                                    {[
+                                        { id: "do-zrobienia", label: "Do zrobienia", count: doZrobienia.length },
+                                        { id: "wykonane", label: "Wykonane", count: wykonane.length },
+                                        { id: "do-poprawy", label: "Do poprawy", count: doPoprawy.length }
+                                    ].map((tab) => (
+                                        <button
+                                            key={tab.id}
+                                            onClick={() => setActiveTab(tab.id)}
+                                            className={cn(
+                                                "flex-1 py-4 font-bold transition-all rounded-2xl flex items-center justify-center gap-3 relative",
+                                                activeTab === tab.id ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:bg-white/50"
+                                            )}
+                                        >
+                                            {tab.label}
+                                            <span className={cn("px-2.5 py-0.5 rounded-full text-[10px]", activeTab === tab.id ? "bg-primary text-white" : "bg-gray-200 text-gray-600")}>{tab.count}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="p-8">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
+                                        {(activeTab === "do-zrobienia" ? doZrobienia : activeTab === "wykonane" ? wykonane : doPoprawy).map((t: any) => (
+                                            <ParticipantTaskCard
+                                                key={t.id}
+                                                task={t}
+                                                userId={userId}
+                                                onClick={() => { setSelectedTask(t); setSubmissionText(""); }}
+                                                status={activeTab}
+                                            />
+                                        ))}
+                                        {(activeTab === "do-zrobienia" ? doZrobienia : activeTab === "wykonane" ? wykonane : doPoprawy).length === 0 && (
+                                            <div className="col-span-full py-12 text-center text-muted-foreground font-medium italic opacity-50">Brak zadań w tej sekcji</div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            /* --- MANAGEMENT VIEW --- */
+                            <>
+                                <div className="flex flex-col items-start mb-6">
+                                    <h2 className="lux-kicker mb-2">
+                                        {isAdmin ? (adminTeamFilter === "ALL" ? "Wszystkie zlecone zadania" : "Zadania wybranego zespołu") : "Zlecone zadania zespołu"}
+                                    </h2>
+                                    <div className="h-1 w-12 bg-primary/20 rounded-full" />
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
+                                    {zlecone.map((t: any) => (
+                                        <AdminTaskCard
+                                            key={t.id}
+                                            task={t}
+                                            onDelete={handleDelete}
+                                            onApprove={handleApproveWork}
+                                            onReject={setSelectedTask}
+                                            isCoord={true}
+                                            isAdmin={isAdmin}
+                                        />
+                                    ))}
+                                    {zlecone.length === 0 && (
+                                        <div className="col-span-full lux-card p-12 text-center text-muted-foreground font-medium italic border-dashed">
+                                            {isAdmin && adminTeamFilter !== "ALL" ? "Brak zadań w tym zespole" : "Brak zleconych zadań"}
+                                        </div>
+                                    )}
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             )}
 
-            {/* --- 3. PARTICIPANT VIEW --- */}
+            {/* --- 3. STANDARD PARTICIPANT VIEW (NON-COORD) --- */}
             {!isAdmin && !isCoord && (
                 <div className="bg-white rounded-[32px] shadow-[0_10px_30px_rgba(0,0,0,0.03)] border border-gray-100 overflow-hidden">
                     <div className="flex bg-gray-50/50 p-2 border-b border-gray-100">
@@ -678,9 +777,9 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
 
             {/* MODALS */}
 
-            {/* Submission Modal for Participant */}
+            {/* Submission Modal for Participant / Coordinator in Personal Mode */}
             <AnimatePresence>
-                {selectedTask && !isCoord && !isAdmin && activeTab !== "wykonane" && (
+                {selectedTask && (showParticipantView || (!isAdmin && !isCoord)) && activeTab !== "wykonane" && (
                     <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedTask(null)} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
                         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="lux-card p-10 max-w-lg w-full relative z-10 shadow-2xl">
