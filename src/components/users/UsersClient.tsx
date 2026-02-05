@@ -94,6 +94,8 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
         if (res.success) {
             setAssignments(prev => ({ ...prev, [userId]: { teamId: "", role: "uczestniczka" } }));
             router.refresh();
+        } else {
+            alert(res.error || "Błąd podczas przypisywania do zespołu.");
         }
     };
 

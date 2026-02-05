@@ -169,6 +169,18 @@ export async function addUserToTeam(userId: number, teamId: number, rola: string
             return { success: false, error: 'Administratorzy nie mogą być przypisywani do zespołów.' };
         }
 
+        // 2. Check for existing membership
+        const existingMembership = await prisma.userTeam.findFirst({
+            where: {
+                userId,
+                teamId
+            }
+        });
+
+        if (existingMembership) {
+            return { success: false, error: 'Użytkownik jest już członkiem tego zespołu.' };
+        }
+
         const userTeam = await prisma.userTeam.create({
             data: {
                 userId,

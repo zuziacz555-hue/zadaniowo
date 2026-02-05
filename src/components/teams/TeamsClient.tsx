@@ -119,12 +119,15 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
     const handleAddUserToTeam = async (user: any, role: string) => {
         if (!selectedTeam) return;
 
-        await addUserToTeam(user.id, selectedTeam.id, role);
-        setShowAddMember(false);
-        // Optimistic update or refresh
-        router.refresh();
-        onRefresh?.();
-        setSelectedTeam(null); // Close to refresh/reopen or simple refresh
+        const res = await addUserToTeam(user.id, selectedTeam.id, role);
+        if (res.success) {
+            setShowAddMember(false);
+            router.refresh();
+            onRefresh?.();
+            setSelectedTeam(null);
+        } else {
+            alert(res.error || "Błąd podczas dodawania do zespołu.");
+        }
     };
 
     const currentTeam = teams.find(t => t.id === activeTeamId) || teams[0];
