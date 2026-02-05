@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn, getContrastColor } from "@/lib/utils";
@@ -39,6 +40,12 @@ export default function ReportsClient({
     onRefresh?: () => void
 }) {
     const router = useRouter();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
     const [selectedTeam, setSelectedTeam] = useState<number | null>(teams[0]?.id || null);
 
     // Form State
@@ -218,252 +225,285 @@ export default function ReportsClient({
                 )}
 
                 {/* Report Completion Form Modal */}
-                <AnimatePresence>
-                    {showForm && activeMeeting && (
-                        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md">
-                            <motion.div
-                                initial={{ scale: 0.9, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                exit={{ scale: 0.9, opacity: 0 }}
-                                className="bg-white w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-                            >
-                                <div className="lux-gradient p-10 text-white relative flex-shrink-0">
-                                    <button onClick={() => { setShowForm(false); setIsEditMode(false); setEditingReportId(null); }} className="absolute top-8 right-8 p-2 bg-white/20 rounded-full hover:bg-white/30">
-                                        <X size={20} />
-                                    </button>
-                                    <h2 className="text-3xl font-bold mb-2">{isEditMode ? "Edytuj sprawozdanie" : "Uzupełnij sprawozdanie"}</h2>
-                                    <p className="text-white/70 font-bold uppercase tracking-widest text-[10px]">{activeMeeting.opis} • {new Date(activeMeeting.data).toLocaleDateString()}</p>
-                                </div>
-                                <div className="p-10 space-y-6 overflow-y-auto custom-scrollbar flex-grow">
-                                    {/* Attendance Section */}
-                                    <div className="space-y-4">
-                                        <div className="flex justify-between items-center">
-                                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Lista Obecności</label>
-                                            <button
-                                                onClick={() => setShowAddUserModal(true)}
-                                                className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1 hover:bg-primary/5 px-2 py-1 rounded-lg"
-                                            >
-                                                <Plus size={12} /> Dodaj osobę
-                                            </button>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-2">
-                                            {/* Registered Users */}
-                                            {activeMeeting.attendance?.map((att: any) => (
-                                                <div
-                                                    key={att.id}
-                                                    onClick={() => att.userId && toggleAttendance(att.userId)}
-                                                    className={cn(
-                                                        "flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all",
-                                                        att.userId && confirmedUserIds.includes(att.userId)
-                                                            ? "bg-emerald-50 border-emerald-100 text-emerald-700"
-                                                            : "bg-white border-gray-100 text-gray-500 hover:border-emerald-100"
-                                                    )}
+                {mounted && createPortal(
+                    <AnimatePresence>
+                        {showForm && activeMeeting && (
+                            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6">
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    className="absolute inset-0 bg-black/60 backdrop-blur-[20px]"
+                                    onClick={() => { setShowForm(false); setIsEditMode(false); setEditingReportId(null); }}
+                                />
+                                <motion.div
+                                    initial={{ scale: 0.9, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    exit={{ scale: 0.9, opacity: 0 }}
+                                    className="relative bg-white w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+                                >
+                                    <div className="lux-gradient p-10 text-white relative flex-shrink-0">
+                                        <button onClick={() => { setShowForm(false); setIsEditMode(false); setEditingReportId(null); }} className="absolute top-8 right-8 p-2 bg-white/20 rounded-full hover:bg-white/30">
+                                            <X size={20} />
+                                        </button>
+                                        <h2 className="text-3xl font-bold mb-2">{isEditMode ? "Edytuj sprawozdanie" : "Uzupełnij sprawozdanie"}</h2>
+                                        <p className="text-white/70 font-bold uppercase tracking-widest text-[10px]">{activeMeeting.opis} • {new Date(activeMeeting.data).toLocaleDateString()}</p>
+                                    </div>
+                                    <div className="p-10 space-y-6 overflow-y-auto custom-scrollbar flex-grow">
+                                        {/* Attendance Section */}
+                                        <div className="space-y-4">
+                                            <div className="flex justify-between items-center">
+                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Lista Obecności</label>
+                                                <button
+                                                    onClick={() => setShowAddUserModal(true)}
+                                                    className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1 hover:bg-primary/5 px-2 py-1 rounded-lg"
                                                 >
-                                                    {att.userId && confirmedUserIds.includes(att.userId)
-                                                        ? <CheckSquare size={18} />
-                                                        : <Square size={18} />
-                                                    }
-                                                    <span className="text-sm font-bold">{att.imieNazwisko}</span>
-                                                </div>
-                                            ))}
+                                                    <Plus size={12} /> Dodaj osobę
+                                                </button>
+                                            </div>
 
-                                            {/* Manually Added Users */}
-                                            {addedUserIds.map(userId => {
-                                                const user = currentTeamMembers.find((u: any) => u.id === userId);
-                                                if (!user) return null;
-                                                return (
-                                                    <div key={userId} className="flex items-center gap-3 p-3 rounded-xl border bg-blue-50 border-blue-100 text-blue-700">
-                                                        <CheckSquare size={18} />
-                                                        <span className="text-sm font-bold">{user.imieNazwisko} (Dodana)</span>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setAddedUserIds(prev => prev.filter(id => id !== userId));
-                                                                setConfirmedUserIds(prev => prev.filter(id => id !== userId));
-                                                            }}
-                                                            className="ml-auto text-blue-400 hover:text-blue-600"
-                                                        >
-                                                            <X size={14} />
-                                                        </button>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {/* Registered Users */}
+                                                {activeMeeting.attendance?.map((att: any) => (
+                                                    <div
+                                                        key={att.id}
+                                                        onClick={() => att.userId && toggleAttendance(att.userId)}
+                                                        className={cn(
+                                                            "flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all",
+                                                            att.userId && confirmedUserIds.includes(att.userId)
+                                                                ? "bg-emerald-50 border-emerald-100 text-emerald-700"
+                                                                : "bg-white border-gray-100 text-gray-500 hover:border-emerald-100"
+                                                        )}
+                                                    >
+                                                        {att.userId && confirmedUserIds.includes(att.userId)
+                                                            ? <CheckSquare size={18} />
+                                                            : <Square size={18} />
+                                                        }
+                                                        <span className="text-sm font-bold">{att.imieNazwisko}</span>
                                                     </div>
-                                                );
-                                            })}
+                                                ))}
+
+                                                {/* Manually Added Users */}
+                                                {addedUserIds.map(userId => {
+                                                    const user = currentTeamMembers.find((u: any) => u.id === userId);
+                                                    if (!user) return null;
+                                                    return (
+                                                        <div key={userId} className="flex items-center gap-3 p-3 rounded-xl border bg-blue-50 border-blue-100 text-blue-700">
+                                                            <CheckSquare size={18} />
+                                                            <span className="text-sm font-bold">{user.imieNazwisko} (Dodana)</span>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setAddedUserIds(prev => prev.filter(id => id !== userId));
+                                                                    setConfirmedUserIds(prev => prev.filter(id => id !== userId));
+                                                                }}
+                                                                className="ml-auto text-blue-400 hover:text-blue-600"
+                                                            >
+                                                                <X size={14} />
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Opis</label>
+                                            <textarea
+                                                placeholder="Opisz przebieg spotkania, podjęte decyzje i wnioski..."
+                                                className="lux-input min-h-[150px] py-4"
+                                                value={formData.summary}
+                                                onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
+                                            />
                                         </div>
                                     </div>
-
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Opis</label>
-                                        <textarea
-                                            placeholder="Opisz przebieg spotkania, podjęte decyzje i wnioski..."
-                                            className="lux-input min-h-[150px] py-4"
-                                            value={formData.summary}
-                                            onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
-                                        />
+                                    <div className="p-8 bg-gray-50 flex justify-end gap-4 flex-shrink-0">
+                                        <button onClick={() => { setShowForm(false); setIsEditMode(false); setEditingReportId(null); }} className="lux-btn-outline">Anuluj</button>
+                                        <button onClick={handleSubmitReport} className="lux-btn px-10">{isEditMode ? "Zaktualizuj sprawozdanie" : "Wyślij sprawozdanie"}</button>
                                     </div>
-                                </div>
-                                <div className="p-8 bg-gray-50 flex justify-end gap-4 flex-shrink-0">
-                                    <button onClick={() => { setShowForm(false); setIsEditMode(false); setEditingReportId(null); }} className="lux-btn-outline">Anuluj</button>
-                                    <button onClick={handleSubmitReport} className="lux-btn px-10">{isEditMode ? "Zaktualizuj sprawozdanie" : "Wyślij sprawozdanie"}</button>
-                                </div>
-                            </motion.div>
-                        </div>
-                    )}
-                </AnimatePresence>
+                                </motion.div>
+                            </div>
+                        )}
+                    </AnimatePresence>,
+                    document.body
+                )}
 
                 {/* Add User Modal */}
-                <AnimatePresence>
-                    {showAddUserModal && (
-                        <div className="fixed inset-0 z-[1100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md">
-                            <motion.div
-                                initial={{ scale: 0.9, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                exit={{ scale: 0.9, opacity: 0 }}
-                                className="bg-white w-full max-w-md rounded-[30px] shadow-2xl overflow-hidden"
-                            >
-                                <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                                    <h3 className="text-lg font-bold">Dodaj osobę do obecności</h3>
-                                    <button onClick={() => setShowAddUserModal(false)}><X size={20} className="text-gray-400 hover:text-gray-600" /></button>
-                                </div>
-                                <div className="p-6 max-h-[400px] overflow-y-auto">
-                                    {availableToAdd.length > 0 ? (
-                                        <div className="space-y-2">
-                                            {availableToAdd.map((user: any) => (
-                                                <button
-                                                    key={user.id}
-                                                    onClick={() => handleAddUser(user.id)}
-                                                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 hover:border-primary/20 transition-all text-left"
-                                                >
-                                                    <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
-                                                        {user.imieNazwisko.substring(0, 2).toUpperCase()}
-                                                    </div>
-                                                    <span className="font-bold text-gray-700">{user.imieNazwisko}</span>
-                                                    <Plus size={16} className="ml-auto text-gray-300" />
-                                                </button>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <p className="text-center text-muted-foreground text-sm italic py-4">Wszyscy członkowie zespołu są już na liście.</p>
-                                    )}
-                                </div>
-                            </motion.div>
-                        </div>
-                    )}
-                </AnimatePresence>
+                {mounted && createPortal(
+                    <AnimatePresence>
+                        {showAddUserModal && (
+                            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6">
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    className="absolute inset-0 bg-black/60 backdrop-blur-[20px]"
+                                    onClick={() => setShowAddUserModal(false)}
+                                />
+                                <motion.div
+                                    initial={{ scale: 0.9, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    exit={{ scale: 0.9, opacity: 0 }}
+                                    className="relative bg-white w-full max-w-md rounded-[30px] shadow-2xl overflow-hidden"
+                                >
+
+                                    <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                                        <h3 className="text-lg font-bold">Dodaj osobę do obecności</h3>
+                                        <button onClick={() => setShowAddUserModal(false)}><X size={20} className="text-gray-400 hover:text-gray-600" /></button>
+                                    </div>
+                                    <div className="p-6 max-h-[400px] overflow-y-auto">
+                                        {availableToAdd.length > 0 ? (
+                                            <div className="space-y-2">
+                                                {availableToAdd.map((user: any) => (
+                                                    <button
+                                                        key={user.id}
+                                                        onClick={() => handleAddUser(user.id)}
+                                                        className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 hover:border-primary/20 transition-all text-left"
+                                                    >
+                                                        <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
+                                                            {user.imieNazwisko.substring(0, 2).toUpperCase()}
+                                                        </div>
+                                                        <span className="font-bold text-gray-700">{user.imieNazwisko}</span>
+                                                        <Plus size={16} className="ml-auto text-gray-300" />
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="text-center text-muted-foreground text-sm italic py-4">Wszyscy członkowie zespołu są już na liście.</p>
+                                        )}
+                                    </div>
+                                </motion.div>
+                            </div>
+                        )}
+                    </AnimatePresence>,
+                    document.body
+                )}
 
                 {/* Report View Modal */}
-                <AnimatePresence>
-                    {selectedReport && (
-                        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md">
-                            <motion.div
-                                initial={{ scale: 0.9, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                exit={{ scale: 0.9, opacity: 0 }}
-                                className="bg-white w-full max-w-3xl rounded-[40px] shadow-2xl overflow-hidden"
-                            >
-                                <div className="lux-gradient p-12 text-white relative">
-                                    <button onClick={() => setSelectedReport(null)} className="absolute top-8 right-8 p-2 bg-white/20 rounded-full hover:bg-white/30">
-                                        <X size={20} />
-                                    </button>
-                                    <div className="flex items-center gap-4 mb-4">
-                                        <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center">
-                                            <FileText size={24} />
-                                        </div>
-                                        <div>
-                                            <h2 className="text-3xl font-bold">{selectedReport.meeting?.opis || "Raport"}</h2>
-                                            <p className="text-white/70 font-bold uppercase tracking-widest text-[10px]">Spotkanie z dnia: {new Date(selectedReport.meeting.data).toLocaleDateString()}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="p-12 space-y-10 max-h-[70vh] overflow-y-auto custom-scrollbar">
-                                    {(() => {
-                                        let data = { topics: "", decisions: "", summary: "" };
-                                        try {
-                                            const parsed = JSON.parse(selectedReport.tresc);
-                                            data = {
-                                                topics: parsed.topics || "",
-                                                decisions: parsed.decisions || "",
-                                                summary: parsed.summary || ""
-                                            };
-                                        } catch {
-                                            data.summary = selectedReport.tresc;
-                                        }
+                {mounted && createPortal(
+                    <AnimatePresence>
+                        {selectedReport && (
+                            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6">
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    className="absolute inset-0 bg-black/60 backdrop-blur-[20px]"
+                                    onClick={() => setSelectedReport(null)}
+                                />
+                                <motion.div
+                                    initial={{ scale: 0.9, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    exit={{ scale: 0.9, opacity: 0 }}
+                                    className="relative bg-white w-full max-w-3xl rounded-[40px] shadow-2xl overflow-hidden"
+                                >
 
-                                        // Confirmed attendance from existing records
-                                        const confirmedAttendance = selectedReport.meeting?.attendance?.filter((a: any) => a.confirmed);
-
-                                        return (
-                                            <>
-                                                {/* Compatibility with old reports: show topics/decisions if present */}
-                                                {(data.topics || data.decisions) && (
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                                                        {data.topics && (
-                                                            <div className="space-y-4">
-                                                                <h3 className="text-xs font-bold text-primary uppercase tracking-[0.2em] flex items-center gap-2">
-                                                                    <div className="w-1.5 h-1.5 rounded-full bg-primary" /> Tematyka
-                                                                </h3>
-                                                                <p className="text-sm text-foreground/80 leading-relaxed font-medium whitespace-pre-wrap">{data.topics}</p>
-                                                            </div>
-                                                        )}
-                                                        {data.decisions && (
-                                                            <div className="space-y-4">
-                                                                <h3 className="text-xs font-bold text-primary uppercase tracking-[0.2em] flex items-center gap-2">
-                                                                    <div className="w-1.5 h-1.5 rounded-full bg-primary" /> Decyzje
-                                                                </h3>
-                                                                <p className="text-sm text-foreground/80 leading-relaxed font-medium whitespace-pre-wrap">{data.decisions}</p>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-
-                                                <div className={cn("space-y-4", (data.topics || data.decisions) && "pt-6 border-t border-gray-50")}>
-                                                    <h3 className="text-xs font-bold text-primary uppercase tracking-[0.2em] flex items-center gap-2">
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-primary" /> Opis
-                                                    </h3>
-                                                    <div className="bg-gray-50/50 p-6 rounded-3xl border border-gray-100">
-                                                        <p className="text-sm text-foreground/80 leading-relaxed font-medium whitespace-pre-wrap">{data.summary || "Brak opisu"}</p>
-                                                    </div>
-                                                </div>
-
-                                                <div className="space-y-4 pt-6 border-t border-gray-50">
-                                                    <h3 className="text-xs font-bold text-primary uppercase tracking-[0.2em] flex items-center gap-2">
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-primary" /> Obecni ({confirmedAttendance?.length || 0})
-                                                    </h3>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {confirmedAttendance?.map((att: any) => (
-                                                            <span key={att.id} className="bg-white border border-gray-200 px-3 py-1.5 rounded-xl text-xs font-bold text-gray-600 shadow-sm flex items-center gap-2">
-                                                                <CheckCircle2 size={12} className="text-emerald-500" /> {att.imieNazwisko}
-                                                            </span>
-                                                        ))}
-                                                        {(!confirmedAttendance || confirmedAttendance.length === 0) && (
-                                                            <span className="text-muted-foreground italic text-xs">Brak potwierdzonych obecności</span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </>
-                                        );
-                                    })()}
-                                </div>
-                                <div className="p-8 bg-gray-50 flex justify-between items-center text-xs text-muted-foreground font-bold uppercase tracking-widest px-12">
-                                    <div className="flex flex-col gap-1">
-                                        <span>Utworzone przez: {selectedReport.utworzonePrzez}</span>
-                                        <span>{new Date(selectedReport.dataUtworzenia).toLocaleString()}</span>
-                                    </div>
-                                    {(isCoord || isAdmin) && (
-                                        <button
-                                            onClick={() => handleEditReport(selectedReport)}
-                                            className="lux-btn py-2 px-6 flex items-center gap-2 text-[11px]"
-                                        >
-                                            <Plus size={14} className="rotate-45" /> Edytuj raport
+                                    <div className="lux-gradient p-12 text-white relative">
+                                        <button onClick={() => setSelectedReport(null)} className="absolute top-8 right-8 p-2 bg-white/20 rounded-full hover:bg-white/30">
+                                            <X size={20} />
                                         </button>
-                                    )}
-                                </div>
-                            </motion.div>
-                        </div>
-                    )}
-                </AnimatePresence>
+                                        <div className="flex items-center gap-4 mb-4">
+                                            <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center">
+                                                <FileText size={24} />
+                                            </div>
+                                            <div>
+                                                <h2 className="text-3xl font-bold">{selectedReport.meeting?.opis || "Raport"}</h2>
+                                                <p className="text-white/70 font-bold uppercase tracking-widest text-[10px]">Spotkanie z dnia: {new Date(selectedReport.meeting.data).toLocaleDateString()}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="p-12 space-y-10 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                                        {(() => {
+                                            let data = { topics: "", decisions: "", summary: "" };
+                                            try {
+                                                const parsed = JSON.parse(selectedReport.tresc);
+                                                data = {
+                                                    topics: parsed.topics || "",
+                                                    decisions: parsed.decisions || "",
+                                                    summary: parsed.summary || ""
+                                                };
+                                            } catch {
+                                                data.summary = selectedReport.tresc;
+                                            }
+
+                                            // Confirmed attendance from existing records
+                                            const confirmedAttendance = selectedReport.meeting?.attendance?.filter((a: any) => a.confirmed);
+
+                                            return (
+                                                <>
+                                                    {/* Compatibility with old reports: show topics/decisions if present */}
+                                                    {(data.topics || data.decisions) && (
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                                            {data.topics && (
+                                                                <div className="space-y-4">
+                                                                    <h3 className="text-xs font-bold text-primary uppercase tracking-[0.2em] flex items-center gap-2">
+                                                                        <div className="w-1.5 h-1.5 rounded-full bg-primary" /> Tematyka
+                                                                    </h3>
+                                                                    <p className="text-sm text-foreground/80 leading-relaxed font-medium whitespace-pre-wrap">{data.topics}</p>
+                                                                </div>
+                                                            )}
+                                                            {data.decisions && (
+                                                                <div className="space-y-4">
+                                                                    <h3 className="text-xs font-bold text-primary uppercase tracking-[0.2em] flex items-center gap-2">
+                                                                        <div className="w-1.5 h-1.5 rounded-full bg-primary" /> Decyzje
+                                                                    </h3>
+                                                                    <p className="text-sm text-foreground/80 leading-relaxed font-medium whitespace-pre-wrap">{data.decisions}</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+
+                                                    <div className={cn("space-y-4", (data.topics || data.decisions) && "pt-6 border-t border-gray-50")}>
+                                                        <h3 className="text-xs font-bold text-primary uppercase tracking-[0.2em] flex items-center gap-2">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-primary" /> Opis
+                                                        </h3>
+                                                        <div className="bg-gray-50/50 p-6 rounded-3xl border border-gray-100">
+                                                            <p className="text-sm text-foreground/80 leading-relaxed font-medium whitespace-pre-wrap">{data.summary || "Brak opisu"}</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="space-y-4 pt-6 border-t border-gray-50">
+                                                        <h3 className="text-xs font-bold text-primary uppercase tracking-[0.2em] flex items-center gap-2">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-primary" /> Obecni ({confirmedAttendance?.length || 0})
+                                                        </h3>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {confirmedAttendance?.map((att: any) => (
+                                                                <span key={att.id} className="bg-white border border-gray-200 px-3 py-1.5 rounded-xl text-xs font-bold text-gray-600 shadow-sm flex items-center gap-2">
+                                                                    <CheckCircle2 size={12} className="text-emerald-500" /> {att.imieNazwisko}
+                                                                </span>
+                                                            ))}
+                                                            {(!confirmedAttendance || confirmedAttendance.length === 0) && (
+                                                                <span className="text-muted-foreground italic text-xs">Brak potwierdzonych obecności</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            );
+                                        })()}
+                                    </div>
+                                    <div className="p-8 bg-gray-50 flex justify-between items-center text-xs text-muted-foreground font-bold uppercase tracking-widest px-12">
+                                        <div className="flex flex-col gap-1">
+                                            <span>Utworzone przez: {selectedReport.utworzonePrzez}</span>
+                                            <span>{new Date(selectedReport.dataUtworzenia).toLocaleString()}</span>
+                                        </div>
+                                        {(isCoord || isAdmin) && (
+                                            <button
+                                                onClick={() => handleEditReport(selectedReport)}
+                                                className="lux-btn py-2 px-6 flex items-center gap-2 text-[11px]"
+                                            >
+                                                <Plus size={14} className="rotate-45" /> Edytuj raport
+                                            </button>
+                                        )}
+                                    </div>
+                                </motion.div>
+                            </div>
+                        )}
+                    </AnimatePresence>,
+                    document.body
+                )}
             </div>
         </DashboardLayout>
+
     );
 }
 
