@@ -174,6 +174,7 @@ export async function addUserToTeam(userId: number, teamId: number, rola: string
             },
         })
         revalidatePath('/admin-teams')
+        revalidatePath('/admin-users')
         revalidatePath('/dashboard')
         return { success: true, data: userTeam }
     } catch (error) {

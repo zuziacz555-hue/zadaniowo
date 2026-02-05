@@ -19,7 +19,7 @@ import { useRouter } from "next/navigation";
 export default function UsersClient({ initialUsers, initialTeams }: { initialUsers: any[], initialTeams: any[] }) {
     const router = useRouter();
     const [showAddForm, setShowAddForm] = useState(false);
-    const [newUser, setNewUser] = useState({ name: "", password: "", role: "UCZESTNICZKA" });
+    const [newUser, setNewUser] = useState({ name: "", password: "", role: "UCZESTNICZKA", teamId: "", teamRole: "uczestniczka" });
     const [assignments, setAssignments] = useState<Record<number, { teamId: string; role: string }>>({});
 
     const users = initialUsers;
@@ -47,7 +47,11 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
             rola: newUser.role
         });
         if (res.success) {
-            setNewUser({ name: "", password: "", role: "UCZESTNICZKA" });
+            // Automatically assign to team if selected
+            if (newUser.teamId && res.data) {
+                await addUserToTeam(res.data.id, Number(newUser.teamId), newUser.teamRole);
+            }
+            setNewUser({ name: "", password: "", role: "UCZESTNICZKA", teamId: "", teamRole: "uczestniczka" });
             setShowAddForm(false);
             router.refresh();
         } else {
@@ -79,9 +83,12 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
 
     const handleAssignTeam = async (userId: number) => {
         const selected = assignments[userId];
-        if (!selected?.teamId) return;
+        if (!selected?.teamId) {
+            alert("Wybierz zespół przed dodaniem.");
+            return;
+        }
 
-        const res = await addUserToTeam(userId, Number(selected.teamId), selected.role);
+        const res = await addUserToTeam(userId, Number(selected.teamId), selected.role || "uczestniczka");
         if (res.success) {
             setAssignments(prev => ({ ...prev, [userId]: { teamId: "", role: "uczestniczka" } }));
             router.refresh();
@@ -151,6 +158,32 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                                             <option value="ADMINISTRATOR">administrator</option>
                                         </select>
                                     </div>
+                                    {newUser.role !== "ADMINISTRATOR" && (
+                                        <>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Zespół (opcjonalnie)</label>
+                                                <select
+                                                    className="lux-select font-semibold"
+                                                    value={newUser.teamId}
+                                                    onChange={(e) => setNewUser(prev => ({ ...prev, teamId: e.target.value }))}
+                                                >
+                                                    <option value="">-- Wybierz zespół --</option>
+                                                    {teams.map(t => <option key={t.id} value={t.id}>{t.nazwa}</option>)}
+                                                </select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Rola w zespole</label>
+                                                <select
+                                                    className="lux-select font-semibold"
+                                                    value={newUser.teamRole}
+                                                    onChange={(e) => setNewUser(prev => ({ ...prev, teamRole: e.target.value }))}
+                                                >
+                                                    <option value="uczestniczka">uczestniczka</option>
+                                                    <option value="koordynatorka">koordynatorka</option>
+                                                </select>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                                 <button className="lux-btn w-full mt-6" onClick={handleAddUser}>
                                     Dodaj użytkownika
@@ -229,7 +262,7 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                                         </td>
 
                                         <td className="px-6 py-8 align-top min-w-[300px]">
-                                            {user.rola !== "ADMINISTRATOR" && (
+                                            {user.rola?.toUpperCase() !== "ADMINISTRATOR" && (
                                                 <div className="bg-white/80 p-6 rounded-2xl border border-gray-100 space-y-4 shadow-inner">
                                                     <div className="space-y-1">
                                                         <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Zespół</label>
