@@ -35,7 +35,8 @@ export default function SettingsPage() {
                     id: 0,
                     alertsTerminy: true,
                     alertsPoprawki: true,
-                    alertsRaporty: true
+                    alertsRaporty: true,
+                    coordinatorTasks: false
                 });
             }
             setIsLoading(false);
