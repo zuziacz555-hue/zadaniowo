@@ -55,8 +55,8 @@ export async function getTasks(filters?: {
         };
 
         // Role-based filtering - SIMPLIFIED AND FIXED
-        const isAdmin = role === "ADMINISTRATOR" || role === "admin";
-        const isCoord = role === "KOORDYNATORKA" || role === "koordynatorka";
+        const isAdmin = role?.toUpperCase() === "ADMINISTRATOR" || role?.toUpperCase() === "ADMIN";
+        const isCoord = role?.toUpperCase() === "KOORDYNATORKA";
 
         if (isAdmin) {
             // Admins see all tasks by default.

@@ -75,7 +75,7 @@ export default function TasksPage() {
                 const tasksRes = await getTasks({
                     teamId: isReallyAdmin ? undefined : (teamId || undefined),
                     userId: parsedUser.id,
-                    role: parsedUser.role // Use global role for consistent backend permissions
+                    role: isReallyAdmin ? 'ADMINISTRATOR' : (activeRole || parsedUser.role)
                 });
 
                 if (tasksRes.success && tasksRes.data) {
