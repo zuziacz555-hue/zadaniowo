@@ -18,6 +18,9 @@ import { useRouter } from "next/navigation";
 
 export default function UsersClient({ initialUsers, initialTeams }: { initialUsers: any[], initialTeams: any[] }) {
     const router = useRouter();
+    const [showAddForm, setShowAddForm] = useState(false);
+    const [newUser, setNewUser] = useState({ name: "", password: "", role: "UCZESTNICZKA", teamId: "", teamRole: "uczestniczka" });
+    const [assignments, setAssignments] = useState<Record<number, { teamId: string; role: string }>>({});
     const [searchTerm, setSearchTerm] = useState("");
     const [filterTeam, setFilterTeam] = useState("");
     const [filterRole, setFilterRole] = useState("");
