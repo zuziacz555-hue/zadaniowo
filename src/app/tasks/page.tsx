@@ -70,10 +70,12 @@ export default function TasksPage() {
 
                 console.log("Fetching tasks for:", { teamId, userId: parsedUser.id, role: activeRole });
 
+                const isReallyAdmin = parsedUser.role?.toUpperCase() === 'ADMINISTRATOR';
+
                 const tasksRes = await getTasks({
-                    teamId: teamId || undefined, // undefined to allow global/personal search if no team
+                    teamId: isReallyAdmin ? undefined : (teamId || undefined),
                     userId: parsedUser.id,
-                    role: activeRole || parsedUser.role
+                    role: parsedUser.role // Use global role for consistent backend permissions
                 });
 
                 if (tasksRes.success && tasksRes.data) {

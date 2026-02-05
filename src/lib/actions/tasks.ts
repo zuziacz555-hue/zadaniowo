@@ -24,7 +24,7 @@ export async function getTasks(filters?: {
                             select: {
                                 id: true,
                                 imieNazwisko: true,
-                                role: true,
+                                rola: true,
                                 zespoly: {
                                     select: {
                                         teamId: true,
@@ -59,7 +59,8 @@ export async function getTasks(filters?: {
         const isCoord = role === "KOORDYNATORKA" || role === "koordynatorka";
 
         if (isAdmin) {
-            // Admins see all tasks. If teamId is provided, we still include global tasks (teamId: null)
+            // Admins see all tasks by default.
+            // If they are in a specific team view in the backend (optional filtering)
             if (teamId) {
                 query.where = {
                     OR: [
@@ -68,6 +69,7 @@ export async function getTasks(filters?: {
                     ]
                 };
             }
+            // If teamId is undefined, query.where is {}, which means "everything"
         } else if (isCoord) {
             // Coordinators see ALL tasks for their team OR tasks they are explicitly involved in
             query.where = {
