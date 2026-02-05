@@ -15,7 +15,8 @@ import {
     AlertTriangle,
     Calendar,
     X,
-    Folder
+    Folder,
+    UserCog
 } from "lucide-react";
 import { closeTaskGlobally, rejectTaskWork, deleteTask, approveTaskWork, deleteTaskExecution } from "@/lib/actions/tasks";
 import { useRouter } from "next/navigation";
@@ -27,16 +28,38 @@ export default function SubmissionsClient({ initialTasks, teams = [], isAdmin, o
 
     const tasks = initialTasks;
 
-    // Filter based on ADMIN VIEW (Selected Team)
-    const displayedTasks = isAdmin && selectedTeam
-        ? tasks.filter(t => t.teamId === selectedTeam)
-        : tasks;
-
-    // Filter executions across displayed tasks based on their status
+    // Unified filtering logic
     const getFilteredSubmissions = () => {
         const results: any[] = [];
-        displayedTasks.forEach(task => {
-            const relevantExecutions = task.executions.filter((ex: any) => ex.status === activeTab);
+
+        tasks.forEach(task => {
+            // Apply team filter for Admin (if not in "Coordinator Tasks" folder)
+            if (isAdmin && selectedTeam && selectedTeam !== -1 && task.teamId !== selectedTeam) {
+                return;
+            }
+
+            const relevantExecutions = task.executions.filter((ex: any) => {
+                // 1. Status check
+                if (ex.status !== activeTab) return false;
+
+                // 2. Determine submitter's role in the specific team
+                const userTeamRole = ex.user?.zespoly?.find((ut: any) => ut.teamId === task.teamId)?.rola;
+                const isSubmitterCoord = userTeamRole === "KOORDYNATORKA";
+
+                if (isAdmin) {
+                    if (selectedTeam === -1) {
+                        // "Zadania koordynatorek" folder: Show ONLY coordinator submissions
+                        return isSubmitterCoord;
+                    } else {
+                        // Team folder: Show ONLY participant submissions
+                        return !isSubmitterCoord;
+                    }
+                } else {
+                    // Regular Coordinator view: Show ONLY participant submissions
+                    return !isSubmitterCoord;
+                }
+            });
+
             if (relevantExecutions.length > 0) {
                 results.push({ ...task, activeExecutions: relevantExecutions });
             }
@@ -101,13 +124,50 @@ export default function SubmissionsClient({ initialTasks, teams = [], isAdmin, o
                     {isAdmin && (
                         <div className="lg:col-span-1 space-y-4">
                             <h2 className="text-xl font-bold text-foreground/80 mb-4 flex items-center gap-2 px-2">
-                                <Folder size={20} className="text-primary" /> Zespoły
+                                <Folder size={20} className="text-primary" /> Foldery
+                            </h2>
+
+                            {/* Coordinator Tasks Virtual Folder */}
+                            <button
+                                onClick={() => setSelectedTeam(-1)}
+                                className={cn(
+                                    "w-full text-left p-6 rounded-[28px] transition-all flex items-center justify-between border-2",
+                                    selectedTeam === -1 ? "bg-white shadow-xl border-primary/20" : "bg-white border-transparent hover:border-gray-100 shadow-sm"
+                                )}
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg", selectedTeam === -1 ? "lux-gradient" : "bg-gray-100 text-gray-400")}>
+                                        <UserCog size={22} className={cn(selectedTeam === -1 ? "text-white" : "text-gray-400")} />
+                                    </div>
+                                    <div>
+                                        <span className="font-bold text-gray-800 block">Zadania koordynatorek</span>
+                                        <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">
+                                            Realizacje osobiste
+                                        </span>
+                                    </div>
+                                </div>
+                                {activeTab === "OCZEKUJACE" && (
+                                    <div className="w-8 h-8 flex items-center justify-center bg-primary/10 text-primary rounded-full font-bold text-xs">
+                                        {tasks.reduce((acc, t) => acc + t.executions.filter((ex: any) => {
+                                            const role = ex.user?.zespoly?.find((ut: any) => ut.teamId === t.teamId)?.rola;
+                                            return ex.status === "OCZEKUJACE" && role === "KOORDYNATORKA";
+                                        }).length, 0)}
+                                    </div>
+                                )}
+                            </button>
+
+                            <div className="h-px bg-gray-100 my-4 mx-6" />
+                            <h2 className="text-xl font-bold text-foreground/80 mb-4 flex items-center gap-2 px-2">
+                                <Users size={20} className="text-primary" /> Zespoły
                             </h2>
                             {teams.map((team: any) => {
-                                // Count pending submissions for this team
+                                // Count pending submissions for this team (PARTICIPANTS ONLY)
                                 const teamTasks = tasks.filter(t => t.teamId === team.id);
                                 const pendingCount = teamTasks.reduce((acc, t) => {
-                                    return acc + t.executions.filter((ex: any) => ex.status === "OCZEKUJACE").length;
+                                    return acc + t.executions.filter((ex: any) => {
+                                        const role = ex.user?.zespoly?.find((ut: any) => ut.teamId === t.teamId)?.rola;
+                                        return ex.status === "OCZEKUJACE" && role !== "KOORDYNATORKA";
+                                    }).length;
                                 }, 0);
 
                                 return (

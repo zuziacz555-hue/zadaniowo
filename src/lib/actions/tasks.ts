@@ -21,8 +21,16 @@ export async function getTasks(filters?: {
                 executions: {
                     include: {
                         user: {
-                            include: {
-                                zespoly: true
+                            select: {
+                                id: true,
+                                imieNazwisko: true,
+                                role: true,
+                                zespoly: {
+                                    select: {
+                                        teamId: true,
+                                        rola: true
+                                    }
+                                }
                             }
                         }
                     }
