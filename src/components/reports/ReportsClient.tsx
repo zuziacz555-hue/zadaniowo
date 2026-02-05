@@ -18,7 +18,7 @@ import {
     CheckSquare,
     Square
 } from "lucide-react";
-import { createReport } from "@/lib/actions/reports";
+import { createReport, updateReport } from "@/lib/actions/reports";
 import { useRouter } from "next/navigation";
 
 export default function ReportsClient({
@@ -47,6 +47,8 @@ export default function ReportsClient({
     const [formData, setFormData] = useState({
         summary: ""
     });
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [editingReportId, setEditingReportId] = useState<number | null>(null);
 
     // Attendance State
     const [confirmedUserIds, setConfirmedUserIds] = useState<number[]>([]);
@@ -83,6 +85,36 @@ export default function ReportsClient({
         setShowForm(true);
     };
 
+    const handleEditReport = (report: any) => {
+        setIsEditMode(true);
+        setEditingReportId(report.id);
+        setActiveMeeting(report.meeting);
+
+        // Pre-fill content
+        try {
+            const parsed = JSON.parse(report.tresc);
+            setFormData({ summary: parsed.summary || "" });
+        } catch {
+            setFormData({ summary: report.tresc });
+        }
+
+        // Pre-fill attendance
+        const confirmedIds = report.meeting.attendance?.filter((a: any) => a.confirmed).map((a: any) => a.userId).filter(Boolean) || [];
+        const addedIds = report.meeting.attendance?.filter((a: any) => a.confirmed && !report.meeting.attendance.some((orig: any) => orig.userId === a.userId && !orig.id)).map((a: any) => a.userId).filter(Boolean) || [];
+        // Actually, we just want to know who is confirmed
+        setConfirmedUserIds(report.meeting.attendance?.filter((a: any) => a.confirmed && a.userId).map((a: any) => a.userId) || []);
+
+        // We need to identify who was "added" vs "registered"
+        // Registered users are those already in meeting.attendance (prisma returns all)
+        // But wait, the meeting object passed in reports has all attendance records.
+        // We'll just set confirmedUserIds and let the UI handle it.
+        // For "added" users, we might need a better way to distinguish them if we want to show the "Dodana" badge.
+        // For now, let's keep it simple: confirmed is confirmed.
+
+        setShowForm(true);
+        setSelectedReport(null); // Close view modal
+    };
+
     const toggleAttendance = (userId: number) => {
         setConfirmedUserIds(prev =>
             prev.includes(userId)
@@ -104,22 +136,34 @@ export default function ReportsClient({
 
         const combinedContent = JSON.stringify({
             summary: formData.summary,
-            // We store attendance in separate DB records now
         });
 
-        const res = await createReport({
-            meetingId: activeMeeting.id,
-            tresc: combinedContent,
-            utworzonePrzez: currentUser,
-            confirmedUserIds: confirmedUserIds.filter(id => !addedUserIds.includes(id)), // Only registered ones
-            addedUserIds: addedUserIds
-        });
+        let res;
+        if (isEditMode && editingReportId) {
+            res = await updateReport(editingReportId, {
+                tresc: combinedContent,
+                confirmedUserIds: confirmedUserIds.filter(id => !addedUserIds.includes(id)),
+                addedUserIds: addedUserIds
+            });
+        } else {
+            res = await createReport({
+                meetingId: activeMeeting.id,
+                tresc: combinedContent,
+                utworzonePrzez: currentUser,
+                confirmedUserIds: confirmedUserIds.filter(id => !addedUserIds.includes(id)),
+                addedUserIds: addedUserIds
+            });
+        }
 
         if (res.success) {
             setShowForm(false);
+            setIsEditMode(false);
+            setEditingReportId(null);
             setFormData({ summary: "" });
             router.refresh();
             onRefresh?.();
+        } else {
+            alert(res.error || "Wystąpił błąd podczas zapisywania raportu.");
         }
     };
 
@@ -184,10 +228,10 @@ export default function ReportsClient({
                                 className="bg-white w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
                             >
                                 <div className="lux-gradient p-10 text-white relative flex-shrink-0">
-                                    <button onClick={() => setShowForm(false)} className="absolute top-8 right-8 p-2 bg-white/20 rounded-full hover:bg-white/30">
+                                    <button onClick={() => { setShowForm(false); setIsEditMode(false); setEditingReportId(null); }} className="absolute top-8 right-8 p-2 bg-white/20 rounded-full hover:bg-white/30">
                                         <X size={20} />
                                     </button>
-                                    <h2 className="text-3xl font-bold mb-2">Uzupełnij sprawozdanie</h2>
+                                    <h2 className="text-3xl font-bold mb-2">{isEditMode ? "Edytuj sprawozdanie" : "Uzupełnij sprawozdanie"}</h2>
                                     <p className="text-white/70 font-bold uppercase tracking-widest text-[10px]">{activeMeeting.opis} • {new Date(activeMeeting.data).toLocaleDateString()}</p>
                                 </div>
                                 <div className="p-10 space-y-6 overflow-y-auto custom-scrollbar flex-grow">
@@ -259,8 +303,8 @@ export default function ReportsClient({
                                     </div>
                                 </div>
                                 <div className="p-8 bg-gray-50 flex justify-end gap-4 flex-shrink-0">
-                                    <button onClick={() => setShowForm(false)} className="lux-btn-outline">Anuluj</button>
-                                    <button onClick={handleSubmitReport} className="lux-btn px-10">Wyślij sprawozdanie</button>
+                                    <button onClick={() => { setShowForm(false); setIsEditMode(false); setEditingReportId(null); }} className="lux-btn-outline">Anuluj</button>
+                                    <button onClick={handleSubmitReport} className="lux-btn px-10">{isEditMode ? "Zaktualizuj sprawozdanie" : "Wyślij sprawozdanie"}</button>
                                 </div>
                             </motion.div>
                         </div>
@@ -401,8 +445,18 @@ export default function ReportsClient({
                                     })()}
                                 </div>
                                 <div className="p-8 bg-gray-50 flex justify-between items-center text-xs text-muted-foreground font-bold uppercase tracking-widest px-12">
-                                    <span>Utworzone przez: {selectedReport.utworzonePrzez}</span>
-                                    <span>{new Date(selectedReport.dataUtworzenia).toLocaleString()}</span>
+                                    <div className="flex flex-col gap-1">
+                                        <span>Utworzone przez: {selectedReport.utworzonePrzez}</span>
+                                        <span>{new Date(selectedReport.dataUtworzenia).toLocaleString()}</span>
+                                    </div>
+                                    {(isCoord || isAdmin) && (
+                                        <button
+                                            onClick={() => handleEditReport(selectedReport)}
+                                            className="lux-btn py-2 px-6 flex items-center gap-2 text-[11px]"
+                                        >
+                                            <Plus size={14} className="rotate-45" /> Edytuj raport
+                                        </button>
+                                    )}
                                 </div>
                             </motion.div>
                         </div>

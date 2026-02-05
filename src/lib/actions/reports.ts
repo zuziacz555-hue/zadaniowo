@@ -104,40 +104,81 @@ export async function createReport(data: {
     }
 }
 
-export async function getReportsForAdmin() {
+export async function updateReport(id: number, data: {
+    tresc: string
+    confirmedUserIds: number[]
+    addedUserIds: number[]
+}) {
     try {
-        const teams = await prisma.team.findMany({
-            include: {
-                meetings: {
-                    include: {
-                        report: true,
-                        attendance: true
-                    },
-                    orderBy: {
-                        data: 'desc'
-                    }
-                }
-            }
+        // 1. Fetch existing report to get meetingId
+        const existingReport = await prisma.report.findUnique({
+            where: { id },
+            select: { meetingId: true }
         });
 
-        // Transform into a structure easy for Admin view
-        const data = teams.map(team => ({
-            teamName: team.nazwa,
-            teamId: team.id,
-            meetings: team.meetings.map(m => ({
-                id: m.id,
-                date: m.data,
-                description: m.opis,
-                hasReport: !!m.report,
-                report: m.report,
-                isOverdue: !m.report && (new Date(m.data).getTime() + 24 * 60 * 60 * 1000 < Date.now())
-            }))
-        }));
+        if (!existingReport) return { success: false, error: 'Raport nie istnieje.' };
 
-        return { success: true, data }
+        // 2. Update Report content
+        await prisma.report.update({
+            where: { id },
+            data: { tresc: data.tresc }
+        });
+
+        // 3. Reset all attendance for this meeting to NOT confirmed
+        await prisma.attendance.updateMany({
+            where: { meetingId: existingReport.meetingId },
+            data: { confirmed: false }
+        });
+
+        // 4. Mark confirmed existing registrations
+        if (data.confirmedUserIds.length > 0) {
+            await prisma.attendance.updateMany({
+                where: {
+                    meetingId: existingReport.meetingId,
+                    userId: { in: data.confirmedUserIds }
+                },
+                data: { confirmed: true }
+            });
+        }
+
+        // 5. Handle manual attendances (confirmed by default) for added users
+        if (data.addedUserIds.length > 0) {
+            const users = await prisma.user.findMany({
+                where: { id: { in: data.addedUserIds } },
+                select: { id: true, imieNazwisko: true }
+            });
+
+            for (const user of users) {
+                const exists = await prisma.attendance.findFirst({
+                    where: { meetingId: existingReport.meetingId, userId: user.id }
+                });
+
+                if (!exists) {
+                    await prisma.attendance.create({
+                        data: {
+                            meetingId: existingReport.meetingId,
+                            userId: user.id,
+                            imieNazwisko: user.imieNazwisko,
+                            confirmed: true
+                        }
+                    });
+                } else {
+                    await prisma.attendance.update({
+                        where: { id: exists.id },
+                        data: { confirmed: true }
+                    });
+                }
+            }
+        }
+
+        revalidatePath('/reports')
+        revalidatePath('/meetings')
+        revalidatePath('/dashboard')
+
+        return { success: true }
     } catch (error) {
-        console.error('Error fetching admin reports:', error)
-        return { success: false, error: 'Failed to fetch admin reports' }
+        console.error('Error updating report:', error)
+        return { success: false, error: 'Failed to update report' }
     }
 }
 
