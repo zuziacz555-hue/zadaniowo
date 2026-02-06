@@ -482,6 +482,27 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
                                 );
                             }
 
+                            // 6. User: Pending Application Status
+                            if (!isSystemAdmin && notif.type === 'TEAM_APPLICATION' && notif.status === 'PENDING' && notif.userId === user?.id) {
+                                return (
+                                    <motion.div
+                                        key={notif.id}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="bg-orange-50 border-l-4 border-orange-500 p-6 rounded-r-xl flex items-center justify-between shadow-sm"
+                                    >
+                                        <div className="flex gap-4">
+                                            <div className="bg-orange-100 p-2 rounded-full text-orange-600"><Sparkles size={24} /></div>
+                                            <div>
+                                                <h3 className="text-lg font-bold text-orange-800">Zgłoszenie w toku</h3>
+                                                <p className="text-orange-700 font-medium">Twoja aplikacja do zespołu <strong>{notif.team.nazwa}</strong> oczekuje na rozpatrzenie.</p>
+                                            </div>
+                                        </div>
+                                        <button onClick={() => handleDismiss(notif.id)} className="px-6 py-2 bg-orange-200 text-orange-800 font-bold rounded-lg hover:bg-orange-300 transition-colors">Wycofaj</button>
+                                    </motion.div>
+                                );
+                            }
+
                             return null;
                         })}
                     </div>
@@ -748,35 +769,53 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
                             {allTeams
                                 .filter(team =>
                                     team.allowApplications &&
-                                    !teams.some(ut => ut.team.id === team.id) &&
-                                    !notifications.some(n => n.teamId === team.id && n.userId === user?.id && (n.status === 'PENDING' || n.status === 'REJECTED'))
+                                    !teams.some(ut => ut.team.id === team.id)
                                 )
-                                .map((team) => (
-                                    <motion.div
-                                        key={team.id}
-                                        variants={popIn}
-                                        whileHover={{ y: -5 }}
-                                        onClick={() => setApplyingToTeam(team)}
-                                        className="lux-card-strong p-8 cursor-pointer hover:border-primary/50 transition-all group relative overflow-hidden"
-                                    >
-                                        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-500" />
-                                        <div className="relative z-10 space-y-4">
-                                            <div className="flex justify-between items-start">
-                                                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg" style={{ backgroundColor: team.kolor || '#5400FF' }}>
-                                                    <Users size={24} />
+                                .map((team) => {
+                                    const application = notifications.find(n =>
+                                        n.teamId === team.id &&
+                                        n.userId === user?.id &&
+                                        n.type === 'TEAM_APPLICATION'
+                                    );
+                                    const hasApplied = application?.status === 'PENDING';
+                                    const hasBeenRejected = application?.status === 'REJECTED';
+                                    const isBlocked = hasApplied || hasBeenRejected;
+
+                                    return (
+                                        <motion.div
+                                            key={team.id}
+                                            variants={popIn}
+                                            whileHover={isBlocked ? {} : { y: -5 }}
+                                            onClick={() => !isBlocked && setApplyingToTeam(team)}
+                                            className={cn(
+                                                "lux-card-strong p-8 group relative overflow-hidden transition-all",
+                                                isBlocked ? "opacity-80 grayscale-[0.0] cursor-default border-gray-100" : "cursor-pointer hover:border-primary/50"
+                                            )}
+                                        >
+                                            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-500" />
+                                            <div className="relative z-10 space-y-4">
+                                                <div className="flex justify-between items-start">
+                                                    <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg" style={{ backgroundColor: team.kolor || '#5400FF' }}>
+                                                        <Users size={24} />
+                                                    </div>
+                                                    <div className={cn(
+                                                        "text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-sm",
+                                                        hasApplied ? "bg-orange-100 text-orange-600" :
+                                                            hasBeenRejected ? "bg-red-100 text-red-600 border border-red-200" :
+                                                                "bg-primary/10 text-primary"
+                                                    )}>
+                                                        {hasApplied ? 'Zgłoszenie wysłane' : hasBeenRejected ? 'Aplikacja odrzucona' : 'Kliknij aby aplikować'}
+                                                    </div>
                                                 </div>
-                                                <div className="bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full">
-                                                    Kliknij aby aplikować
-                                                </div>
+                                                <h3 className="text-xl font-bold text-gray-900">{team.nazwa}</h3>
+                                                <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+                                                    {team.opis || "Brak opisu dla tego zespołu."}
+                                                </p>
                                             </div>
-                                            <h3 className="text-xl font-bold text-gray-900">{team.nazwa}</h3>
-                                            <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
-                                                {team.opis || "Brak opisu dla tego zespołu."}
-                                            </p>
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            {allTeams.filter(team => team.allowApplications && !teams.some(ut => ut.team.id === team.id) && !notifications.some(n => n.teamId === team.id && n.userId === user?.id && (n.status === 'PENDING' || n.status === 'REJECTED'))).length === 0 && (
+                                        </motion.div>
+                                    );
+                                })}
+                            {allTeams.filter(team => team.allowApplications && !teams.some(ut => ut.team.id === team.id)).length === 0 && (
                                 <div className="col-span-full py-12 text-center bg-gray-50 rounded-[32px] border-2 border-dashed border-gray-200 text-muted-foreground font-medium">
                                     Aktualnie brak dostępnych zespołów do aplikowania.
                                 </div>

@@ -21,11 +21,12 @@ import {
     CheckCircle2,
     ToggleLeft,
     ToggleRight,
-    AlignLeft
+    AlignLeft,
+    RefreshCw
 } from "lucide-react";
 import Link from "next/link";
 import { getUsers } from "@/lib/actions/users";
-import { createTeam, deleteTeam, removeUserFromTeam, addUserToTeam, updateTeam, toggleTeamApplications } from "@/lib/actions/teams";
+import { createTeam, deleteTeam, removeUserFromTeam, addUserToTeam, updateTeam, toggleTeamApplications, resetTeamApplications } from "@/lib/actions/teams";
 import { useRouter } from "next/navigation";
 
 interface TeamsClientProps {
@@ -169,6 +170,19 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
         }
     };
 
+    const handleResetApplications = async (teamId: number) => {
+        if (!confirm("Czy na pewno chcesz przeprowadzić aplikację na nowo? Spowoduje to usunięcie wszystkich obecnych zgłoszeń (również odrzuconych), a uczestniczki będą mogły zaaplikować ponownie.")) return;
+
+        const res = await resetTeamApplications(teamId);
+        if (res.success) {
+            router.refresh();
+            onRefresh?.();
+            alert("System aplikacji został zrestartowany.");
+        } else {
+            alert(res.error || "Błąd podczas resetowania aplikacji.");
+        }
+    };
+
     const currentTeam = teams.find(t => t.id === activeTeamId) || teams[0];
     const pageTitle = isAdmin ? "Zarządzanie zespołami" : `Twój Zespół: ${currentTeam?.nazwa || ""}`;
 
@@ -225,21 +239,15 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
                                 </div>
                                 {!isAdmin && (
                                     <div className="flex items-center gap-6 ml-4 pl-4 border-l border-gray-100">
-                                        {isCoord && (
-                                            <div className="flex flex-col items-center gap-1">
-                                                <button
-                                                    onClick={() => handleToggleApplications(currentTeam.id, !currentTeam.allowApplications)}
-                                                    className={cn(
-                                                        "transition-all flex items-center gap-2 px-3 py-1.5 rounded-xl border font-bold text-[10px] uppercase tracking-wider",
-                                                        currentTeam.allowApplications
-                                                            ? "bg-green-50 text-green-600 border-green-100 hover:bg-green-100"
-                                                            : "bg-gray-50 text-gray-400 border-gray-100 hover:bg-gray-100"
-                                                    )}
-                                                >
-                                                    {currentTeam.allowApplications ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
-                                                    Aplikacje: {currentTeam.allowApplications ? 'WŁĄCZONE' : 'WYŁĄCZONE'}
-                                                </button>
-                                            </div>
+                                        {isCoord && currentTeam.allowApplications && (
+                                            <button
+                                                onClick={() => handleResetApplications(currentTeam.id)}
+                                                className="group flex flex-col items-center gap-1 text-orange-400 hover:text-orange-600 transition-colors"
+                                                title="Przeprowadź aplikację na nowo"
+                                            >
+                                                <RefreshCw size={20} className="group-hover:rotate-180 transition-transform duration-500" />
+                                                <span className="text-[8px] font-black uppercase tracking-widest whitespace-nowrap">Reset Aplikacji</span>
+                                            </button>
                                         )}
                                         <button
                                             onClick={() => handleLeaveTeam(currentTeam.id)}

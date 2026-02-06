@@ -278,3 +278,19 @@ export async function toggleTeamApplications(teamId: number, enabled: boolean) {
         return { success: false, error: 'Failed to toggle applications' };
     }
 }
+export async function resetTeamApplications(teamId: number) {
+    try {
+        await prisma.notification.deleteMany({
+            where: {
+                teamId: teamId,
+                type: 'TEAM_APPLICATION'
+            }
+        });
+        revalidatePath('/dashboard');
+        revalidatePath('/applications');
+        return { success: true };
+    } catch (error) {
+        console.error('Error resetting team applications:', error);
+        return { success: false, error: 'Failed to reset applications' };
+    }
+}

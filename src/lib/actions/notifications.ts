@@ -30,7 +30,8 @@ export async function getNotifications(userId?: number) {
                     { type: 'RESIGNATION', status: { in: ['PENDING', 'WAITING_FOR_CONFIRMATION', 'ACCEPTED'] } },
                     ...(userId ? [
                         { userId, status: 'WAITING_FOR_CONFIRMATION' },
-                        { userId, type: 'APPLICATION_RESULT' }
+                        { userId, type: 'APPLICATION_RESULT' },
+                        { userId, type: 'TEAM_APPLICATION', status: { in: ['PENDING', 'REJECTED'] } }
                     ] : [])
                 ]
             },
