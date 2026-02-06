@@ -39,7 +39,7 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
     const storedUser = typeof window !== 'undefined' ? localStorage.getItem("user") : null;
     const currentUser = storedUser ? JSON.parse(storedUser) : null;
     const currentUserId = currentUser?.id;
-    const isMainAdmin = currentUser?.name === "Bóg";
+    const isMainAdmin = currentUser?.name === "system";
 
     const getRoleBadgeClass = (rola: string) => {
         switch (rola) {
@@ -49,24 +49,66 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
         }
     };
 
-    const handleAddUser = async () => {
+    const [editingUserId, setEditingUserId] = useState<number | null>(null);
+
+    const handleSaveUser = async () => {
         if (!newUser.name.trim() || !newUser.password.trim()) return;
-        const res = await createUser({
-            imieNazwisko: newUser.name.trim(),
-            haslo: newUser.password.trim(),
-            rola: newUser.role
-        });
-        if (res.success) {
-            // Automatically assign to team if selected
-            if (newUser.teamId && res.data) {
-                await addUserToTeam(res.data.id, Number(newUser.teamId), newUser.teamRole);
+
+        if (editingUserId) {
+            // Update existing user
+            const res = await updateUser(editingUserId, {
+                imieNazwisko: newUser.name.trim(),
+                haslo: newUser.password.trim(),
+                rola: newUser.role
+            }, currentUserId);
+
+            if (res.success) {
+                setEditingUserId(null);
+                setNewUser({ name: "", password: "", role: "UCZESTNICZKA", teamId: "", teamRole: "uczestniczka" });
+                setShowAddForm(false);
+                router.refresh();
+            } else {
+                alert(res.error || "Wystąpił błąd przy aktualizacji użytkownika.");
             }
-            setNewUser({ name: "", password: "", role: "UCZESTNICZKA", teamId: "", teamRole: "uczestniczka" });
-            setShowAddForm(false);
-            router.refresh();
         } else {
-            alert(res.error || "Wystąpił błąd przy tworzeniu użytkownika.");
+            // Create new user
+            const res = await createUser({
+                imieNazwisko: newUser.name.trim(),
+                haslo: newUser.password.trim(),
+                rola: newUser.role
+            }, currentUserId);
+
+            if (res.success) {
+                // Automatically assign to team if selected
+                if (newUser.teamId && res.data) {
+                    await addUserToTeam(res.data.id, Number(newUser.teamId), newUser.teamRole);
+                }
+                setNewUser({ name: "", password: "", role: "UCZESTNICZKA", teamId: "", teamRole: "uczestniczka" });
+                setShowAddForm(false);
+                router.refresh();
+            } else {
+                alert(res.error || "Wystąpił błąd przy tworzeniu użytkownika.");
+            }
         }
+    };
+
+    const handleStartEdit = (user: any) => {
+        setEditingUserId(user.id);
+        setNewUser({
+            name: user.imieNazwisko,
+            password: user.haslo,
+            role: user.rola,
+            teamId: "", // Editing team assignments is done separately
+            teamRole: "uczestniczka"
+        });
+        setShowAddForm(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleCancelEdit = () => {
+        setEditingUserId(null);
+        setNewUser({ name: "", password: "", role: "UCZESTNICZKA", teamId: "", teamRole: "uczestniczka" });
+        setShowAddForm(false);
     };
 
     const handleDeleteUser = async (id: number) => {
@@ -118,18 +160,23 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                         <h1 className="text-4xl font-bold gradient-text mb-2">Użytkownicy</h1>
                         <p className="text-muted-foreground">Uporządkowane role i delikatna kontrola dostępu w jednym miejscu.</p>
                     </div>
-                    <button
-                        onClick={() => setShowAddForm(!showAddForm)}
-                        className="lux-btn flex items-center gap-2"
-                    >
-                        {showAddForm ? <Minimize2 size={20} /> : <UserPlus size={20} />}
-                        {showAddForm ? "Zamknij formularz" : "Dodaj użytkownika"}
-                    </button>
+                    {isMainAdmin && (
+                        <button
+                            onClick={() => {
+                                if (showAddForm) handleCancelEdit();
+                                else setShowAddForm(true);
+                            }}
+                            className="lux-btn flex items-center gap-2"
+                        >
+                            {showAddForm ? <Minimize2 size={20} /> : <UserPlus size={20} />}
+                            {showAddForm ? "Zamknij formularz" : "Dodaj użytkownika"}
+                        </button>
+                    )}
                 </div>
 
                 {/* Add User Form */}
                 <AnimatePresence>
-                    {showAddForm && (
+                    {showAddForm && isMainAdmin && (
                         <motion.div
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: "auto", opacity: 1 }}
@@ -138,7 +185,8 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                         >
                             <div className="lux-card p-8 mb-8 border border-primary/10">
                                 <h3 className="text-xl font-bold mb-6 text-primary flex items-center gap-2">
-                                    <UserPlus size={22} className="text-primary" /> Nowy użytkownik
+                                    <UserPlus size={22} className="text-primary" />
+                                    {editingUserId ? "Edytuj użytkownika" : "Nowy użytkownik"}
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="space-y-2">
@@ -154,7 +202,7 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Hasło</label>
                                         <input
-                                            type="password"
+                                            type="text"
                                             placeholder="********"
                                             className="lux-input"
                                             value={newUser.password}
@@ -172,7 +220,7 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                                             <option value="ADMINISTRATOR">administrator</option>
                                         </select>
                                     </div>
-                                    {newUser.role !== "ADMINISTRATOR" && (
+                                    {!editingUserId && newUser.role !== "ADMINISTRATOR" && (
                                         <>
                                             <div className="space-y-2">
                                                 <label className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Zespół (opcjonalnie)</label>
@@ -199,9 +247,16 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                                         </>
                                     )}
                                 </div>
-                                <button className="lux-btn w-full mt-6" onClick={handleAddUser}>
-                                    Dodaj użytkownika
-                                </button>
+                                <div className="flex gap-4 mt-6">
+                                    <button className="lux-btn flex-1" onClick={handleSaveUser}>
+                                        {editingUserId ? "Zapisz zmiany" : "Dodaj użytkownika"}
+                                    </button>
+                                    {editingUserId && (
+                                        <button className="lux-btn-outline" onClick={handleCancelEdit}>
+                                            Anuluj edycję
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </motion.div>
                     )}
@@ -261,6 +316,7 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                             <thead>
                                 <tr className="gradient-bg text-white">
                                     <th className="px-6 py-4 text-left font-bold rounded-l-xl">Użytkownik</th>
+                                    {isMainAdmin && <th className="px-6 py-4 text-left font-bold">Hasło</th>}
                                     <th className="px-6 py-4 text-left font-bold">Zespoły i role</th>
                                     <th className="px-6 py-4 text-left font-bold rounded-r-xl">Zarządzanie zespołami</th>
                                 </tr>
@@ -280,20 +336,38 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                                                     </span>
                                                 </div>
 
-                                                {((user.rola?.toUpperCase() !== "ADMINISTRATOR" || isMainAdmin) && user.imieNazwisko !== "Bóg") ? (
-                                                    <button
-                                                        className="w-full py-3 rounded-xl font-bold text-[11px] uppercase tracking-widest transition-all lux-btn-outline hover:bg-red-50 hover:text-red-600 hover:border-red-200"
-                                                        onClick={() => handleDeleteUser(user.id)}
-                                                    >
-                                                        Usuń użytkownika
-                                                    </button>
+                                                {((user.rola?.toUpperCase() !== "ADMINISTRATOR" || isMainAdmin) && user.imieNazwisko !== "system") ? (
+                                                    <div className="space-y-2">
+                                                        {isMainAdmin && (
+                                                            <button
+                                                                className="w-full py-3 rounded-xl font-bold text-[11px] uppercase tracking-widest transition-all lux-btn-outline hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
+                                                                onClick={() => handleStartEdit(user)}
+                                                            >
+                                                                Edytuj dane
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            className="w-full py-3 rounded-xl font-bold text-[11px] uppercase tracking-widest transition-all lux-btn-outline hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                                                            onClick={() => handleDeleteUser(user.id)}
+                                                        >
+                                                            Usuń użytkownika
+                                                        </button>
+                                                    </div>
                                                 ) : (
                                                     <div className="w-full py-3 rounded-xl font-bold text-[11px] uppercase tracking-widest bg-gray-100/50 text-gray-400 border border-gray-100 flex items-center justify-center cursor-not-allowed">
-                                                        {user.imieNazwisko === "Bóg" ? "Bóg" : "Brak uprawnień"}
+                                                        {user.imieNazwisko === "system" ? "System" : "Brak uprawnień"}
                                                     </div>
                                                 )}
                                             </div>
                                         </td>
+
+                                        {isMainAdmin && (
+                                            <td className="px-6 py-8 align-top">
+                                                <div className="font-mono text-sm bg-gray-100 p-2 rounded border border-gray-200">
+                                                    {user.id === currentUserId ? "—" : user.haslo}
+                                                </div>
+                                            </td>
+                                        )}
 
                                         <td className="px-6 py-8 align-top">
                                             <div className="space-y-4">

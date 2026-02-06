@@ -55,8 +55,14 @@ export async function createUser(data: {
     imieNazwisko: string
     haslo: string
     rola: string
-}) {
+}, callerId: number) {
     try {
+        // Verify caller is "system"
+        const caller = await prisma.user.findUnique({ where: { id: callerId } });
+        if (!caller || caller.imieNazwisko !== "system") {
+            return { success: false, error: 'Tylko system może dodawać użytkowników.' };
+        }
+
         const name = data.imieNazwisko.trim();
 
         // 1. Manually check for existing user to provide a better error message
@@ -90,8 +96,17 @@ export async function updateUser(id: number, data: Partial<{
     imieNazwisko: string
     haslo: string
     rola: string
-}>) {
+}>, callerId: number) {
     try {
+        // Verify caller is "system" if changing sensitive data
+        const caller = await prisma.user.findUnique({ where: { id: callerId } });
+        if (!caller) return { success: false, error: 'Błąd autoryzacji.' };
+
+        // If changing name or password, caller MUST be system
+        if ((data.imieNazwisko || data.haslo) && caller.imieNazwisko !== "system") {
+            return { success: false, error: 'Tylko system może zmieniać nazwy i hasła użytkowników.' };
+        }
+
         const user = await prisma.user.update({
             where: { id },
             data: {
@@ -119,15 +134,15 @@ export async function deleteUser(id: number, callerId: number) {
         if (!targetUser) return { success: false, error: 'Użytkownik nie istnieje.' };
         if (!caller) return { success: false, error: 'Błąd autoryzacji.' };
 
-        // 2. CRITICAL PROTECTION: Never delete main SuperAdmin ("Bóg")
-        if (targetUser.imieNazwisko === "Bóg") {
-            return { success: false, error: 'Boga nie można usunąć.' };
+        // 2. CRITICAL PROTECTION: Never delete main SuperAdmin ("system")
+        if (targetUser.imieNazwisko === "system") {
+            return { success: false, error: 'Systemu nie można usunąć.' };
         }
 
         // 3. HIERARCHY PROTECTION: 
-        // Only "Bóg" can delete other ADMINISTRATORs
-        if (targetUser.rola === "ADMINISTRATOR" && caller.imieNazwisko !== "Bóg") {
-            return { success: false, error: 'Tylko Bóg może usuwać innych administratorów.' };
+        // Only "system" can delete other ADMINISTRATORs
+        if (targetUser.rola === "ADMINISTRATOR" && caller.imieNazwisko !== "system") {
+            return { success: false, error: 'Tylko system może usuwać innych administratorów.' };
         }
 
         // 4. Perform deletion

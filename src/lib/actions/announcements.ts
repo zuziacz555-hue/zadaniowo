@@ -5,8 +5,15 @@ import { revalidatePath } from 'next/cache'
 
 export async function getAnnouncements(teamId?: number, userId?: number) {
     try {
+        const now = new Date();
         const query: any = {
-            where: teamId ? { teamId } : {},
+            where: {
+                ...(teamId ? { teamId } : {}),
+                OR: [
+                    { expiresAt: null },
+                    { expiresAt: { gt: now } }
+                ]
+            },
             include: {
                 team: true,
                 assignments: true
@@ -34,9 +41,21 @@ export async function getAnnouncements(teamId?: number, userId?: number) {
 
             if (!canSeeAll) {
                 query.where.OR = [
-                    { typPrzypisania: "WSZYSCY" },
-                    { assignments: { some: { userId } } }
+                    {
+                        AND: [
+                            { typPrzypisania: "WSZYSCY" },
+                            { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] }
+                        ]
+                    },
+                    {
+                        AND: [
+                            { assignments: { some: { userId } } },
+                            { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] }
+                        ]
+                    }
                 ];
+                // Remove the top-level OR if we handle it inside userId OR
+                delete query.where.OR;
             }
         }
 
@@ -55,12 +74,14 @@ export async function createAnnouncement(data: {
     utworzonePrzez: string
     typPrzypisania?: string
     assignedUserIds?: number[]
+    expiresAt?: Date | null
 }) {
     try {
         const { assignedUserIds, ...rest } = data;
         const announcement = await prisma.announcement.create({
             data: {
                 ...rest,
+                expiresAt: data.expiresAt || null,
                 typPrzypisania: data.typPrzypisania || "WSZYSCY",
                 assignments: assignedUserIds && assignedUserIds.length > 0 ? {
                     create: assignedUserIds.map(userId => ({
@@ -70,10 +91,49 @@ export async function createAnnouncement(data: {
             },
         })
         revalidatePath('/announcements')
+        revalidatePath('/dashboard')
         return { success: true, data: announcement }
     } catch (error) {
         console.error('Error creating announcement:', error)
         return { success: false, error: 'Failed to create announcement' }
+    }
+}
+
+export async function updateAnnouncement(id: number, data: {
+    tytul?: string
+    tresc?: string
+    typPrzypisania?: string
+    assignedUserIds?: number[]
+    expiresAt?: Date | null
+}) {
+    try {
+        const { assignedUserIds, ...rest } = data;
+
+        // Use a transaction to ensure atomic update of announcement and assignments
+        const announcement = await prisma.$transaction(async (tx) => {
+            // 1. Update basic info
+            const updated = await tx.announcement.update({
+                where: { id },
+                data: {
+                    ...rest,
+                    // Handle dynamic assignments update if provided
+                    ...(assignedUserIds !== undefined && {
+                        assignments: {
+                            deleteMany: {},
+                            create: assignedUserIds.map(userId => ({ userId }))
+                        }
+                    })
+                }
+            });
+            return updated;
+        });
+
+        revalidatePath('/announcements')
+        revalidatePath('/dashboard')
+        return { success: true, data: announcement }
+    } catch (error) {
+        console.error('Error updating announcement:', error)
+        return { success: false, error: 'Failed to update announcement' }
     }
 }
 

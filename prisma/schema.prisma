@@ -75,6 +75,7 @@ model Announcement {
   tresc          String
   utworzonePrzez String   @map("utworzone_przez")
   dataUtworzenia DateTime @default(now()) @map("data_utworzenia")
+  expiresAt      DateTime? @map("data_wygasniecia")
   team           Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   assignments    AnnouncementAssignment[]
 

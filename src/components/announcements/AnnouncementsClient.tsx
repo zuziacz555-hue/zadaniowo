@@ -16,10 +16,11 @@ import {
     XCircle,
     CheckCircle
 } from "lucide-react";
-import { createAnnouncement, deleteAnnouncement } from "@/lib/actions/announcements";
+import { createAnnouncement, deleteAnnouncement, updateAnnouncement } from "@/lib/actions/announcements";
 import { getTeamById } from "@/lib/actions/teams";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { Edit2, Timer } from "lucide-react";
 
 interface AnnouncementsClientProps {
     initialAnnouncements: any[];
@@ -49,11 +50,16 @@ export default function AnnouncementsClient({
     const router = useRouter();
     const [selectedTeamId, setSelectedTeamId] = useState<number | null>(activeTeamId || teams[0]?.id || null);
     const [showAddForm, setShowAddForm] = useState(false);
+    const [editingAnnouncementId, setEditingAnnouncementId] = useState<number | null>(null);
+
     const [newAnnouncement, setNewAnnouncement] = useState({
         title: "",
         content: "",
-        typPrzypisania: "WSZYSCY"
+        typPrzypisania: "WSZYSCY",
+        expiresAt: "" as string | null,
     });
+
+    const [isPermanent, setIsPermanent] = useState(true);
     const [teamMembers, setTeamMembers] = useState<any[]>([]);
     const [assignedUserIds, setAssignedUserIds] = useState<number[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
@@ -91,6 +97,8 @@ export default function AnnouncementsClient({
         setStatusMessage(null);
 
         try {
+            const expiryDate = isPermanent ? null : (newAnnouncement.expiresAt ? new Date(newAnnouncement.expiresAt) : null);
+
             if (selectedTeamId === -1) {
                 // BROADCAST MODE
                 if (!confirm(`Czy na pewno chcesz wysłać to ogłoszenie do WSZYSTKICH ${teams.length} zespołów?`)) return;
@@ -101,15 +109,17 @@ export default function AnnouncementsClient({
                     tresc: newAnnouncement.content.trim(),
                     utworzonePrzez: currentUserName,
                     typPrzypisania: "WSZYSCY",
-                    assignedUserIds: []
+                    assignedUserIds: [],
+                    expiresAt: expiryDate
                 }));
 
                 await Promise.all(promises);
 
                 // Success for broadcast
-                setNewAnnouncement({ title: "", content: "", typPrzypisania: "WSZYSCY" });
+                setNewAnnouncement({ title: "", content: "", typPrzypisania: "WSZYSCY", expiresAt: null });
                 setAssignedUserIds([]);
                 setShowAddForm(false);
+                setIsPermanent(true);
                 router.refresh();
                 onRefresh?.();
                 alert("Pomyślnie wysłano ogłoszenie do wszystkich zespołów!");
@@ -122,18 +132,69 @@ export default function AnnouncementsClient({
                     tresc: newAnnouncement.content.trim(),
                     utworzonePrzez: currentUserName,
                     typPrzypisania: newAnnouncement.typPrzypisania,
-                    assignedUserIds: newAnnouncement.typPrzypisania === "OSOBY" ? assignedUserIds : []
+                    assignedUserIds: newAnnouncement.typPrzypisania === "OSOBY" ? assignedUserIds : [],
+                    expiresAt: expiryDate
                 });
 
                 if (res.success) {
-                    setNewAnnouncement({ title: "", content: "", typPrzypisania: "WSZYSCY" });
+                    setNewAnnouncement({ title: "", content: "", typPrzypisania: "WSZYSCY", expiresAt: null });
                     setAssignedUserIds([]);
                     setShowAddForm(false);
+                    setIsPermanent(true);
                     router.refresh();
                     onRefresh?.();
                 } else {
                     setStatusMessage({ type: 'error', text: res.error || "Wystąpił błąd podczas dodawania ogłoszenia." });
                 }
+            }
+        } catch (err: any) {
+            setStatusMessage({ type: 'error', text: "Błąd krytyczny: " + err.message });
+        }
+    };
+
+    const handleStartEdit = (announcement: any) => {
+        setEditingAnnouncementId(announcement.id);
+        setNewAnnouncement({
+            title: announcement.tytul,
+            content: announcement.tresc,
+            typPrzypisania: announcement.typPrzypisania,
+            expiresAt: announcement.expiresAt ? new Date(announcement.expiresAt).toISOString().split('T')[0] : null
+        });
+        setIsPermanent(!announcement.expiresAt);
+        setAssignedUserIds(announcement.assignments?.map((a: any) => a.userId) || []);
+        setShowAddForm(true);
+        // Scroll to form
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleEditAnnouncement = async () => {
+        if (!editingAnnouncementId) return;
+        if (!newAnnouncement.title.trim() || !newAnnouncement.content.trim()) return;
+
+        setStatusMessage(null);
+
+        try {
+            const expiryDate = isPermanent ? null : (newAnnouncement.expiresAt ? new Date(newAnnouncement.expiresAt) : null);
+
+            const res = await updateAnnouncement(editingAnnouncementId, {
+                tytul: newAnnouncement.title.trim(),
+                tresc: newAnnouncement.content.trim(),
+                typPrzypisania: newAnnouncement.typPrzypisania,
+                assignedUserIds: newAnnouncement.typPrzypisania === "OSOBY" ? assignedUserIds : [],
+                expiresAt: expiryDate
+            });
+
+            if (res.success) {
+                setEditingAnnouncementId(null);
+                setNewAnnouncement({ title: "", content: "", typPrzypisania: "WSZYSCY", expiresAt: null });
+                setAssignedUserIds([]);
+                setShowAddForm(false);
+                setIsPermanent(true);
+                router.refresh();
+                onRefresh?.();
+                setStatusMessage({ type: 'success', text: "Ogłoszenie zostało zaktualizowane." });
+            } else {
+                setStatusMessage({ type: 'error', text: res.error || "Błąd podczas aktualizacji." });
             }
         } catch (err: any) {
             setStatusMessage({ type: 'error', text: "Błąd krytyczny: " + err.message });
@@ -205,15 +266,37 @@ export default function AnnouncementsClient({
                                 <div className="space-y-6">
                                     {statusMessage && (
                                         <div className={cn(
-                                            "p-4 rounded-xl text-sm font-bold flex items-center gap-3 animate-slide-in",
+                                            "p-4 rounded-xl text-sm font-bold flex items-center justify-between gap-3 animate-slide-in",
                                             statusMessage.type === 'error' ? "bg-red-50 text-red-600 border border-red-100" : "bg-green-50 text-green-600 border border-green-100"
                                         )}>
-                                            {statusMessage.type === 'error' ? <XCircle size={18} /> : <CheckCircle size={18} />}
-                                            {statusMessage.text}
+                                            <div className="flex items-center gap-3">
+                                                {statusMessage.type === 'error' ? <XCircle size={18} /> : <CheckCircle size={18} />}
+                                                {statusMessage.text}
+                                            </div>
+                                            <button onClick={() => setStatusMessage(null)} className="opacity-50 hover:opacity-100"><X size={14} /></button>
                                         </div>
                                     )}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        {/* Left Column: Header, Title, Content */}
                                         <div className="space-y-6">
+                                            <div className="flex justify-between items-center bg-gray-50/50 p-4 rounded-2xl border border-gray-100 mb-2">
+                                                <h2 className="text-lg font-black uppercase tracking-tight text-gray-700">
+                                                    {editingAnnouncementId ? "Edytuj ogłoszenie" : "Nowe ogłoszenie"}
+                                                </h2>
+                                                {editingAnnouncementId && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setEditingAnnouncementId(null);
+                                                            setNewAnnouncement({ title: "", content: "", typPrzypisania: "WSZYSCY", expiresAt: null });
+                                                            setShowAddForm(false);
+                                                        }}
+                                                        className="text-xs font-bold text-red-500 hover:bg-red-50 px-3 py-1 rounded-lg transition-colors"
+                                                    >
+                                                        Anuluj edycję
+                                                    </button>
+                                                )}
+                                            </div>
+
                                             <div className="space-y-2">
                                                 <label className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Tytuł ogłoszenia *</label>
                                                 <input
@@ -235,9 +318,54 @@ export default function AnnouncementsClient({
                                             </div>
                                         </div>
 
+                                        {/* Right Column: Expiry, Audience, Assignments */}
                                         <div className="space-y-6">
+                                            <div className="space-y-4">
+                                                <div className="flex justify-between items-center">
+                                                    <label className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Wygasanie</label>
+                                                    <label className="flex items-center gap-2 cursor-pointer group">
+                                                        <div className={cn(
+                                                            "w-10 h-5 rounded-full relative transition-colors duration-300",
+                                                            isPermanent ? "bg-primary" : "bg-gray-200"
+                                                        )}>
+                                                            <input
+                                                                type="checkbox"
+                                                                className="sr-only"
+                                                                checked={isPermanent}
+                                                                onChange={(e) => setIsPermanent(e.target.checked)}
+                                                            />
+                                                            <div className={cn(
+                                                                "absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform duration-300",
+                                                                isPermanent && "translate-x-5"
+                                                            )} />
+                                                        </div>
+                                                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 group-hover:text-primary transition-colors">Bezterminowo</span>
+                                                    </label>
+                                                </div>
+
+                                                <AnimatePresence>
+                                                    {!isPermanent && (
+                                                        <motion.div
+                                                            initial={{ opacity: 0, scale: 0.95 }}
+                                                            animate={{ opacity: 1, scale: 1 }}
+                                                            exit={{ opacity: 0, scale: 0.95 }}
+                                                            className="relative"
+                                                        >
+                                                            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-primary" size={18} />
+                                                            <input
+                                                                type="date"
+                                                                className="w-full lux-input pl-12 font-bold"
+                                                                value={newAnnouncement.expiresAt || ""}
+                                                                onChange={(e) => setNewAnnouncement(prev => ({ ...prev, expiresAt: e.target.value }))}
+                                                                min={new Date().toISOString().split('T')[0]}
+                                                            />
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+                                            </div>
+
                                             <div className="space-y-2">
-                                                <label className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Do kogo</label>
+                                                <label className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Odbiorcy</label>
                                                 <div className="flex gap-2">
                                                     <button
                                                         onClick={() => setNewAnnouncement(prev => ({ ...prev, typPrzypisania: "WSZYSCY" }))}
@@ -328,8 +456,15 @@ export default function AnnouncementsClient({
                                         </div>
                                     </div>
 
-                                    <button className="w-full lux-btn flex items-center justify-center gap-2 py-4" onClick={handleAddAnnouncement}>
-                                        <Plus size={20} /> Opublikuj ogłoszenie
+                                    <button
+                                        className={cn(
+                                            "w-full lux-btn flex items-center justify-center gap-2 py-4 mt-8",
+                                            editingAnnouncementId ? "bg-orange-600 hover:bg-orange-700 ring-orange-100" : ""
+                                        )}
+                                        onClick={editingAnnouncementId ? handleEditAnnouncement : handleAddAnnouncement}
+                                    >
+                                        {editingAnnouncementId ? <CheckCircle size={20} /> : <Plus size={20} />}
+                                        {editingAnnouncementId ? "Zapisz zmiany" : "Opublikuj ogłoszenie"}
                                     </button>
                                 </div>
                             </div>
@@ -368,7 +503,23 @@ export default function AnnouncementsClient({
                                         </div>
 
                                         {isAuthorizedToManage && (
-                                            <div className="flex justify-end pt-4 border-t border-black/5">
+                                            <div className="flex justify-end pt-4 border-t border-black/5 gap-3">
+                                                {o.expiresAt && (
+                                                    <span className="mr-auto flex items-center gap-1.5 text-[10px] font-black uppercase text-orange-500 bg-orange-50 px-3 py-1 rounded-lg">
+                                                        <Timer size={12} /> Wygasa: {new Date(o.expiresAt).toLocaleDateString()}
+                                                    </span>
+                                                )}
+                                                {!o.expiresAt && (
+                                                    <span className="mr-auto flex items-center gap-1.5 text-[10px] font-black uppercase text-green-500 bg-green-50 px-3 py-1 rounded-lg">
+                                                        <CheckCircle size={12} /> Bezterminowo
+                                                    </span>
+                                                )}
+                                                <button
+                                                    className="lux-btn-outline text-xs flex items-center gap-2 bg-orange-50 text-orange-600 border-orange-100 hover:bg-orange-100"
+                                                    onClick={() => handleStartEdit(o)}
+                                                >
+                                                    <Edit2 size={14} /> Edytuj
+                                                </button>
                                                 <button
                                                     className="lux-btn-outline text-xs flex items-center gap-2"
                                                     onClick={() => handleDeleteAnnouncement(o.id)}
