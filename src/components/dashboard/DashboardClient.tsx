@@ -29,7 +29,6 @@ const menuItems = [
 
     { title: "Zespół", description: "Członkowie Twojego zespołu", icon: Users, tone: "lux-gradient", href: "/admin-teams", coordOnly: true, excludeAdmin: true },
     { title: "Sprawozdania", description: "Uzupełnij raport ze spotkania", icon: MessageSquareText, tone: "lux-gradient", href: "/reports", coordOnly: true },
-    { title: "Do sprawdzenia", description: "Weryfikuj zgłoszenia uczestników", icon: CheckCircle2, tone: "lux-gradient", href: "/submissions", coordOnly: true },
 
     { title: "Zespoły", description: "Zarządzaj wszystkimi zespołami", icon: Crown, tone: "lux-gradient", href: "/admin-teams", adminOnly: true, special: true },
     { title: "Użytkownicy", description: "Zarządzaj użytkownikami systemu", icon: UserCog, tone: "lux-gradient", href: "/admin-users", adminOnly: true, special: true },

@@ -403,6 +403,13 @@ export async function deleteTaskExecution(taskId: number, userId: number) {
             }
         });
 
+        await prisma.taskAssignment.deleteMany({
+            where: {
+                taskId,
+                userId
+            }
+        });
+
         revalidatePath('/tasks');
         revalidatePath('/admin-teams');
         revalidatePath('/submissions');

@@ -28,7 +28,8 @@ import {
     submitTaskWork,
     approveTaskWork,
     rejectTaskWork,
-    closeTaskGlobally
+    closeTaskGlobally,
+    deleteTaskExecution
 } from "@/lib/actions/tasks";
 import { getTeams, getTeamById } from "@/lib/actions/teams";
 import { useRouter } from "next/navigation";
@@ -150,6 +151,11 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
         // USER REQUEST FIX: Hide globally accepted tasks OR tasks where ALL executions are accepted
         const zlecone = tasks.filter(t => {
             if (t.status === "ZAAKCEPTOWANE") return false;
+
+            // NEW: Hide orphans (no assignments, no executions) - effectively deleted for all users
+            if ((!t.executions || t.executions.length === 0) && (!t.assignments || t.assignments.length === 0)) {
+                return false;
+            }
 
             // If executions exist, check if ALL are accepted (ignoring coordinators)
             if (t.executions && t.executions.length > 0) {
@@ -841,7 +847,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                         </div>
 
                                         {/* Content based on selected tab */}
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
                                             {(verificationTab === "oczekujace" ? weryfikacja_oczekujace :
                                                 verificationTab === "zaakceptowane" ? weryfikacja_zaakceptowane :
                                                     weryfikacja_doPoprawy).map((exec: any) => (
@@ -1373,7 +1379,7 @@ function CollapsibleExecutionCard({ execution, onApprove, onReject, isAdmin, tab
                             <div className="space-y-2">
                                 <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest pl-1">Odpowiedź uczestnika</p>
                                 <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 text-sm text-gray-800">
-                                    {execution.odpowiedz ? execution.odpowiedz : <span className="italic text-gray-400">Brak opisu tekstowego</span>}
+                                    {(task.submissions?.find((s: any) => s.userId === execution.userId)?.opis) || execution.odpowiedz || <span className="italic text-gray-400">Brak opisu tekstowego</span>}
                                 </div>
                             </div>
 
@@ -1415,6 +1421,23 @@ function CollapsibleExecutionCard({ execution, onApprove, onReject, isAdmin, tab
                                         {tabType === "zaakceptowane" ? <CheckCircle size={12} /> : <AlertTriangle size={12} />}
                                         {tabType === "zaakceptowane" ? "ZAAKCEPTOWANE" : "ODRZUCONE DO POPRAWY"}
                                     </span>
+                                </div>
+                            )}
+
+                            {/* DELETE BUTTON FOR ACCEPTED TASKS */}
+                            {tabType === "zaakceptowane" && (
+                                <div className="pt-4 border-t border-gray-100 mt-4">
+                                    <button
+                                        onClick={async (e) => {
+                                            e.stopPropagation();
+                                            if (confirm("Czy na pewno chcesz trwale usunąć to zgłoszenie? Tej operacji nie można cofnąć.")) {
+                                                await deleteTaskExecution(task.id, execution.userId);
+                                            }
+                                        }}
+                                        className="w-full py-3 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 border border-red-100"
+                                    >
+                                        <Trash2 size={16} /> Usuń zgłoszenie trwale
+                                    </button>
                                 </div>
                             )}
                         </div>

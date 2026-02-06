@@ -241,7 +241,7 @@ export default function SubmissionsClient({ initialTasks, teams = [], isAdmin, o
                         <div className="space-y-8">
                             <AnimatePresence mode="popLayout">
                                 {flatExecutions.length > 0 ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
                                         {flatExecutions.map((exec: any) => (
                                             <CollapsibleExecutionCard
                                                 key={exec.id}
@@ -409,7 +409,7 @@ function CollapsibleExecutionCard({
                             <div className="space-y-2">
                                 <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest pl-1">Odpowiedź uczestnika</p>
                                 <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 text-sm text-gray-800">
-                                    {execution.odpowiedz ? execution.odpowiedz : <span className="italic text-gray-400">Brak opisu tekstowego</span>}
+                                    {(task.submissions?.find((s: any) => s.userId === execution.userId)?.opis) || execution.odpowiedz || <span className="italic text-gray-400">Brak opisu tekstowego</span>}
                                 </div>
                             </div>
 
@@ -472,13 +472,13 @@ function CollapsibleExecutionCard({
                                             <button
                                                 onClick={async (e) => {
                                                     e.stopPropagation();
-                                                    if (confirm("Cofnąć akceptację?")) {
+                                                    if (confirm("Czy na pewno chcesz trwale usunąć to zgłoszenie? Tej operacji nie można cofnąć.")) {
                                                         await deleteTaskExecution(task.id, execution.userId);
                                                     }
                                                 }}
-                                                className="w-full py-2 bg-gray-100 hover:bg-red-50 text-gray-500 hover:text-red-500 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2"
+                                                className="w-full py-3 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 border border-red-100"
                                             >
-                                                <Trash2 size={14} /> Cofnij akceptację
+                                                <Trash2 size={16} /> Usuń zgłoszenie trwale
                                             </button>
                                         )}
                                     </>
