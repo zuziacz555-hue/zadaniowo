@@ -160,13 +160,15 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
 
     // Render stats calculation as a reusable component or helper
     const MemberStats = ({ ut, team }: { ut: any, team: any }) => {
-        const assignedTasks = team.tasks.filter((t: any) =>
-            t.typPrzypisania === "WSZYSCY" || t.assignments.some((a: any) => a.userId === ut.user.id)
+        if (!team || !ut || !ut.user) return null;
+
+        const assignedTasks = (team.tasks || []).filter((t: any) =>
+            t.typPrzypisania === "WSZYSCY" || (t.assignments || []).some((a: any) => a.userId === ut.user.id)
         );
 
         const totalCount = assignedTasks.length;
         // Count confirmed/completed tasks
-        const completedCount = ut.user.taskExecutions.filter((e: any) => e.status === "ZATWIERDZONE" || (e.wykonane && e.status !== "ODRZUCONE")).length;
+        const completedCount = (ut.user.taskExecutions || []).filter((e: any) => e.status === "ZATWIERDZONE" || (e.wykonane && e.status !== "ODRZUCONE")).length;
 
         return (
             <div className="flex gap-4">
@@ -346,8 +348,12 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
 
                                         <div className="p-8 flex-1 space-y-6">
                                             <button
-                                                onClick={() => setSelectedTeam(team)}
-                                                className="w-full lux-btn flex items-center justify-center gap-2"
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedTeam(team);
+                                                }}
+                                                className="w-full lux-btn flex items-center justify-center gap-2 relative z-[20]"
                                             >
                                                 <Users size={18} /> Lista osób
                                             </button>
@@ -394,7 +400,7 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
                 {/* Member List Details Modal */}
                 <AnimatePresence>
                     {mounted && selectedTeam && createPortal(
-                        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-xl">
+                        <div key="member-list-modal" className="fixed inset-0 z-[10000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-xl">
                             <motion.div
                                 initial={{ scale: 0.95, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
