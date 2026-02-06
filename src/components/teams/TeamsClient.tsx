@@ -158,39 +158,17 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
     const currentTeam = teams.find(t => t.id === activeTeamId) || teams[0];
     const pageTitle = isAdmin ? "Zarządzanie zespołami" : `Twój Zespół: ${currentTeam?.nazwa || ""}`;
 
-    // Render stats calculation as a reusable component or helper
-    const MemberStats = ({ ut, team }: { ut: any, team: any }) => {
-        if (!team || !ut || !ut.user) return null;
-
-        const assignedTasks = (team.tasks || []).filter((t: any) =>
-            t.typPrzypisania === "WSZYSCY" || (t.assignments || []).some((a: any) => a.userId === ut.user.id)
-        );
-
-        const totalCount = assignedTasks.length;
-        // Count confirmed/completed tasks
-        const completedCount = (ut.user.taskExecutions || []).filter((e: any) => e.status === "ZATWIERDZONE" || (e.wykonane && e.status !== "ODRZUCONE")).length;
-
-        return (
-            <div className="flex gap-4">
-                <div className="flex flex-col items-center px-6 py-2 bg-blue-50 rounded-2xl border border-blue-100 min-w-[120px]">
-                    <span className="text-xl font-bold text-blue-600">{completedCount} / {totalCount}</span>
-                    <span className="text-9px font-bold text-blue-700/60 uppercase tracking-widest">Zrobione / Zlecone</span>
-                </div>
-            </div>
-        );
-    };
-
     // Helper to calc team totals
     const getTeamTaskStats = (team: any) => {
         let totalAssigned = 0;
         let totalCompleted = 0;
 
         team.users?.forEach((ut: any) => {
-            const assignedTasks = team.tasks.filter((t: any) =>
-                t.typPrzypisania === "WSZYSCY" || t.assignments.some((a: any) => a.userId === ut.user.id)
+            const assignedTasks = (team.tasks || []).filter((t: any) =>
+                t.typPrzypisania === "WSZYSCY" || (t.assignments || []).some((a: any) => a.userId === ut.user.id)
             );
             totalAssigned += assignedTasks.length;
-            totalCompleted += ut.user.taskExecutions.filter((e: any) => e.status === "ZATWIERDZONE" || (e.wykonane && e.status !== "ODRZUCONE")).length;
+            totalCompleted += (ut.user.taskExecutions || []).filter((e: any) => e.status === "ZATWIERDZONE" || (e.wykonane && e.status !== "ODRZUCONE")).length;
         });
 
         return { totalAssigned, totalCompleted };
@@ -351,6 +329,7 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
                                                 type="button"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
+                                                    console.log("DEBUG: Open team details click", team.nazwa);
                                                     setSelectedTeam(team);
                                                 }}
                                                 className="w-full lux-btn flex items-center justify-center gap-2 relative z-[20]"
@@ -398,155 +377,180 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
                 )}
 
                 {/* Member List Details Modal */}
-                <AnimatePresence>
-                    {mounted && selectedTeam && createPortal(
-                        <div key="member-list-modal" className="fixed inset-0 z-[10000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-xl">
-                            <motion.div
-                                initial={{ scale: 0.95, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                exit={{ scale: 0.95, opacity: 0 }}
-                                className="relative bg-white w-full max-w-[800px] rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
-                            >
-                                <div className="p-10 text-white relative flex-shrink-0 transition-colors duration-500" style={{ backgroundColor: selectedTeam.kolor || '#5400FF' }}>
-                                    <button
-                                        onClick={() => setSelectedTeam(null)}
-                                        className="absolute top-8 right-8 p-3 bg-white/20 rounded-full hover:bg-white/30 transition-all"
-                                    >
-                                        <X size={20} />
-                                    </button>
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-4">
-                                            <h3 className="text-3xl font-bold flex items-center gap-3" style={{ color: getContrastColor(selectedTeam.kolor || '#5400FF') }}>
-                                                <Users size={32} /> {selectedTeam.nazwa}
-                                            </h3>
-                                            {isAdmin && (
-                                                <div className="relative group">
-                                                    <label htmlFor="team-color-picker" className="p-2 bg-white/20 rounded-xl hover:bg-white/30 cursor-pointer transition-all flex items-center gap-2">
-                                                        <Palette size={16} /> <span className="text-[10px] font-bold uppercase">Zmień kolor</span>
-                                                    </label>
-                                                    <input
-                                                        id="team-color-picker"
-                                                        type="color"
-                                                        className="absolute opacity-0 inset-0 cursor-pointer w-full h-full"
-                                                        value={selectedTeam.kolor || "#5400FF"}
-                                                        onChange={async (e) => {
-                                                            const newColor = e.target.value;
-                                                            // Optimistic update
-                                                            setSelectedTeam((prev: any) => ({ ...prev, kolor: newColor }));
-                                                            await updateTeam(selectedTeam.id, selectedTeam.nazwa, newColor);
-                                                            router.refresh();
-                                                            onRefresh?.();
-                                                        }}
-                                                    />
-                                                </div>
-                                            )}
-                                        </div>
-                                        <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: getContrastColor(selectedTeam.kolor || '#5400FF'), opacity: 0.7 }}>Przegląd aktywności zespołu</p>
-                                    </div>
-                                </div>
-
-                                <div className="p-10 overflow-y-auto custom-scrollbar space-y-6 flex-grow">
-
-                                    {isAdmin && !showAddMember && (
+                {mounted && createPortal(
+                    <AnimatePresence>
+                        {selectedTeam && (
+                            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-xl">
+                                <motion.div
+                                    key="member-list-modal"
+                                    initial={{ scale: 0.95, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    exit={{ scale: 0.95, opacity: 0 }}
+                                    className="relative bg-white w-full max-w-[800px] rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+                                >
+                                    <div className="p-10 text-white relative flex-shrink-0 transition-colors duration-500" style={{ backgroundColor: selectedTeam.kolor || '#5400FF' }}>
                                         <button
-                                            onClick={prepareAddMember}
-                                            className="w-full py-4 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 font-bold hover:border-primary hover:text-primary hover:bg-gray-50 transition-all flex items-center justify-center gap-2 mb-6"
+                                            onClick={() => setSelectedTeam(null)}
+                                            className="absolute top-8 right-8 p-3 bg-white/20 rounded-full hover:bg-white/30 transition-all"
                                         >
-                                            <Plus size={20} /> Dodaj członka zespołu
+                                            <X size={20} />
                                         </button>
-                                    )}
-
-                                    {/* Add Member Selection View */}
-                                    {showAddMember ? (
-                                        <div className="space-y-4 animate-slide-in">
-                                            <div className="flex justify-between items-center mb-4">
-                                                <h4 className="text-lg font-bold">Wybierz osobę do dodania</h4>
-                                                <button onClick={() => setShowAddMember(false)} className="text-sm font-bold text-gray-400 hover:text-gray-600">Anuluj</button>
-                                            </div>
-                                            <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-                                                {allUsers
-                                                    .filter((u: any) =>
-                                                        !selectedTeam.users.some((existing: any) => existing.userId === u.id) &&
-                                                        u.rola !== 'ADMINISTRATOR'
-                                                    )
-                                                    .map((u: any) => (
-                                                        <div key={u.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl hover:bg-white hover:shadow-md transition-all border border-gray-100">
-                                                            <div className="font-bold">{u.imieNazwisko} <span className="text-xs text-muted-foreground font-normal">({u.rola})</span></div>
-                                                            <div className="flex gap-2">
-                                                                <button
-                                                                    onClick={() => handleAddUserToTeam(u, "uczestniczka")}
-                                                                    className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-bold hover:bg-gray-100 hover:text-primary"
-                                                                >
-                                                                    Jako Uczest.
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleAddUserToTeam(u, "koordynatorka")}
-                                                                    className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-bold hover:bg-purple-50 hover:text-purple-600"
-                                                                >
-                                                                    Jako Koord.
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                {allUsers.filter((u: any) => !selectedTeam.users.some((existing: any) => existing.userId === u.id)).length === 0 && (
-                                                    <p className="text-center text-muted-foreground italic">Brak dostępnych użytkowników do dodania.</p>
+                                        <div className="space-y-4">
+                                            <div className="flex items-center gap-4">
+                                                <h3 className="text-3xl font-bold flex items-center gap-3" style={{ color: getContrastColor(selectedTeam.kolor || '#5400FF') }}>
+                                                    <Users size={32} /> {selectedTeam.nazwa}
+                                                </h3>
+                                                {isAdmin && (
+                                                    <div className="relative group">
+                                                        <label htmlFor="team-color-picker" className="p-2 bg-white/20 rounded-xl hover:bg-white/30 cursor-pointer transition-all flex items-center gap-2">
+                                                            <Palette size={16} /> <span className="text-[10px] font-bold uppercase">Zmień kolor</span>
+                                                        </label>
+                                                        <input
+                                                            id="team-color-picker"
+                                                            type="color"
+                                                            className="absolute opacity-0 inset-0 cursor-pointer w-full h-full"
+                                                            value={selectedTeam.kolor || "#5400FF"}
+                                                            onChange={async (e) => {
+                                                                const newColor = e.target.value;
+                                                                // Optimistic update
+                                                                setSelectedTeam((prev: any) => ({ ...prev, kolor: newColor }));
+                                                                await updateTeam(selectedTeam.id, selectedTeam.nazwa, newColor);
+                                                                router.refresh();
+                                                                onRefresh?.();
+                                                            }}
+                                                        />
+                                                    </div>
                                                 )}
                                             </div>
+                                            <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: getContrastColor(selectedTeam.kolor || '#5400FF'), opacity: 0.7 }}>Przegląd aktywności zespołu</p>
                                         </div>
-                                    ) : (
-                                        // Members List
-                                        <>
-                                            {selectedTeam.users?.map((ut: any, idx: number) => (
-                                                <div key={idx} className="bg-[#fcfcff] border border-gray-100 p-6 rounded-[28px] hover:shadow-xl transition-all group/member">
-                                                    <div className="flex items-center justify-between gap-6">
-                                                        <div className="flex items-center gap-5">
-                                                            <div className="w-14 h-14 rounded-2xl lux-gradient-soft flex items-center justify-center text-white font-bold text-xl shadow-lg ring-4 ring-white">
-                                                                {ut.user.imieNazwisko.charAt(0)}
-                                                            </div>
-                                                            <div className="space-y-1">
-                                                                <span className="font-bold text-lg text-foreground block">{ut.user.imieNazwisko}</span>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className={cn(
-                                                                        "px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest",
-                                                                        ut.rola === 'koordynatorka' ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-500"
-                                                                    )}>
-                                                                        {ut.rola}
-                                                                    </span>
+                                    </div>
+
+                                    <div className="p-10 overflow-y-auto custom-scrollbar space-y-6 flex-grow">
+
+                                        {isAdmin && !showAddMember && (
+                                            <button
+                                                onClick={prepareAddMember}
+                                                className="w-full py-4 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 font-bold hover:border-primary hover:text-primary hover:bg-gray-50 transition-all flex items-center justify-center gap-2 mb-6"
+                                            >
+                                                <Plus size={20} /> Dodaj członka zespołu
+                                            </button>
+                                        )}
+
+                                        {/* Add Member Selection View */}
+                                        {showAddMember ? (
+                                            <div className="space-y-4 animate-slide-in">
+                                                <div className="flex justify-between items-center mb-4">
+                                                    <h4 className="text-lg font-bold">Wybierz osobę do dodania</h4>
+                                                    <button onClick={() => setShowAddMember(false)} className="text-sm font-bold text-gray-400 hover:text-gray-600">Anuluj</button>
+                                                </div>
+                                                <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                                                    {allUsers
+                                                        .filter((u: any) =>
+                                                            !selectedTeam.users.some((existing: any) => existing.userId === u.id) &&
+                                                            u.rola !== 'ADMINISTRATOR'
+                                                        )
+                                                        .map((u: any) => (
+                                                            <div key={u.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl hover:bg-white hover:shadow-md transition-all border border-gray-100">
+                                                                <div className="font-bold">{u.imieNazwisko} <span className="text-xs text-muted-foreground font-normal">({u.rola})</span></div>
+                                                                <div className="flex gap-2">
+                                                                    <button
+                                                                        onClick={() => handleAddUserToTeam(u, "uczestniczka")}
+                                                                        className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-bold hover:bg-gray-100 hover:text-primary"
+                                                                    >
+                                                                        Jako Uczest.
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleAddUserToTeam(u, "koordynatorka")}
+                                                                        className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-bold hover:bg-purple-50 hover:text-purple-600"
+                                                                    >
+                                                                        Jako Koord.
+                                                                    </button>
                                                                 </div>
                                                             </div>
-                                                        </div>
+                                                        ))}
+                                                    {allUsers.filter((u: any) => !selectedTeam.users.some((existing: any) => existing.userId === u.id)).length === 0 && (
+                                                        <p className="text-center text-muted-foreground italic">Brak dostępnych użytkowników do dodania.</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            // Members List
+                                            <>
+                                                {selectedTeam.users?.map((ut: any, idx: number) => (
+                                                    <div key={idx} className="bg-[#fcfcff] border border-gray-100 p-6 rounded-[28px] hover:shadow-xl transition-all group/member">
+                                                        <div className="flex items-center justify-between gap-6">
+                                                            <div className="flex items-center gap-5">
+                                                                <div className="w-14 h-14 rounded-2xl lux-gradient-soft flex items-center justify-center text-white font-bold text-xl shadow-lg ring-4 ring-white">
+                                                                    {ut.user.imieNazwisko.charAt(0)}
+                                                                </div>
+                                                                <div className="space-y-1">
+                                                                    <span className="font-bold text-lg text-foreground block">{ut.user.imieNazwisko}</span>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className={cn(
+                                                                            "px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest",
+                                                                            ut.rola === 'koordynatorka' ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-500"
+                                                                        )}>
+                                                                            {ut.rola}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
 
-                                                        <div className="flex gap-4">
-                                                            <MemberStats ut={ut} team={selectedTeam} />
+                                                            <div className="flex gap-4">
+                                                                <MemberStats ut={ut} team={selectedTeam} />
 
-                                                            {(isAdmin || (isCoord && ut.rola !== 'koordynatorka')) && (
-                                                                <button
-                                                                    className="w-12 h-12 flex items-center justify-center bg-white text-red-500 rounded-2xl shadow-sm border border-gray-100 hover:bg-red-500 hover:text-white transition-all opacity-0 group-hover/member:opacity-100"
-                                                                    onClick={() => handleRemoveMember(selectedTeam.id, ut.userId)}
-                                                                >
-                                                                    <UserMinus size={18} />
-                                                                </button>
-                                                            )}
+                                                                {(isAdmin || (isCoord && ut.rola !== 'koordynatorka')) && (
+                                                                    <button
+                                                                        className="w-12 h-12 flex items-center justify-center bg-white text-red-500 rounded-2xl shadow-sm border border-gray-100 hover:bg-red-500 hover:text-white transition-all opacity-0 group-hover/member:opacity-100"
+                                                                        onClick={() => handleRemoveMember(selectedTeam.id, ut.userId)}
+                                                                    >
+                                                                        <UserMinus size={18} />
+                                                                    </button>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            ))}
+                                                ))}
 
-                                            {(!selectedTeam.users || selectedTeam.users.length === 0) && (
-                                                <div className="text-center py-20 opacity-20 space-y-4">
-                                                    <Users size={60} className="mx-auto" />
-                                                    <p className="font-bold text-xl uppercase tracking-widest">Brak członków</p>
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
-                                </div>
-                            </motion.div>
-                        </div>,
-                        document.body
-                    )}
-                </AnimatePresence>
+                                                {(!selectedTeam.users || selectedTeam.users.length === 0) && (
+                                                    <div className="text-center py-20 opacity-20 space-y-4">
+                                                        <Users size={60} className="mx-auto" />
+                                                        <p className="font-bold text-xl uppercase tracking-widest">Brak członków</p>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                </motion.div>
+                            </div>
+                        )}
+                    </AnimatePresence>,
+                    document.body
+                )}
             </div>
         </DashboardLayout>
     );
 }
+
+// Sub-component moved outside to prevent re-creation on every render
+const MemberStats = ({ ut, team }: { ut: any, team: any }) => {
+    if (!team || !ut || !ut.user) return null;
+
+    const assignedTasks = (team.tasks || []).filter((t: any) =>
+        t.typPrzypisania === "WSZYSCY" || (t.assignments || []).some((a: any) => a.userId === ut.user.id)
+    );
+
+    const totalCount = assignedTasks.length;
+    // Count confirmed/completed tasks
+    const completedCount = (ut.user.taskExecutions || []).filter((e: any) => e.status === "ZATWIERDZONE" || (e.wykonane && e.status !== "ODRZUCONE")).length;
+
+    return (
+        <div className="flex gap-4">
+            <div className="flex flex-col items-center px-6 py-2 bg-blue-50 rounded-2xl border border-blue-100 min-w-[120px]">
+                <span className="text-xl font-bold text-blue-600">{completedCount} / {totalCount}</span>
+                <span className="text-9px font-bold text-blue-700/60 uppercase tracking-widest">Zrobione / Zlecone</span>
+            </div>
+        </div>
+    );
+};
