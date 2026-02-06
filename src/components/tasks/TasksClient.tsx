@@ -20,7 +20,11 @@ import {
     Check,
     Users,
     Folder,
-    X
+    X,
+    ChevronRight,
+    Calendar,
+    Edit2,
+    Save
 } from "lucide-react";
 import {
     createTask,
@@ -29,7 +33,8 @@ import {
     approveTaskWork,
     rejectTaskWork,
     closeTaskGlobally,
-    deleteTaskExecution
+    deleteTaskExecution,
+    updateTask
 } from "@/lib/actions/tasks";
 import { getTeams, getTeamById } from "@/lib/actions/teams";
 import { useRouter } from "next/navigation";
@@ -44,6 +49,93 @@ interface TasksClientProps {
     onRefresh: () => void;
 }
 
+const AdminTaskTile = ({ task, onClick }: { task: any, onClick: () => void }) => {
+    // Calculate global progress based on executions
+    // Note: assignments is array of {userId, ...} from TaskAssignment. executions is TaskExecution.
+    // If CALY_ZESPOL, assignments might be empty but executions populated.
+    // We rely on executions for progress tracking regardless of assignment type.
+    const totalExecutors = task.executions?.length || 0;
+    const completedCount = task.executions?.filter((e: any) => e.status === "ZAAKCEPTOWANE").length || 0;
+
+    // For avatars, we prefer assignments if available (show who is supposed to do it), 
+    // fall back to executions (who is actually doing it)
+    const assignees = task.assignments?.length > 0 ? task.assignments.map((a: any) => a.user) : task.executions?.map((e: any) => e.user);
+    const uniqueAssignees = Array.from(new Map(assignees?.map((u: any) => [u?.id, u])).values()).filter(Boolean);
+
+    return (
+        <div
+            onClick={onClick}
+            className="group bg-white p-6 rounded-[24px] shadow-sm hover:shadow-xl transition-all duration-300 border border-transparent hover:border-gray-100 cursor-pointer relative overflow-hidden"
+        >
+            <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="bg-gray-50 p-2 rounded-full text-gray-400 hover:text-primary hover:bg-white hover:shadow-sm">
+                    <ChevronRight size={20} />
+                </div>
+            </div>
+
+            <div className="flex flex-col h-full justify-between gap-4">
+                <div>
+                    <div className="flex items-start justify-between mb-3">
+                        <div className={cn(
+                            "px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase",
+                            task.priorytet === "WYSOKI" ? "bg-red-50 text-red-600" :
+                                task.priorytet === "NORMALNY" ? "bg-blue-50 text-blue-600" :
+                                    "bg-green-50 text-green-600"
+                        )}>
+                            {task.priorytet}
+                        </div>
+                        {task.termin && (
+                            <div className="flex items-center gap-1.5 text-xs font-bold text-gray-400">
+                                <Calendar size={14} />
+                                <span>{new Date(task.termin).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    <h3 className="text-xl font-bold text-gray-800 leading-snug group-hover:text-primary transition-colors line-clamp-2 mb-2">
+                        {task.tytul}
+                    </h3>
+
+                    {task.team && (
+                        <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">
+                            {task.team.nazwa}
+                        </div>
+                    )}
+                </div>
+
+                <div className="flex items-center justify-between pt-4 border-t border-gray-50">
+                    <div className="flex -space-x-3">
+                        {uniqueAssignees.slice(0, 4).map((u: any, i: number) => (
+                            <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500 shadow-sm" title={u.imieNazwisko}>
+                                {u.imieNazwisko?.[0]}
+                            </div>
+                        ))}
+                        {uniqueAssignees.length > 4 && (
+                            <div className="w-8 h-8 rounded-full border-2 border-white bg-gray-50 flex items-center justify-center text-[10px] font-bold text-gray-400 shadow-sm">
+                                +{uniqueAssignees.length - 4}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Mini Progress */}
+                    <div className="flex flex-col items-end">
+                        <span className="text-[10px] font-bold text-gray-400 mb-1">REALIZACJA</span>
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full"
+                                    style={{ width: `${totalExecutors > 0 ? (completedCount / totalExecutors) * 100 : 0}%` }}
+                                />
+                            </div>
+                            <span className="text-[10px] font-bold text-gray-600">{completedCount}/{totalExecutors}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 export default function TasksClient({ initialTasks, userId, userRole: activeRole, userName, teamId, settings, onRefresh }: TasksClientProps) {
     const router = useRouter();
     const [mounted, setMounted] = useState(false);
@@ -51,44 +143,108 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
     useEffect(() => {
         setMounted(true);
     }, []);
-    const [activeTab, setActiveTab] = useState("do-zrobienia");
-    // New: Coordinator Mode Toggle (MANAGEMENT vs PERSONAL)
-    const [coordViewMode, setCoordViewMode] = useState<"MANAGEMENT" | "PERSONAL">("MANAGEMENT");
 
+    // --- STATE MANAGEMENT ---
+
+    // UI Local State
+    const [activeTab, setActiveTab] = useState("do-zrobienia");
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [showAddForm, setShowAddForm] = useState(false);
     const [showCloseConfirmation, setShowCloseConfirmation] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [coordViewMode, setCoordViewMode] = useState<"MANAGEMENT" | "PERSONAL">("MANAGEMENT");
+
+    // Data State
     const [allTeams, setAllTeams] = useState<any[]>([]);
-
-    const isAdmin = activeRole?.toUpperCase() === "ADMINISTRATOR";
-    const isCoord = activeRole?.toUpperCase() === 'KOORDYNATORKA';
-    // Logic: If settings allow, Coord can have personal tasks.
-    const canCoordHaveTasks = isCoord && settings?.coordinatorTasks;
-    // NOTE: If checking tasks, show participant view if in PERSONAL mode
-    // If Admin: always management.
-    // If Coord: Management unless in PERSONAL mode.
-    // If Participant: always participant (handled by !isAdmin && !isCoord check mostly, but logic below refines it)
-    const showParticipantView = !isAdmin && (!isCoord || (canCoordHaveTasks && coordViewMode === "PERSONAL"));
-
-    // Admin Filter State
-    const [adminTeamFilter, setAdminTeamFilter] = useState<number | "ALL">("ALL");
-    // Verification Tab State (for the collapsible verification section)
-    const [verificationTab, setVerificationTab] = useState<"oczekujace" | "zaakceptowane" | "doPoprawy">("oczekujace");
-
-    // UI States for Modals/Forms
-    const [newTask, setNewTask] = useState({ tytul: "", opis: "", termin: "", priorytet: "NORMALNY", teamId: "-1", typPrzypisania: "CALY_ZESPOL", includeCoordinators: false });
     const [selectedTask, setSelectedTask] = useState<any>(null);
+    const [selectedExecutionForDetail, setSelectedExecutionForDetail] = useState<any>(null);
+
+    // Filters
+    const [adminTeamFilter, setAdminTeamFilter] = useState<number | "ALL">("ALL");
+    const [verificationTab, setVerificationTab] = useState<"oczekujace" | "zaakceptowane" | "doPoprawy">("oczekujace");
+    const [sortConfig, setSortConfig] = useState<{ field: "PRIORYTET" | "TERMIN", direction: "ASC" | "DESC" }>({ field: "PRIORYTET", direction: "DESC" });
+    const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+
+    // Forms
+    const [newTask, setNewTask] = useState({ tytul: "", opis: "", termin: "", priorytet: "NORMALNY", teamId: "-1", typPrzypisania: "CALY_ZESPOL", includeCoordinators: false });
     const [submissionText, setSubmissionText] = useState("");
     const [rejectionNotes, setRejectionNotes] = useState("");
-    const [rejectionDeadline, setRejectionDeadline] = useState(""); // YYYY-MM-DD
+    const [rejectionDeadline, setRejectionDeadline] = useState("");
     const [teamMembers, setTeamMembers] = useState<any[]>([]);
     const [assignedUserIds, setAssignedUserIds] = useState<number[]>([]);
     const [userSearchTerm, setUserSearchTerm] = useState("");
-    const [sortConfig, setSortConfig] = useState<{ field: "PRIORYTET" | "TERMIN", direction: "ASC" | "DESC" }>({ field: "PRIORYTET", direction: "DESC" });
-    const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
-    const [selectedExecutionForDetail, setSelectedExecutionForDetail] = useState<any>(null);
+
+    // Edit Mode State
+    const [isEditing, setIsEditing] = useState(false);
+    const [editForm, setEditForm] = useState({
+        tytul: "",
+        opis: "",
+        priorytet: "NORMALNY",
+        termin: ""
+    });
+
+    // --- DERIVED STATE ---
+    const isAdmin = activeRole?.toUpperCase() === "ADMINISTRATOR";
+    const isCoord = activeRole?.toUpperCase() === 'KOORDYNATORKA';
+    const canCoordHaveTasks = isCoord && settings?.coordinatorTasks;
+    const showParticipantView = !isAdmin && (!isCoord || (canCoordHaveTasks && coordViewMode === "PERSONAL"));
+
+    // --- EFFECTS ---
+
+    // Sync edit form when task is selected
+    useEffect(() => {
+        if (selectedTask) {
+            setEditForm({
+                tytul: selectedTask.tytul || "",
+                opis: selectedTask.opis || "",
+                priorytet: selectedTask.priorytet || "NORMALNY",
+                termin: selectedTask.termin ? new Date(selectedTask.termin).toISOString().split('T')[0] : ""
+            });
+            setIsEditing(false);
+        }
+    }, [selectedTask]);
+
+    const handleSaveEdit = async () => {
+        if (!selectedTask) return;
+
+        try {
+            const result = await updateTask(selectedTask.id, editForm);
+            if (result.success) {
+                setSelectedTask((prev: any) => ({ ...prev, ...editForm }));
+                setIsEditing(false);
+                onRefresh();
+            } else {
+                alert("Błąd podczas aktualizacji zadania");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Błąd połączenia");
+        }
+    };
+
 
     // --- TASK FILTERING LOGIC ---
+
+    // Helper for Sorting (moved out to be shared)
+    const sortTasks = (tasksList: any[]) => {
+        return [...tasksList].sort((a, b) => {
+            let res = 0;
+            if (sortConfig.field === "PRIORYTET") {
+                const prioValue = { "WYSOKI": 3, "NORMALNY": 2, "NISKI": 1 };
+                const pA = prioValue[a.priorytet as keyof typeof prioValue] || 0;
+                const pB = prioValue[b.priorytet as keyof typeof prioValue] || 0;
+                res = pA - pB;
+            } else {
+                // Deadline
+                const tA = a.termin ? new Date(a.termin).getTime() : 0;
+                const tB = b.termin ? new Date(b.termin).getTime() : 0;
+                if (!tA && !tB) res = 0;
+                else if (!tA) res = -1;
+                else if (!tB) res = 1;
+                else res = tA - tB;
+            }
+            return sortConfig.direction === "ASC" ? res : -res;
+        });
+    };
 
     // 1. PARTICIPANT LOGIC
     const getParticipantTasks = () => {
@@ -110,28 +266,6 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
             return ex && ex.status === "ODRZUCONE";
         });
 
-        // Helper for Sorting
-        const sortTasks = (tasksList: any[]) => {
-            return [...tasksList].sort((a, b) => {
-                let res = 0;
-                if (sortConfig.field === "PRIORYTET") {
-                    const prioValue = { "WYSOKI": 3, "NORMALNY": 2, "NISKI": 1 };
-                    const pA = prioValue[a.priorytet as keyof typeof prioValue] || 0;
-                    const pB = prioValue[b.priorytet as keyof typeof prioValue] || 0;
-                    res = pA - pB;
-                } else {
-                    // Deadline
-                    const tA = a.termin ? new Date(a.termin).getTime() : 0;
-                    const tB = b.termin ? new Date(b.termin).getTime() : 0;
-                    if (!tA && !tB) res = 0;
-                    else if (!tA) res = -1;
-                    else if (!tB) res = 1;
-                    else res = tA - tB;
-                }
-                return sortConfig.direction === "ASC" ? res : -res;
-            });
-        };
-
         return {
             doZrobienia: sortTasks(doZrobienia),
             wykonane: sortTasks(wykonane),
@@ -145,7 +279,44 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
 
         // Admin Filter
         if (isAdmin && adminTeamFilter !== "ALL") {
-            tasks = tasks.filter(t => t.teamId === adminTeamFilter);
+            if (adminTeamFilter === -1) {
+                // COORDINATOR TASKS FOLDER
+                // Rule: Tasks executed by at least one coordinator.
+                tasks = tasks.filter(t => t.executions.some((e: any) => {
+                    const userTeamRole = t.teamId
+                        ? e.user?.zespoly?.find((ut: any) => ut.teamId === t.teamId)?.rola
+                        : e.user?.rola;
+                    return userTeamRole?.toUpperCase() === "KOORDYNATORKA";
+                }));
+            } else if (adminTeamFilter === -2) {
+                // MIXED TASKS FOLDER (Zadania Mieszane)
+                // Rule: "Selected People" (OSOBY) AND includes at least one participant.
+                // - If assigned ONLY to coordinators -> Coordinator Tasks folder (not here).
+                // - If assigned to Participant + Coordinator -> Here (and also in Coordinator folder).
+                tasks = tasks.filter(t => {
+                    const isSelectedPeople = t.typPrzypisania === 'OSOBY' || (t.assignments && t.assignments.length > 0);
+                    if (!isSelectedPeople) return false;
+
+                    const hasParticipant = t.executions.some((e: any) => {
+                        const userTeamRole = t.teamId
+                            ? e.user?.zespoly?.find((ut: any) => ut.teamId === t.teamId)?.rola
+                            : e.user?.rola;
+                        return userTeamRole?.toUpperCase() === "UCZESTNICZKA";
+                    });
+
+                    return hasParticipant;
+                });
+            } else {
+                // TEAM FOLDERS
+                // Rule: Only "Whole Team" tasks.
+                tasks = tasks.filter(t => t.teamId === adminTeamFilter && t.typPrzypisania === 'CALY_ZESPOL');
+            }
+        }
+
+
+        // COORDINATOR FILTER: Filter by active teamId
+        if (isCoord && !isAdmin && teamId) {
+            tasks = tasks.filter(t => t.teamId === Number(teamId));
         }
 
         // Zlecone zadania - all accessible tasks
@@ -175,6 +346,8 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
             return true;
         });
 
+
+
         // Verification section: Get all executions grouped by status
         // Helper to check if execution should be visible to this user
         const isVisibleExecution = (e: any, t: any) => {
@@ -201,7 +374,12 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
         const weryfikacja_zaakceptowane = allExecutions.filter(e => e.status === "ZAAKCEPTOWANE");
         const weryfikacja_doPoprawy = allExecutions.filter(e => e.status === "ODRZUCONE");
 
-        return { zlecone, weryfikacja_oczekujace, weryfikacja_zaakceptowane, weryfikacja_doPoprawy };
+        return {
+            zlecone: sortTasks(zlecone),
+            weryfikacja_oczekujace: sortTasks(weryfikacja_oczekujace),
+            weryfikacja_zaakceptowane: sortTasks(weryfikacja_zaakceptowane),
+            weryfikacja_doPoprawy: sortTasks(weryfikacja_doPoprawy)
+        };
     };
 
     const { doZrobienia, wykonane, doPoprawy } = getParticipantTasks();
@@ -260,19 +438,32 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                 if (res.success && res.data) {
                     const members = res.data.users
                         .filter((u: any) => {
+                            const role = u.rola?.toLowerCase();
+
+                            // Coordinator View: Only Participants
                             if (isCoord && !isAdmin) {
-                                return u.rola?.toLowerCase() === 'uczestniczka';
+                                return role === 'uczestniczka';
                             }
+
+                            // Admin View
+                            if (isAdmin) {
+                                // If Coordinator, check settings
+                                if (role === 'koordynatorka') {
+                                    return !!settings?.coordinatorTasks;
+                                }
+                                return true;
+                            }
+
                             return true;
                         })
-                        .map((u: any) => u.user);
+                        .map((u: any) => ({ ...u.user, teamRole: u.rola })); // FIX: Pass teamRole
                     setTeamMembers(members);
                 }
             });
         } else {
             setTeamMembers([]);
         }
-    }, [isAdmin, isCoord, teamId, newTask.teamId]);
+    }, [isAdmin, isCoord, teamId, newTask.teamId, settings?.coordinatorTasks]);
 
     const handleSubmitWork = async (taskId: number, text: string, isCorrection = false) => {
         if (!text.trim()) return;
@@ -327,7 +518,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                         </p>
                     </div>
 
-                    {(isAdmin || isCoord) && (
+                    {(isAdmin || (isCoord && coordViewMode === "MANAGEMENT")) && (
                         <button
                             onClick={() => setShowAddForm(!showAddForm)}
                             className="lux-btn flex items-center gap-2"
@@ -529,7 +720,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                                         </div>
                                                                         <div>
                                                                             <span className="text-sm font-semibold text-gray-700 block leading-tight">{member.imieNazwisko}</span>
-                                                                            <span className="text-[9px] uppercase text-muted-foreground font-bold tracking-wider">{member.rola}</span>
+                                                                            <span className="text-[9px] uppercase text-muted-foreground font-bold tracking-wider">{member.teamRole || member.rola}</span>
                                                                         </div>
                                                                     </div>
                                                                 </label>
@@ -706,6 +897,35 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                 </div>
                                             </button>
                                         )}
+                                        {/* New Admin Folder for Mixed Tasks */}
+                                        <button
+                                            onClick={() => setAdminTeamFilter(-2)} // -2 for Mixed Tasks
+                                            className={cn(
+                                                "w-full text-left p-6 rounded-[28px] transition-all flex items-center justify-between border-2",
+                                                adminTeamFilter === -2 ? "bg-white shadow-xl border-primary/20" : "bg-white border-transparent hover:border-gray-100 shadow-sm"
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg", adminTeamFilter === -2 ? "lux-gradient" : "bg-gray-100 text-gray-400")}>
+                                                    <Users size={22} />
+                                                </div>
+                                                <div>
+                                                    <span className="font-bold text-gray-800 block">Zadania mieszane</span>
+                                                    <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">
+                                                        {initialTasks.filter(t => {
+                                                            const isSelectedPeople = t.typPrzypisania === 'OSOBY' || (t.assignments && t.assignments.length > 0);
+                                                            if (!isSelectedPeople) return false;
+                                                            return t.executions.some((e: any) => {
+                                                                const userTeamRole = t.teamId
+                                                                    ? e.user?.zespoly?.find((ut: any) => ut.teamId === t.teamId)?.rola
+                                                                    : e.user?.rola;
+                                                                return userTeamRole?.toUpperCase() === "UCZESTNICZKA";
+                                                            });
+                                                        }).length} zadań
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </button>
                                     </>
                                 ) : (
                                     <>
@@ -781,6 +1001,40 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                             >
                                                 {tab.label}
                                                 <span className={cn("px-2.5 py-0.5 rounded-full text-[10px]", activeTab === tab.id ? "bg-primary text-white" : "bg-gray-200 text-gray-600")}>{tab.count}</span>
+
+                                                {/* Sort Icon for Active Tab */}
+                                                {activeTab === tab.id && (
+                                                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); setIsSortMenuOpen(!isSortMenuOpen); }}
+                                                            className="p-1.5 hover:bg-gray-100 rounded-lg text-primary transition-colors"
+                                                        >
+                                                            <Filter size={14} />
+                                                        </button>
+
+                                                        {isSortMenuOpen && (
+                                                            <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-xl z-[50] p-2 flex flex-col gap-1 text-left animate-slide-in">
+                                                                <span className="text-[9px] font-black uppercase text-muted-foreground px-2 py-1">Priorytet</span>
+                                                                <button onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "PRIORYTET", direction: "DESC" }); setIsSortMenuOpen(false); }} className={cn("px-2 py-1.5 text-xs font-bold rounded-lg text-left hover:bg-primary/5 hover:text-primary", sortConfig.field === "PRIORYTET" && sortConfig.direction === "DESC" && "bg-primary/10 text-primary")}>
+                                                                    Najwyższy (Malejąco)
+                                                                </button>
+                                                                <button onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "PRIORYTET", direction: "ASC" }); setIsSortMenuOpen(false); }} className={cn("px-2 py-1.5 text-xs font-bold rounded-lg text-left hover:bg-primary/5 hover:text-primary", sortConfig.field === "PRIORYTET" && sortConfig.direction === "ASC" && "bg-primary/10 text-primary")}>
+                                                                    Najniższy (Rosnąco)
+                                                                </button>
+
+                                                                <div className="h-px bg-gray-100 my-1" />
+
+                                                                <span className="text-[9px] font-black uppercase text-muted-foreground px-2 py-1">Termin</span>
+                                                                <button onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "TERMIN", direction: "ASC" }); setIsSortMenuOpen(false); }} className={cn("px-2 py-1.5 text-xs font-bold rounded-lg text-left hover:bg-primary/5 hover:text-primary", sortConfig.field === "TERMIN" && sortConfig.direction === "ASC" && "bg-primary/10 text-primary")}>
+                                                                    Najbliższy (Rosnąco)
+                                                                </button>
+                                                                <button onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "TERMIN", direction: "DESC" }); setIsSortMenuOpen(false); }} className={cn("px-2 py-1.5 text-xs font-bold rounded-lg text-left hover:bg-primary/5 hover:text-primary", sortConfig.field === "TERMIN" && sortConfig.direction === "DESC" && "bg-primary/10 text-primary")}>
+                                                                    Najdalszy (Malejąco)
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </button>
                                         ))}
                                     </div>
@@ -873,29 +1127,61 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
 
 
                                     {/* ZLECONE - Assigned Tasks Section */}
-                                    <div className="flex flex-col items-start mb-6">
-                                        <h2 className="lux-kicker mb-2">
-                                            {isAdmin ? (adminTeamFilter === "ALL" ? "Wszystkie zlecone zadania" : "Zadania wybranego zespołu") : "Zlecone zadania zespołu"}
-                                        </h2>
-                                        <div className="h-1 w-12 bg-primary/20 rounded-full" />
+                                    <div className="flex justify-between items-end mb-6">
+                                        <div className="flex flex-col items-start">
+                                            <h2 className="lux-kicker mb-2">
+                                                {isAdmin ? (adminTeamFilter === "ALL" ? "Wszystkie zlecone zadania" : "Zadania wybranego zespołu") : "Zlecone zadania zespołu"}
+                                            </h2>
+                                            <div className="h-1 w-12 bg-primary/20 rounded-full" />
+                                        </div>
+
+                                        {/* Sort Menu */}
+                                        <div className="relative">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setIsSortMenuOpen(!isSortMenuOpen); }}
+                                                className="p-2 hover:bg-gray-100 rounded-lg text-primary transition-colors flex items-center gap-2 text-xs font-bold"
+                                            >
+                                                <Filter size={16} />
+                                                {sortConfig.field === "PRIORYTET" ? "Priorytet" : "Termin"}
+                                                {sortConfig.direction === "DESC" ? " ↓" : " ↑"}
+                                            </button>
+
+                                            {isSortMenuOpen && (
+                                                <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-xl z-[50] p-2 flex flex-col gap-1 text-left animate-slide-in">
+                                                    <span className="text-[9px] font-black uppercase text-muted-foreground px-2 py-1">Priorytet</span>
+                                                    <button onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "PRIORYTET", direction: "DESC" }); setIsSortMenuOpen(false); }} className={cn("px-2 py-1.5 text-xs font-bold rounded-lg text-left hover:bg-primary/5 hover:text-primary", sortConfig.field === "PRIORYTET" && sortConfig.direction === "DESC" && "bg-primary/10 text-primary")}>
+                                                        Najwyższy (Malejąco)
+                                                    </button>
+                                                    <button onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "PRIORYTET", direction: "ASC" }); setIsSortMenuOpen(false); }} className={cn("px-2 py-1.5 text-xs font-bold rounded-lg text-left hover:bg-primary/5 hover:text-primary", sortConfig.field === "PRIORYTET" && sortConfig.direction === "ASC" && "bg-primary/10 text-primary")}>
+                                                        Najniższy (Rosnąco)
+                                                    </button>
+
+                                                    <div className="h-px bg-gray-100 my-1" />
+
+                                                    <span className="text-[9px] font-black uppercase text-muted-foreground px-2 py-1">Termin</span>
+                                                    <button onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "TERMIN", direction: "ASC" }); setIsSortMenuOpen(false); }} className={cn("px-2 py-1.5 text-xs font-bold rounded-lg text-left hover:bg-primary/5 hover:text-primary", sortConfig.field === "TERMIN" && sortConfig.direction === "ASC" && "bg-primary/10 text-primary")}>
+                                                        Najbliższy (Rosnąco)
+                                                    </button>
+                                                    <button onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "TERMIN", direction: "DESC" }); setIsSortMenuOpen(false); }} className={cn("px-2 py-1.5 text-xs font-bold rounded-lg text-left hover:bg-primary/5 hover:text-primary", sortConfig.field === "TERMIN" && sortConfig.direction === "DESC" && "bg-primary/10 text-primary")}>
+                                                        Najdalszy (Malejąco)
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
                                         {zlecone.map((t: any) => (
-                                            <AdminTaskCard
+                                            <AdminTaskTile
                                                 key={t.id}
                                                 task={t}
-                                                onDelete={handleDelete}
-                                                onApprove={handleApproveWork}
-                                                onReject={setSelectedTask}
-                                                isCoord={true}
-                                                isAdmin={isAdmin}
+                                                onClick={() => setSelectedTask(t)}
                                             />
                                         ))}
                                         {zlecone.length === 0 && (
                                             <div className="col-span-full lux-card p-12 text-center text-muted-foreground font-medium italic border-dashed">
-                                                {isAdmin && adminTeamFilter !== "ALL" ? "Brak zadań w tym zespole" : "Brak zleconych zadań"}
+                                                {isAdmin && adminTeamFilter !== "ALL" ? "Brak zadań w tym folderze" : "Brak zleconych zadań"}
                                             </div>
                                         )}
                                     </div>
@@ -908,7 +1194,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
 
             {/* --- 3. STANDARD PARTICIPANT VIEW (NON-COORD) --- */}
             {
-                !isAdmin && !isCoord && (
+                (!isAdmin && !isCoord) && (
                     <div className="bg-white rounded-[32px] shadow-[0_10px_30px_rgba(0,0,0,0.03)] border border-gray-100 overflow-hidden">
                         <div className="flex bg-gray-50/50 p-2 border-b border-gray-100">
                             {[
@@ -989,131 +1275,351 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
             {/* MODALS */}
 
             {/* Submission Modal for Participant / Coordinator in Personal Mode */}
-            {mounted && createPortal(
-                <AnimatePresence>
-                    {selectedTask && (showParticipantView || (!isAdmin && !isCoord)) && activeTab !== "wykonane" && (
-                        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6">
-                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedTask(null)} className="absolute inset-0 bg-black/60 backdrop-blur-[20px]" />
-                            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="lux-card p-10 max-w-lg w-full relative z-10 shadow-2xl">
-                                <div className="flex justify-between items-start mb-6">
-                                    <div>
-                                        <h3 className="text-2xl font-bold">{activeTab === "do-poprawy" ? "Wyślij poprawkę" : "Oznacz jako wykonane"}</h3>
-                                        <p className="text-muted-foreground mt-1">Zadanie: <span className="font-bold text-foreground">{selectedTask.tytul}</span></p>
-                                    </div>
-                                    <div className="p-3 rounded-2xl bg-primary/5 text-primary">
-                                        <MessageSquare size={24} />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-6">
-                                    {activeTab === "do-poprawy" && (
-                                        <div className="bg-red-50 p-4 rounded-2xl border-l-4 border-red-500">
-                                            <p className="text-[10px] font-black uppercase text-red-600 mb-1">Poprzednie uwagi</p>
-                                            <p className="text-sm text-red-900">{selectedTask.executions.find((e: any) => e.userId === userId)?.uwagiOdrzucenia}</p>
+            {
+                mounted && createPortal(
+                    <AnimatePresence>
+                        {selectedTask && (showParticipantView || (!isAdmin && !isCoord)) && activeTab !== "wykonane" && (
+                            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6">
+                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedTask(null)} className="absolute inset-0 bg-black/60 backdrop-blur-[20px]" />
+                                <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="lux-card p-10 max-w-lg w-full relative z-10 shadow-2xl">
+                                    <div className="flex justify-between items-start mb-6">
+                                        <div>
+                                            <h3 className="text-2xl font-bold">{activeTab === "do-poprawy" ? "Wyślij poprawkę" : "Oznacz jako wykonane"}</h3>
+                                            <p className="text-muted-foreground mt-1">Zadanie: <span className="font-bold text-foreground">{selectedTask.tytul}</span></p>
                                         </div>
-                                    )}
-
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Opis wykonania / Poprawki</label>
-                                        <textarea
-                                            className="lux-textarea h-40"
-                                            placeholder="Opisz co zostało zrobione..."
-                                            value={submissionText}
-                                            onChange={e => setSubmissionText(e.target.value)}
-                                        />
+                                        <div className="p-3 rounded-2xl bg-primary/5 text-primary">
+                                            <MessageSquare size={24} />
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className="flex gap-4 mt-8">
-                                    <button onClick={() => setSelectedTask(null)} className="flex-1 py-4 font-bold text-muted-foreground hover:bg-gray-50 rounded-2xl transition-all">Anuluj</button>
-                                    <button
-                                        onClick={() => handleSubmitWork(selectedTask.id, submissionText, activeTab === "do-poprawy")}
-                                        className="flex-[2] lux-btn"
-                                        disabled={!submissionText.trim() || isSubmitting}
-                                    >
-                                        {isSubmitting ? "Wysyłanie..." : activeTab === "do-poprawy" ? "Wyślij poprawkę" : "Zgłoś wykonanie"}
-                                    </button>
-                                </div>
-                            </motion.div>
-                        </div>
-                    )}
-                </AnimatePresence>,
-                document.body
-            )}
+                                    <div className="space-y-6">
+                                        {activeTab === "do-poprawy" && (
+                                            <div className="bg-red-50 p-4 rounded-2xl border-l-4 border-red-500">
+                                                <p className="text-[10px] font-black uppercase text-red-600 mb-1">Poprzednie uwagi</p>
+                                                <p className="text-sm text-red-900">{selectedTask.executions.find((e: any) => e.userId === userId)?.uwagiOdrzucenia}</p>
+                                            </div>
+                                        )}
+
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Opis wykonania / Poprawki</label>
+                                            <textarea
+                                                className="lux-textarea h-40"
+                                                placeholder="Opisz co zostało zrobione..."
+                                                value={submissionText}
+                                                onChange={e => setSubmissionText(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-4 mt-8">
+                                        <button onClick={() => setSelectedTask(null)} className="flex-1 py-4 font-bold text-muted-foreground hover:bg-gray-50 rounded-2xl transition-all">Anuluj</button>
+                                        <button
+                                            onClick={() => handleSubmitWork(selectedTask.id, submissionText, activeTab === "do-poprawy")}
+                                            className="flex-[2] lux-btn"
+                                            disabled={!submissionText.trim() || isSubmitting}
+                                        >
+                                            {isSubmitting ? "Wysyłanie..." : activeTab === "do-poprawy" ? "Wyślij poprawkę" : "Zgłoś wykonanie"}
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            </div>
+                        )}
+                    </AnimatePresence>,
+                    document.body
+                )
+            }
 
             {/* Rejection Modal for Coord/Admin */}
-            {mounted && createPortal(
-                <AnimatePresence>
-                    {selectedTask && (isCoord || isAdmin) && rejectionNotes !== null && selectedTask.targetUserId && (
-                        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6">
-                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { setSelectedTask(null); setRejectionNotes(""); }} className="absolute inset-0 bg-black/60 backdrop-blur-[20px]" />
-                            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="lux-card p-10 max-w-lg w-full relative z-10 shadow-2xl">
-                                <h3 className="text-2xl font-bold mb-2 text-red-600">Odrzuć do poprawy</h3>
-                                <p className="text-muted-foreground mb-6">Uczestniczka: <span className="font-bold text-foreground">{selectedTask.targetUserName}</span></p>
+            {
+                mounted && createPortal(
+                    <AnimatePresence>
+                        {selectedTask && (isCoord || isAdmin) && rejectionNotes !== null && selectedTask.targetUserId && (
+                            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6">
+                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { setSelectedTask(null); setRejectionNotes(""); }} className="absolute inset-0 bg-black/60 backdrop-blur-[20px]" />
+                                <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="lux-card p-10 max-w-lg w-full relative z-10 shadow-2xl">
+                                    <h3 className="text-2xl font-bold mb-2 text-red-600">Odrzuć do poprawy</h3>
+                                    <p className="text-muted-foreground mb-6">Uczestniczka: <span className="font-bold text-foreground">{selectedTask.targetUserName}</span></p>
 
-                                <label className="text-[10px] font-black uppercase text-muted-foreground ml-1 mb-2 block">Uwagi do poprawy</label>
-                                <textarea
-                                    className="lux-textarea h-40 mb-6 border-red-100 focus:border-red-500"
-                                    placeholder="Wypisz co dokładnie trzeba poprawić..."
-                                    value={rejectionNotes}
-                                    onChange={e => setRejectionNotes(e.target.value)}
-                                />
+                                    <label className="text-[10px] font-black uppercase text-muted-foreground ml-1 mb-2 block">Uwagi do poprawy</label>
+                                    <textarea
+                                        className="lux-textarea h-40 mb-6 border-red-100 focus:border-red-500"
+                                        placeholder="Wypisz co dokładnie trzeba poprawić..."
+                                        value={rejectionNotes}
+                                        onChange={e => setRejectionNotes(e.target.value)}
+                                    />
 
-                                <div className="mb-6 space-y-2">
-                                    <label className="text-[10px] font-black uppercase text-muted-foreground ml-1 block">Termin na poprawkę (opcjonalnie)</label>
-                                    <div className="flex gap-2 items-center">
-                                        <input
-                                            type="date"
-                                            className="lux-input flex-1"
-                                            value={rejectionDeadline}
-                                            onChange={(e) => setRejectionDeadline(e.target.value)}
-                                        />
-                                        {rejectionDeadline && (
-                                            <button
-                                                onClick={() => setRejectionDeadline("")}
-                                                className="text-[10px] text-red-500 font-bold hover:underline"
-                                            >
-                                                WYCZYŚĆ
-                                            </button>
-                                        )}
+                                    <div className="mb-6 space-y-2">
+                                        <label className="text-[10px] font-black uppercase text-muted-foreground ml-1 block">Termin na poprawkę (opcjonalnie)</label>
+                                        <div className="flex gap-2 items-center">
+                                            <input
+                                                type="date"
+                                                className="lux-input flex-1"
+                                                value={rejectionDeadline}
+                                                onChange={(e) => setRejectionDeadline(e.target.value)}
+                                            />
+                                            {rejectionDeadline && (
+                                                <button
+                                                    onClick={() => setRejectionDeadline("")}
+                                                    className="text-[10px] text-red-500 font-bold hover:underline"
+                                                >
+                                                    WYCZYŚĆ
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className="flex gap-4">
-                                    <button onClick={() => { setSelectedTask(null); setRejectionNotes(""); setRejectionDeadline(""); }} className="flex-1 py-4 font-bold text-muted-foreground rounded-2xl transition-all">Anuluj</button>
-                                    <button
-                                        onClick={() => handleRejectWork(selectedTask.id, selectedTask.targetUserId)}
-                                        className="flex-[2] bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 transition-all shadow-lg shadow-red-500/20"
-                                        disabled={!rejectionNotes.trim()}
-                                    >
-                                        Odrzuć i wyślij uwagi
-                                    </button>
-                                </div>
-                            </motion.div>
-                        </div>
-                    )}
-                </AnimatePresence>,
-                document.body
-            )}
+                                    <div className="flex gap-4">
+                                        <button onClick={() => { setSelectedTask(null); setRejectionNotes(""); setRejectionDeadline(""); }} className="flex-1 py-4 font-bold text-muted-foreground rounded-2xl transition-all">Anuluj</button>
+                                        <button
+                                            onClick={() => handleRejectWork(selectedTask.id, selectedTask.targetUserId)}
+                                            className="flex-[2] bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 transition-all shadow-lg shadow-red-500/20"
+                                            disabled={!rejectionNotes.trim()}
+                                        >
+                                            Odrzuć i wyślij uwagi
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            </div>
+                        )}
+                    </AnimatePresence>,
+                    document.body
+                )
+            }
 
             {/* Execution Detail Modal */}
-            {mounted && selectedExecutionForDetail && createPortal(
-                <ExecutionDetailModal
-                    execution={selectedExecutionForDetail}
-                    onClose={() => setSelectedExecutionForDetail(null)}
-                    onApprove={(taskId: number, userId: number) => {
-                        handleApproveWork(taskId, userId);
-                        setSelectedExecutionForDetail(null);
-                    }}
-                    onReject={(task: any, userId: number) => {
-                        setSelectedTask({ ...task, targetUserId: userId, targetUserName: selectedExecutionForDetail.user?.imieNazwisko });
-                        setSelectedExecutionForDetail(null);
-                    }}
-                    isAdmin={isAdmin}
-                />,
-                document.body
-            )}
-        </DashboardLayout>
+            {
+                mounted && selectedExecutionForDetail && createPortal(
+                    <ExecutionDetailModal
+                        execution={selectedExecutionForDetail}
+                        onClose={() => setSelectedExecutionForDetail(null)}
+                        onApprove={(taskId: number, userId: number) => {
+                            handleApproveWork(taskId, userId);
+                            setSelectedExecutionForDetail(null);
+                        }}
+                        onReject={(task: any, userId: number) => {
+                            setSelectedTask({ ...task, targetUserId: userId, targetUserName: selectedExecutionForDetail.user?.imieNazwisko });
+                            setSelectedExecutionForDetail(null);
+                        }}
+                        isAdmin={isAdmin}
+                    />,
+                    document.body
+                )
+            }
+
+
+            {/* NEW ADMIN TASK DETAIL MODAL */}
+            {
+                mounted && selectedTask && (isAdmin || isCoord) && !selectedTask.targetUserId && !showParticipantView && createPortal(
+                    <AnimatePresence>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-[10px] flex items-center justify-center p-4 overflow-y-auto"
+                            onClick={(e) => { if (e.target === e.currentTarget) setSelectedTask(null); }}
+                        >
+                            <motion.div
+                                initial={{ scale: 0.95, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                className="bg-white rounded-[32px] w-full max-w-3xl shadow-2xl overflow-hidden relative border border-gray-100"
+                            >
+                                {/* Modal Header */}
+                                <div className="p-8 pb-4">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="flex items-center gap-4">
+                                            {isEditing ? (
+                                                <select
+                                                    value={editForm.priorytet}
+                                                    onChange={(e) => setEditForm({ ...editForm, priorytet: e.target.value })}
+                                                    className="px-3 py-1 rounded-full text-xs font-black tracking-widest uppercase border border-gray-200 outline-none focus:border-primary"
+                                                >
+                                                    <option value="NORMALNY">NORMALNY</option>
+                                                    <option value="WYSOKI">WYSOKI</option>
+                                                    <option value="NISKI">NISKI</option>
+                                                </select>
+                                            ) : (
+                                                <div className={cn(
+                                                    "px-3 py-1 rounded-full text-xs font-black tracking-widest uppercase inline-block",
+                                                    selectedTask.priorytet === "WYSOKI" ? "bg-red-50 text-red-600" :
+                                                        selectedTask.priorytet === "NORMALNY" ? "bg-blue-50 text-blue-600" :
+                                                            "bg-green-50 text-green-600"
+                                                )}>
+                                                    {selectedTask.priorytet}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="flex gap-2">
+                                            {isEditing ? (
+                                                <>
+                                                    <button
+                                                        onClick={handleSaveEdit}
+                                                        className="p-2 bg-primary text-white hover:bg-primary/90 rounded-full transition-colors shadow-lg shadow-primary/30"
+                                                        title="Zapisz zmiany"
+                                                    >
+                                                        <Save size={20} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setIsEditing(false)}
+                                                        className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors"
+                                                        title="Anuluj edycję"
+                                                    >
+                                                        <XCircle size={20} />
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <button
+                                                    onClick={() => setIsEditing(true)}
+                                                    className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-primary transition-colors"
+                                                    title="Edytuj zadanie"
+                                                >
+                                                    <Edit2 size={20} />
+                                                </button>
+                                            )}
+
+                                            {!isEditing && (
+                                                <button
+                                                    onClick={async () => {
+                                                        if (!confirm("Czy na pewno chcesz usunąć to zadanie dla WSZYSTKICH?")) return;
+                                                        await deleteTask(selectedTask.id);
+                                                        setSelectedTask(null);
+                                                        onRefresh();
+                                                    }}
+                                                    className="p-2 hover:bg-red-50 rounded-full text-gray-400 hover:text-red-500 transition-colors"
+                                                    title="Usuń zadanie dla wszystkich"
+                                                >
+                                                    <Trash2 size={20} />
+                                                </button>
+                                            )}
+
+                                            <button
+                                                onClick={() => setSelectedTask(null)}
+                                                className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors"
+                                            >
+                                                <X size={24} />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {isEditing ? (
+                                        <div className="space-y-4 mb-4">
+                                            <input
+                                                type="text"
+                                                value={editForm.tytul}
+                                                onChange={(e) => setEditForm({ ...editForm, tytul: e.target.value })}
+                                                className="text-3xl font-bold text-gray-900 w-full border-b border-gray-200 focus:border-primary outline-none py-2 bg-transparent placeholder:text-gray-300"
+                                                placeholder="Tytuł zadania"
+                                            />
+                                            <div className="flex items-center gap-2 text-sm font-bold text-gray-500">
+                                                <Calendar size={16} />
+                                                <input
+                                                    type="date"
+                                                    value={editForm.termin}
+                                                    onChange={(e) => setEditForm({ ...editForm, termin: e.target.value })}
+                                                    className="border border-gray-200 rounded-lg px-2 py-1 outline-none focus:border-primary"
+                                                />
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <h2 className="text-3xl font-bold text-gray-900 mb-2">{selectedTask.tytul}</h2>
+                                            {selectedTask.termin && (
+                                                <div className="flex items-center gap-2 text-sm font-bold text-gray-500">
+                                                    <Calendar size={16} />
+                                                    <span>Termin: {new Date(selectedTask.termin).toLocaleDateString('pl-PL')}</span>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+
+                                {/* Scrollable Content */}
+                                <div className="px-8 pb-8 max-h-[60vh] overflow-y-auto custom-scrollbar space-y-8">
+                                    {/* Description */}
+                                    <div className={cn("rounded-2xl text-gray-700 leading-relaxed whitespace-pre-wrap", isEditing ? "" : "bg-gray-50 p-6")}>
+                                        <h4 className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-2">Opis zadania</h4>
+                                        {isEditing ? (
+                                            <textarea
+                                                value={editForm.opis}
+                                                onChange={(e) => setEditForm({ ...editForm, opis: e.target.value })}
+                                                className="w-full h-40 p-4 bg-gray-50 rounded-xl border border-gray-200 focus:border-primary outline-none transition-all"
+                                                placeholder="Opis zadania..."
+                                            />
+                                        ) : (
+                                            selectedTask.opis || "Brak szczegółowego opisu."
+                                        )}
+                                    </div>
+
+                                    {/* Execution Status / Table */}
+                                    <div>
+                                        <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4">Postęp Realizacji</h3>
+
+                                        {/* Global Progress Bar */}
+                                        <div className="mb-6 bg-gray-100 rounded-full h-4 overflow-hidden relative">
+                                            <div
+                                                className="h-full bg-gradient-to-r from-primary to-purple-600 rounded-full transition-all duration-1000"
+                                                style={{ width: `${(selectedTask.executions?.filter((e: any) => e.status === "ZAAKCEPTOWANE").length / (selectedTask.executions?.length || 1)) * 100}%` }}
+                                            />
+                                        </div>
+
+                                        {/* Executors List */}
+                                        <div className="space-y-2">
+                                            {selectedTask.executions?.map((ex: any) => (
+                                                <div key={ex.id} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl hover:shadow-sm transition-all">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={cn(
+                                                            "w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold",
+                                                            ex.status === "ZAAKCEPTOWANE" ? "bg-green-100 text-green-600" :
+                                                                ex.status === "ODRZUCONE" ? "bg-red-100 text-red-600" :
+                                                                    ex.status === "OCZEKUJACE" ? "bg-amber-100 text-amber-600" :
+                                                                        "bg-gray-100 text-gray-400"
+                                                        )}>
+                                                            {ex.user?.imieNazwisko?.[0]}
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-sm font-bold text-gray-800">{ex.imieNazwisko} <span className="text-[10px] text-gray-400 font-normal ml-1">#{ex.userId}</span></div>
+                                                            <div className={cn(
+                                                                "text-[10px] font-bold uppercase",
+                                                                ex.status === "ZAAKCEPTOWANE" ? "text-green-600" :
+                                                                    ex.status === "ODRZUCONE" ? "text-red-600" :
+                                                                        ex.status === "OCZEKUJACE" ? "text-amber-500" :
+                                                                            "text-gray-400"
+                                                            )}>
+                                                                {ex.status === "OCZEKUJACE" ? "Czeka na weryfikację" : ex.status}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (!confirm(`Czy usunąć wykonawcę ${ex.imieNazwisko} z tego zadania?`)) return;
+                                                            await deleteTaskExecution(selectedTask.id, ex.userId);
+                                                            setSelectedTask((prev: any) => ({
+                                                                ...prev,
+                                                                executions: prev.executions.filter((e: any) => e.userId !== ex.userId)
+                                                            }));
+                                                            onRefresh();
+                                                        }}
+                                                        className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                        title="Usuń wykonawcę"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            {(!selectedTask.executions || selectedTask.executions.length === 0) && (
+                                                <div className="text-center text-sm text-gray-400 italic py-4">Brak przypisanych wykonawców</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    </AnimatePresence>,
+                    document.body
+                )
+            }
+        </DashboardLayout >
 
     );
 }
@@ -1205,90 +1711,6 @@ function ParticipantTaskCard({ task, userId, onClick, status }: any) {
 }
 
 
-
-
-function AdminTaskCard({ task, onDelete, onApprove, onReject, isCoord, isAdmin }: any) {
-    // USER REQUEST FIX: Global progress should only count Participants based on TEAM ROLE (or global role for global tasks)
-    const participantExecutions = task.executions.filter((e: any) => {
-        const role = task.teamId
-            ? e.user?.zespoly?.find((ut: any) => ut.teamId === task.teamId)?.rola
-            : e.user?.rola;
-        return role?.toUpperCase() === 'UCZESTNICZKA';
-    });
-
-    const doneCount = participantExecutions.filter((e: any) => e.status === "ZAAKCEPTOWANE").length;
-    const pendingCount = participantExecutions.filter((e: any) => e.status === "OCZEKUJACE").length;
-
-    // Total count is strictly participants
-    const totalCount = participantExecutions.length;
-
-    const deadline = task.termin ? new Date(task.termin) : null;
-    const isOverdue = deadline && deadline < new Date() && task.status === "AKTYWNE";
-
-    return (
-        <div className={cn(
-            "lux-card-strong p-6 space-y-6 border-l-4 transition-all",
-            isOverdue ? "bg-red-50/80 border-l-red-600 border border-red-200 shadow-[0_0_15px_rgba(239,68,68,0.15)]" : "border-l-primary hover:border-l-accent-purple"
-        )}>
-            <div className="flex justify-between items-start">
-                <div className="space-y-2">
-                    <h4 className={cn("font-extrabold leading-tight", isOverdue ? "text-red-900" : "text-gray-900")}>{task.tytul}</h4>
-                    <div className="flex flex-wrap gap-3 text-[10px] font-black uppercase tracking-widest">
-                        <span className={cn(
-                            "px-2 py-0.5 rounded-full border",
-                            task.priorytet === "WYSOKI" ? "bg-red-50 text-red-600 border-red-100" :
-                                task.priorytet === "NISKI" ? "bg-blue-50 text-blue-600 border-blue-100" :
-                                    "bg-gray-50 text-gray-600 border-gray-100"
-                        )}>
-                            Priorytet: {task.priorytet}
-                        </span>
-                        <span className={cn("flex items-center gap-1", isOverdue ? "text-red-600 font-bold" : "text-muted-foreground")}>
-                            <Clock size={10} />
-                            {deadline ? deadline.toLocaleDateString() : "Bezterminowo"}
-                        </span>
-                    </div>
-                </div>
-                {(isAdmin || isCoord) && <button onClick={() => onDelete(task.id)} className="text-gray-300 hover:text-red-500 transition-all p-2 hover:bg-red-50 rounded-xl"><Trash2 size={16} /></button>}
-            </div>
-
-            <div className="space-y-4">
-                <div className="flex justify-between items-end">
-                    <div className="space-y-1">
-                        <p className="text-[9px] font-black uppercase text-muted-foreground tracking-[0.2em]">Postęp globalny</p>
-                        <div className="flex items-center gap-3">
-                            <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                <div className="h-full bg-primary transition-all duration-1000" style={{ width: `${(doneCount / (totalCount || 1)) * 100}%` }} />
-                            </div>
-                            <span className="text-xs font-bold text-gray-700">{doneCount} / {totalCount}</span>
-                        </div>
-                    </div>
-                    {pendingCount > 0 && (
-                        <div className="flex flex-col items-end">
-                            <span className="text-[8px] bg-amber-500 text-white px-2 py-0.5 rounded-full font-black uppercase animate-bounce">{pendingCount} CZEKA</span>
-                        </div>
-                    )}
-                </div>
-
-                <div className="pt-4 border-t border-gray-50/50 flex justify-between items-center">
-                    {task.status === "AKTYWNE" ? (
-                        isOverdue ? (
-                            <span className="text-[10px] font-black text-red-600 uppercase tracking-widest flex items-center gap-2 animate-pulse">
-                                <AlertTriangle size={12} /> PO TERMINIE!
-                            </span>
-                        ) : (
-                            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">W trakcie realizacji</span>
-                        )
-                    ) : (
-                        <div className="flex items-center gap-2 text-green-600">
-                            <CheckCircle size={14} />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Zakończone</span>
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-}
 
 // Simplified Execution Card that triggers the Detail Modal
 function CollapsibleExecutionCard({ execution, onViewDetail, tabType }: any) {

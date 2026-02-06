@@ -180,3 +180,42 @@ export async function removeAttendance(id: number) {
         return { success: false, error: 'Failed to remove attendance' }
     }
 }
+
+export async function deleteMeetingsBulk(ids: number[]) {
+    try {
+        if (!ids || ids.length === 0) return { success: true, count: 0 };
+
+        const result = await prisma.meeting.deleteMany({
+            where: {
+                id: { in: ids }
+            }
+        });
+
+        revalidatePath('/meetings');
+        revalidatePath('/reports');
+        return { success: true, count: result.count };
+    } catch (error) {
+        console.error('Error deleting meetings bulk:', error);
+        return { success: false, error: 'Failed to delete meetings' };
+    }
+}
+
+export async function deleteMeetingsByName(name: string, teamId?: number) {
+    try {
+        if (!name) return { success: false, error: 'Name is required' };
+
+        const result = await prisma.meeting.deleteMany({
+            where: {
+                opis: name, // Using exact match for now
+                ...(teamId ? { teamId } : {})
+            }
+        });
+
+        revalidatePath('/meetings');
+        revalidatePath('/reports');
+        return { success: true, count: result.count };
+    } catch (error) {
+        console.error('Error deleting meetings by name:', error);
+        return { success: false, error: 'Failed to delete meetings by name' };
+    }
+}

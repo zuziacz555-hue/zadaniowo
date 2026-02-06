@@ -419,3 +419,27 @@ export async function deleteTaskExecution(taskId: number, userId: number) {
         return { success: false, error: 'Failed to delete execution' };
     }
 }
+export async function updateTask(taskId: number, data: {
+    tytul?: string
+    opis?: string
+    priorytet?: string
+    termin?: string
+}) {
+    try {
+        await prisma.task.update({
+            where: { id: taskId },
+            data: {
+                ...data,
+                termin: data.termin ? new Date(data.termin) : undefined
+            }
+        });
+
+        revalidatePath('/tasks');
+        revalidatePath('/admin-teams');
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error updating task:', error);
+        return { success: false, error: 'Failed to update task' };
+    }
+}

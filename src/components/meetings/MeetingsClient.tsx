@@ -20,7 +20,7 @@ import {
     Clock,
     Users
 } from "lucide-react";
-import { createMeeting, deleteMeeting, updateMeeting, addAttendance, removeAttendance, getMeetings } from "@/lib/actions/meetings";
+import { createMeeting, deleteMeeting, updateMeeting, addAttendance, removeAttendance, getMeetings, deleteMeetingsBulk, deleteMeetingsByName } from "@/lib/actions/meetings";
 import { useRouter } from "next/navigation";
 
 const MIESIACE = [
@@ -105,6 +105,56 @@ export default function MeetingsClient({
         };
         refetchMeetings();
     }, [selectedTeamId, isAdmin, initialMeetings]);
+
+    // Bulk Selection State
+    const [isSelectionMode, setIsSelectionMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+    // Toggle selection mode
+    const toggleSelectionMode = () => {
+        setIsSelectionMode(!isSelectionMode);
+        setSelectedIds(new Set());
+    };
+
+    // Toggle individual meeting selection
+    const toggleMeetingSelection = (id: number) => {
+        const newSelected = new Set(selectedIds);
+        if (newSelected.has(id)) {
+            newSelected.delete(id);
+        } else {
+            newSelected.add(id);
+        }
+        setSelectedIds(newSelected);
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedIds.size === 0) return;
+        if (!confirm(`Czy na pewno chcesz usunąć zaznaczone spotkania (${selectedIds.size})?`)) return;
+
+        const res = await deleteMeetingsBulk(Array.from(selectedIds));
+        if (res.success) {
+            setSelectedIds(new Set());
+            setIsSelectionMode(false);
+            router.refresh();
+            onRefresh?.();
+        } else {
+            alert("Błąd podczas usuwania spotkań.");
+        }
+    };
+
+    const handleDeleteByName = async (name: string) => {
+        if (!confirm(`Czy na pewno chcesz usunąć WSZYSTKIE spotkania o nazwie "${name}"? Tej operacji nie można cofnąć.`)) return;
+
+        const res = await deleteMeetingsByName(name, selectedTeamId || undefined);
+        if (res.success) {
+            setSelectedMeeting(null);
+            router.refresh();
+            onRefresh?.();
+            alert(`Usunięto ${res.count} spotkań.`);
+        } else {
+            alert("Błąd podczas usuwania spotkań.");
+        }
+    };
 
     const curYear = currentDate.getFullYear();
     const curMonth = currentDate.getMonth();
@@ -257,6 +307,16 @@ export default function MeetingsClient({
                     </div>
                     {isAdmin && (
                         <div className="flex gap-4 items-center">
+                            <button
+                                onClick={toggleSelectionMode}
+                                className={cn(
+                                    "px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2",
+                                    isSelectionMode ? "bg-red-100 text-red-600 ring-2 ring-red-200" : "lux-btn-outline"
+                                )}
+                            >
+                                {isSelectionMode ? <X size={16} /> : <Trash2 size={16} />}
+                                {isSelectionMode ? "Anuluj usuwanie" : "Usuń wiele"}
+                            </button>
                             <select
                                 value={selectedTeamId ?? "all"}
                                 onChange={(e) => setSelectedTeamId(e.target.value === "all" ? null : Number(e.target.value))}
@@ -270,6 +330,26 @@ export default function MeetingsClient({
                         </div>
                     )}
                 </div>
+
+                {/* Bulk Action Bar - Sticky Bottom */}
+                <AnimatePresence>
+                    {isSelectionMode && selectedIds.size > 0 && (
+                        <motion.div
+                            initial={{ y: 100 }}
+                            animate={{ y: 0 }}
+                            exit={{ y: 100 }}
+                            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-white text-foreground px-8 py-4 rounded-full shadow-2xl border border-gray-100 flex items-center gap-6"
+                        >
+                            <span className="font-bold">Zaznaczono: {selectedIds.size}</span>
+                            <button
+                                onClick={handleBulkDelete}
+                                className="lux-btn bg-red-500 hover:bg-red-600 text-white px-6 py-2 flex items-center gap-2"
+                            >
+                                <Trash2 size={18} /> Usuń zaznaczone
+                            </button>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {/* View Switcher */}
                 <div className="flex justify-center gap-3">
@@ -351,10 +431,18 @@ export default function MeetingsClient({
                                             return (
                                                 <button
                                                     key={meeting.id}
-                                                    onClick={() => setSelectedMeeting(meeting)}
+                                                    onClick={(e) => {
+                                                        if (isSelectionMode) {
+                                                            e.stopPropagation();
+                                                            toggleMeetingSelection(meeting.id);
+                                                        } else {
+                                                            setSelectedMeeting(meeting);
+                                                        }
+                                                    }}
                                                     className={cn(
-                                                        "w-full text-left p-1.5 rounded-lg text-[10px] font-bold truncate transition-all shadow-sm",
-                                                        isMarked ? "ring-2 ring-white" : "opacity-90 hover:opacity-100"
+                                                        "w-full text-left p-1.5 rounded-lg text-[10px] font-bold truncate transition-all shadow-sm flex items-center gap-2",
+                                                        isMarked ? "ring-2 ring-white" : "opacity-90 hover:opacity-100",
+                                                        (isSelectionMode && selectedIds.has(meeting.id)) ? "ring-2 ring-red-500 scale-95 opacity-50" : ""
                                                     )}
                                                     style={{
                                                         background: `linear-gradient(135deg, ${teamColor} 0%, ${teamColor}dd 100%)`,
@@ -362,7 +450,17 @@ export default function MeetingsClient({
                                                         color: getContrastColor(teamColor)
                                                     }}
                                                 >
-                                                    {new Date(meeting.data).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {meeting.opis}
+                                                    {isSelectionMode && (
+                                                        <div className={cn(
+                                                            "w-3 h-3 rounded-full border border-white/50 flex items-center justify-center shrink-0",
+                                                            selectedIds.has(meeting.id) ? "bg-white text-red-500" : "bg-transparent"
+                                                        )}>
+                                                            {selectedIds.has(meeting.id) && <div className="w-1.5 h-1.5 rounded-full bg-current" />}
+                                                        </div>
+                                                    )}
+                                                    <span className="truncate">
+                                                        {new Date(meeting.data).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {meeting.opis}
+                                                    </span>
                                                 </button>
                                             );
                                         })}
@@ -500,18 +598,26 @@ export default function MeetingsClient({
                                             )}
 
                                             {(isAdmin || isCoord) && (
-                                                <div className="grid grid-cols-2 gap-3">
+                                                <div className="space-y-3">
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        <button
+                                                            className="bg-[#f8f9fa] text-[#555] py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#eef1ff] hover:text-primary transition-all"
+                                                            onClick={() => handleEditMeeting(selectedMeeting)}
+                                                        >
+                                                            <Edit2 size={16} /> Edytuj
+                                                        </button>
+                                                        <button
+                                                            className="lux-btn-outline py-3 flex items-center justify-center gap-2"
+                                                            onClick={() => handleDeleteMeeting(selectedMeeting.id)}
+                                                        >
+                                                            <Trash2 size={16} /> Usuń
+                                                        </button>
+                                                    </div>
                                                     <button
-                                                        className="bg-[#f8f9fa] text-[#555] py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#eef1ff] hover:text-primary transition-all"
-                                                        onClick={() => handleEditMeeting(selectedMeeting)}
+                                                        className="w-full py-2 text-xs font-bold text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                        onClick={() => handleDeleteByName(selectedMeeting.opis)}
                                                     >
-                                                        <Edit2 size={16} /> Edytuj
-                                                    </button>
-                                                    <button
-                                                        className="lux-btn-outline py-3 flex items-center justify-center gap-2"
-                                                        onClick={() => handleDeleteMeeting(selectedMeeting.id)}
-                                                    >
-                                                        <Trash2 size={16} /> Usuń
+                                                        Usuń wszystkie o nazwie "{selectedMeeting.opis}"
                                                     </button>
                                                 </div>
                                             )}
