@@ -18,12 +18,14 @@ import {
     Clock,
     User as UserIcon,
     ChevronRight,
-    XCircle,
-    CheckCircle2
+    CheckCircle2,
+    ToggleLeft,
+    ToggleRight,
+    AlignLeft
 } from "lucide-react";
 import Link from "next/link";
 import { getUsers } from "@/lib/actions/users";
-import { createTeam, deleteTeam, removeUserFromTeam, addUserToTeam, updateTeam } from "@/lib/actions/teams";
+import { createTeam, deleteTeam, removeUserFromTeam, addUserToTeam, updateTeam, toggleTeamApplications } from "@/lib/actions/teams";
 import { useRouter } from "next/navigation";
 
 interface TeamsClientProps {
@@ -47,6 +49,7 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
     const [selectedTeam, setSelectedTeam] = useState<any>(null);
     const [newTeamName, setNewTeamName] = useState("");
     const [newTeamColor, setNewTeamColor] = useState("#5400FF");
+    const [newTeamOpis, setNewTeamOpis] = useState("");
 
     // Add Member State
 
@@ -65,11 +68,12 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
         console.log("Adding team", { name: newTeamName, color: newTeamColor });
 
         try {
-            const res = await createTeam(newTeamName, newTeamColor);
+            const res = await createTeam(newTeamName, newTeamColor, newTeamOpis);
             if (res.success) {
                 console.log("Team created successfully", res.data);
                 setNewTeamName("");
-                setNewTeamColor("#5400FF"); // Reset color on success
+                setNewTeamColor("#5400FF");
+                setNewTeamOpis("");
                 router.refresh();
                 onRefresh?.();
             } else {
@@ -155,6 +159,16 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
         }
     };
 
+    const handleToggleApplications = async (teamId: number, enabled: boolean) => {
+        const res = await toggleTeamApplications(teamId, enabled);
+        if (res.success) {
+            router.refresh();
+            onRefresh?.();
+        } else {
+            alert(res.error || "Błąd podczas zmiany ustawień aplikacji.");
+        }
+    };
+
     const currentTeam = teams.find(t => t.id === activeTeamId) || teams[0];
     const pageTitle = isAdmin ? "Zarządzanie zespołami" : `Twój Zespół: ${currentTeam?.nazwa || ""}`;
 
@@ -210,14 +224,32 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
                                     </div>
                                 </div>
                                 {!isAdmin && (
-                                    <button
-                                        onClick={() => handleLeaveTeam(currentTeam.id)}
-                                        className="group flex flex-col items-center gap-1 text-red-400 hover:text-red-600 transition-colors ml-4 px-4 border-l border-gray-100"
-                                        title="Opuść ten zespół"
-                                    >
-                                        <Trash2 size={20} className="group-hover:scale-110 transition-transform" />
-                                        <span className="text-[8px] font-black uppercase tracking-widest">Opuść</span>
-                                    </button>
+                                    <div className="flex items-center gap-6 ml-4 pl-4 border-l border-gray-100">
+                                        {isCoord && (
+                                            <div className="flex flex-col items-center gap-1">
+                                                <button
+                                                    onClick={() => handleToggleApplications(currentTeam.id, !currentTeam.allowApplications)}
+                                                    className={cn(
+                                                        "transition-all flex items-center gap-2 px-3 py-1.5 rounded-xl border font-bold text-[10px] uppercase tracking-wider",
+                                                        currentTeam.allowApplications
+                                                            ? "bg-green-50 text-green-600 border-green-100 hover:bg-green-100"
+                                                            : "bg-gray-50 text-gray-400 border-gray-100 hover:bg-gray-100"
+                                                    )}
+                                                >
+                                                    {currentTeam.allowApplications ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                                                    Aplikacje: {currentTeam.allowApplications ? 'WŁĄCZONE' : 'WYŁĄCZONE'}
+                                                </button>
+                                            </div>
+                                        )}
+                                        <button
+                                            onClick={() => handleLeaveTeam(currentTeam.id)}
+                                            className="group flex flex-col items-center gap-1 text-red-400 hover:text-red-600 transition-colors"
+                                            title="Opuść ten zespół"
+                                        >
+                                            <Trash2 size={20} className="group-hover:scale-110 transition-transform" />
+                                            <span className="text-[8px] font-black uppercase tracking-widest">Opuść</span>
+                                        </button>
+                                    </div>
                                 )}
                             </div>
                         </div>
@@ -267,37 +299,50 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
                                 <h2 className="text-xl font-bold mb-6 text-primary flex items-center gap-2">
                                     <Plus size={20} /> Dodaj nowy projekt / zespół
                                 </h2>
-                                <div className="flex flex-wrap gap-4 items-end">
-                                    <div className="flex-1 min-w-[300px] space-y-2">
-                                        <label className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Nazwa zespołu</label>
-                                        <div className="flex gap-2">
-                                            <input
-                                                type="text"
-                                                placeholder="np. Zespół Kreatywny"
-                                                className="lux-input font-semibold flex-1"
-                                                value={newTeamName}
-                                                onChange={(e) => setNewTeamName(e.target.value)}
-                                            />
-                                            <div className="flex flex-col gap-1 items-center">
+                                <div className="space-y-4">
+                                    <div className="flex flex-wrap gap-4 items-end">
+                                        <div className="flex-1 min-w-[300px] space-y-2">
+                                            <label className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Nazwa zespołu</label>
+                                            <div className="flex gap-2">
                                                 <input
-                                                    type="color"
-                                                    value={newTeamColor}
-                                                    onChange={(e) => setNewTeamColor(e.target.value)}
-                                                    className="w-12 h-12 rounded-xl cursor-pointer border-2 border-gray-200 p-1"
+                                                    type="text"
+                                                    placeholder="np. Zespół Kreatywny"
+                                                    className="lux-input font-semibold flex-1"
+                                                    value={newTeamName}
+                                                    onChange={(e) => setNewTeamName(e.target.value)}
                                                 />
+                                                <div className="flex flex-col gap-1 items-center">
+                                                    <input
+                                                        type="color"
+                                                        value={newTeamColor}
+                                                        onChange={(e) => setNewTeamColor(e.target.value)}
+                                                        className="w-12 h-12 rounded-xl cursor-pointer border-2 border-gray-200 p-1"
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
+                                        <button
+                                            className="lux-btn whitespace-nowrap px-8"
+                                            onClick={(e) => {
+                                                console.log("Utwórz zespół click");
+                                                handleAddTeam();
+                                            }}
+                                            style={{ backgroundColor: newTeamColor, color: getContrastColor(newTeamColor) }}
+                                        >
+                                            Utwórz zespół
+                                        </button>
                                     </div>
-                                    <button
-                                        className="lux-btn whitespace-nowrap px-8"
-                                        onClick={(e) => {
-                                            console.log("Utwórz zespół click");
-                                            handleAddTeam();
-                                        }}
-                                        style={{ backgroundColor: newTeamColor, color: getContrastColor(newTeamColor) }}
-                                    >
-                                        Utwórz zespół
-                                    </button>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                                            <AlignLeft size={16} /> Opis zespołu
+                                        </label>
+                                        <textarea
+                                            placeholder="Opisz czym zajmuje się ten zespół..."
+                                            className="lux-input font-medium w-full min-h-[100px] py-4 resize-none"
+                                            value={newTeamOpis}
+                                            onChange={(e) => setNewTeamOpis(e.target.value)}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         )}

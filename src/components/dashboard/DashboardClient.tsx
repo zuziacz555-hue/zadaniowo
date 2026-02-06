@@ -36,11 +36,11 @@ const menuItems = [
     { title: "Ustawienia", description: "Konfiguracja alertów i powiadomień", icon: Settings, tone: "lux-gradient", href: "/admin-settings", adminOnly: true, special: true },
 ];
 
-import { getUserTeams, getTeamById, removeUserFromTeam } from "@/lib/actions/teams";
+import { getUserTeams, getTeamById, removeUserFromTeam, getTeams } from "@/lib/actions/teams";
 import { checkMissingReports } from "@/lib/actions/reports";
 import { getParticipantAlerts, ParticipantAlert } from "@/lib/actions/alerts";
 import { getSystemSettings, SystemSettingsData } from "@/lib/actions/settings";
-import { getNotifications, nominateCoordinator, respondToInvitation, dismissNotification } from "@/lib/actions/notifications";
+import { getNotifications, nominateCoordinator, respondToInvitation, dismissNotification, applyToTeam, respondToTeamApplication } from "@/lib/actions/notifications";
 import { useRouter } from "next/navigation";
 
 interface DashboardClientProps {
@@ -59,6 +59,9 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
     const [notifications, setNotifications] = useState<any[]>([]);
     const [selectedNomination, setSelectedNomination] = useState<{ notificationId: number, teamId: number } | null>(null);
     const [nominationTeamData, setNominationTeamData] = useState<any>(null);
+    const [allTeams, setAllTeams] = useState<any[]>([]);
+    const [applyingToTeam, setApplyingToTeam] = useState<any>(null);
+    const [motivationText, setMotivationText] = useState("");
 
     const refreshSession = () => {
         const storedUser = localStorage.getItem("user");
@@ -72,13 +75,18 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
 
     const fetchNotifications = async (userId?: number) => {
         const res = await getNotifications(userId);
-        if (res.success && res.data) {
-            setNotifications(res.data);
-        }
+        if (res.success) setNotifications(res.data || []);
+    };
+
+    const fetchAllTeamsData = async () => {
+        const res = await getTeams();
+        if (res.success) setAllTeams(res.data || []);
     };
 
     useEffect(() => {
         refreshSession();
+        fetchNotifications(user?.id);
+        fetchAllTeamsData();
         window.addEventListener('teamChanged', refreshSession);
 
         // Always sync with latest server-side teams
@@ -139,8 +147,8 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
                 const teamId = activeTeamObj.team.id;
 
                 localStorage.setItem("activeTeam", teamName);
-                localStorage.setItem("activeRole", userRole);
                 localStorage.setItem("activeTeamId", teamId.toString());
+                localStorage.setItem("activeRole", userRole);
 
                 setActiveTeam(teamName);
                 setActiveRole(userRole);
@@ -151,7 +159,7 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
         }
 
         return () => window.removeEventListener('teamChanged', refreshSession);
-    }, [initialTeams]); // Re-run whenever server data changes
+    }, [initialTeams, user?.id]); // Re-run whenever server data changes
 
     const isSystemAdmin = user?.role === "ADMINISTRATOR" || user?.role === "admin";
     const isTeamCoord = activeRole === "KOORDYNATORKA" || isSystemAdmin;
@@ -265,6 +273,27 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
         }
     };
 
+    const handleApply = async () => {
+        if (!applyingToTeam || !user || motivationText.length < 10) return;
+        const res = await applyToTeam(applyingToTeam.id, user.id, motivationText);
+        if (res.success) {
+            setApplyingToTeam(null);
+            setMotivationText("");
+            fetchNotifications(user.id);
+            fetchAllTeamsData();
+        } else {
+            alert(res.error || "Błąd podczas aplikowania.");
+        }
+    };
+
+    const handleRespondToApplication = async (notificationId: number, accept: boolean) => {
+        const res = await respondToTeamApplication(notificationId, accept);
+        if (res.success) {
+            fetchNotifications(user?.id);
+            if (accept) window.location.reload();
+        }
+    };
+
     const currentActive = activeTeam || (teams.length > 0 ? teams[0]?.team.nazwa : null);
 
     const filteredMenu = menuItems.filter(item => {
@@ -344,13 +373,11 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
                                 );
                             }
 
-                            // 3. Admin: Accepted
-                            if (isSystemAdmin && notif.status === 'ACCEPTED') {
-                                return (
-                                    <motion.div key={notif.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                                        className="bg-green-50 border-l-4 border-green-500 p-6 rounded-r-xl flex items-center justify-between shadow-sm"
-                                    >
-                                        <div className="flex gap-4">
+                            {/* Admin/Coord Notifications - Nomination Confirmed */ }
+                            {
+                                isSystemAdmin && notif.status === 'ACCEPTED' && (
+                                    <motion.div variants={popIn} key={notif.id} className="lux-card border-l-[12px] border-l-green-600 bg-white p-10 shadow-2xl flex items-center justify-between gap-10">
+                                        <div className="flex items-center gap-8">
                                             <div className="bg-green-100 p-2 rounded-full text-green-600"><CheckCircle2 size={24} /></div>
                                             <div>
                                                 <h3 className="text-lg font-bold text-green-800">Nowa koordynatorka przyjęta!</h3>
@@ -359,7 +386,49 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
                                         </div>
                                         <button onClick={() => handleDismiss(notif.id)} className="px-6 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors shadow-lg">OK</button>
                                     </motion.div>
-                                );
+                                )
+                            }
+
+                            {/* Coordinator: Team Application */ }
+                            {
+                                isTeamCoord && notif.type === 'TEAM_APPLICATION' && notif.status === 'PENDING' && (
+                                    <motion.div variants={popIn} key={notif.id} className="lux-card border-l-[12px] border-l-purple-600 bg-white p-10 shadow-2xl flex items-center justify-between gap-10">
+                                        <div className="flex items-center gap-8">
+                                            <div className="bg-purple-100 p-2 rounded-full text-purple-600"><MessageSquareText size={24} /></div>
+                                            <div>
+                                                <h3 className="text-lg font-bold text-purple-800">Nowa aplikacja do zespołu!</h3>
+                                                <p className="text-purple-700 font-medium"><strong>{data.applicantName}</strong> chce dołączyć do Twojego zespołu. <br /><span className="text-sm italic font-normal text-purple-600/80">"{data.motivation}"</span></p>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-3">
+                                            <button onClick={() => handleRespondToApplication(notif.id, false)} className="px-6 py-2 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition-colors shadow-lg">Odrzuć</button>
+                                            <button onClick={() => handleRespondToApplication(notif.id, true)} className="px-6 py-2 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 transition-colors shadow-lg">Przyjmij</button>
+                                        </div>
+                                    </motion.div>
+                                )
+                            }
+
+                            {/* User: Application Result */ }
+                            {
+                                notif.type === 'APPLICATION_RESULT' && notif.userId === user?.id && (
+                                    <motion.div variants={popIn} key={notif.id} className={cn(
+                                        "lux-card border-l-[12px] bg-white p-10 shadow-2xl flex items-center justify-between gap-10",
+                                        notif.status === 'ACCEPTED' ? "border-l-green-600" : "border-l-red-600"
+                                    )}>
+                                        <div className="flex items-center gap-8">
+                                            <div className={cn("p-2 rounded-full", notif.status === 'ACCEPTED' ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600")}>
+                                                {notif.status === 'ACCEPTED' ? <CheckCircle2 size={24} /> : <XCircle size={24} />}
+                                            </div>
+                                            <div>
+                                                <h3 className={cn("text-lg font-bold", notif.status === 'ACCEPTED' ? "text-green-800" : "text-red-800")}>
+                                                    {notif.status === 'ACCEPTED' ? 'Aplikacja zaakceptowana!' : 'Aplikacja odrzucona'}
+                                                </h3>
+                                                <p className={cn("font-medium", notif.status === 'ACCEPTED' ? "text-green-700" : "text-red-700")}>{data.message}</p>
+                                            </div>
+                                        </div>
+                                        <button onClick={() => handleDismiss(notif.id)} className={cn("px-6 py-2 text-white font-bold rounded-lg transition-colors shadow-lg", notif.status === 'ACCEPTED' ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700")}>OK</button>
+                                    </motion.div>
+                                )
                             }
 
                             // 4. User: Invitation
@@ -635,6 +704,117 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
                                             {nominationTeamData ? 'Brak dostępnych osób w zespole do mianowania.' : 'Ładowanie listy osób...'}
                                         </div>
                                     )}
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+                {/* Available Teams Section */}
+                {!isSystemAdmin && (
+                    <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-8 mt-16 pt-16 border-t border-gray-100">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl lux-gradient flex items-center justify-center text-white font-bold text-xl shadow-lg ring-4 ring-white">
+                                <Sparkles size={24} />
+                            </div>
+                            <div>
+                                <h2 className="text-3xl font-black text-gray-900 uppercase tracking-tight">Dostępne zespoły</h2>
+                                <p className="text-muted-foreground font-medium">Dołącz do nowych projektów i rozwijaj swoje umiejętności</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {allTeams
+                                .filter(team =>
+                                    team.allowApplications &&
+                                    !teams.some(ut => ut.team.id === team.id) &&
+                                    !notifications.some(n => n.teamId === team.id && n.userId === user?.id && (n.status === 'PENDING' || n.status === 'REJECTED'))
+                                )
+                                .map((team) => (
+                                    <motion.div
+                                        key={team.id}
+                                        variants={popIn}
+                                        whileHover={{ y: -5 }}
+                                        onClick={() => setApplyingToTeam(team)}
+                                        className="lux-card-strong p-8 cursor-pointer hover:border-primary/50 transition-all group relative overflow-hidden"
+                                    >
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-500" />
+                                        <div className="relative z-10 space-y-4">
+                                            <div className="flex justify-between items-start">
+                                                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg" style={{ backgroundColor: team.kolor || '#5400FF' }}>
+                                                    <Users size={24} />
+                                                </div>
+                                                <div className="bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full">
+                                                    Kliknij aby aplikować
+                                                </div>
+                                            </div>
+                                            <h3 className="text-xl font-bold text-gray-900">{team.nazwa}</h3>
+                                            <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+                                                {team.opis || "Brak opisu dla tego zespołu."}
+                                            </p>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            {allTeams.filter(team => team.allowApplications && !teams.some(ut => ut.team.id === team.id) && !notifications.some(n => n.teamId === team.id && n.userId === user?.id && (n.status === 'PENDING' || n.status === 'REJECTED'))).length === 0 && (
+                                <div className="col-span-full py-12 text-center bg-gray-50 rounded-[32px] border-2 border-dashed border-gray-200 text-muted-foreground font-medium">
+                                    Aktualnie brak dostępnych zespołów do aplikowania.
+                                </div>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+
+                {/* Team Application Modal */}
+                {applyingToTeam && (
+                    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-xl animate-in fade-in duration-300">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            className="bg-white rounded-[40px] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]"
+                        >
+                            <div className="p-10 text-white relative flex-shrink-0" style={{ backgroundColor: applyingToTeam.kolor || '#5400FF' }}>
+                                <button onClick={() => { setApplyingToTeam(null); setMotivationText(""); }} className="absolute top-8 right-8 p-3 bg-white/20 rounded-full hover:bg-white/30 transition-all"><XCircle size={24} /></button>
+                                <div className="space-y-2">
+                                    <h2 className="text-3xl font-black uppercase tracking-tight">Dołącz do zespołu</h2>
+                                    <h3 className="text-xl font-bold opacity-90">{applyingToTeam.nazwa}</h3>
+                                </div>
+                            </div>
+                            <div className="p-10 overflow-y-auto space-y-8">
+                                <div className="space-y-4">
+                                    <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                                        <Crown size={18} className="text-primary" /> O zespole
+                                    </h4>
+                                    <p className="text-gray-700 leading-relaxed font-medium bg-gray-50 p-6 rounded-3xl border border-gray-100">
+                                        {applyingToTeam.opis || "Ten zespół nie posiada jeszcze opisu."}
+                                    </p>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Twoja kandydatura</h4>
+                                    <p className="text-sm text-muted-foreground">Napisz dlaczego chcesz dołączyć do tego zespołu (min. 10 znaków).</p>
+                                    <textarea
+                                        className="w-full min-h-[150px] lux-input p-6 font-medium text-gray-900 leading-relaxed resize-none"
+                                        placeholder="Np. Chcę rozwijać swoje umiejętności w..."
+                                        value={motivationText}
+                                        onChange={(e) => setMotivationText(e.target.value)}
+                                    />
+                                    <div className="flex justify-between items-center text-xs font-bold">
+                                        <span className={cn(motivationText.length < 10 ? "text-red-500" : "text-green-500")}>
+                                            Liczba znaków: {motivationText.length} / 10
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <button
+                                    disabled={motivationText.length < 10}
+                                    onClick={handleApply}
+                                    className={cn(
+                                        "w-full py-5 rounded-2xl font-black uppercase tracking-widest shadow-xl transition-all transform hover:scale-[1.02] active:scale-[0.98]",
+                                        motivationText.length < 10
+                                            ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                                            : "lux-gradient text-white shadow-primary/20"
+                                    )}
+                                >
+                                    Aplikuj teraz
+                                </button>
                             </div>
                         </motion.div>
                     </div>

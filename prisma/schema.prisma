@@ -42,6 +42,8 @@ model Team {
   id          Int        @id @default(autoincrement())
   nazwa       String
   kolor       String     @default("#5400FF")
+  opis        String?    @map("opis")
+  allowApplications Boolean @default(false) @map("allow_applications")
   users       UserTeam[]
   announcements Announcement[]
   meetings    Meeting[]

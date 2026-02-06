@@ -142,3 +142,116 @@ export async function dismissNotification(notificationId: number) {
         return { success: false, error: 'Failed to dismiss notification' };
     }
 }
+export async function applyToTeam(teamId: number, userId: number, motivation: string) {
+    try {
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        const team = await prisma.team.findUnique({ where: { id: teamId } });
+
+        if (!user || !team) return { success: false, error: 'User or team not found' };
+
+        // Check for existing application
+        const existingApp = await prisma.notification.findFirst({
+            where: {
+                type: 'TEAM_APPLICATION',
+                teamId: teamId,
+                userId: userId
+            }
+        });
+
+        if (existingApp) {
+            if (existingApp.status === 'REJECTED') {
+                return { success: false, error: 'Twoja aplikacja do tego zespołu została wcześniej odrzucona.' };
+            }
+            return { success: false, error: 'Już aplikowałaś do tego zespołu.' };
+        }
+
+        const notification = await prisma.notification.create({
+            data: {
+                type: 'TEAM_APPLICATION',
+                status: 'PENDING',
+                teamId: teamId,
+                userId: userId,
+                data: {
+                    applicantName: user.imieNazwisko,
+                    motivation: motivation
+                }
+            }
+        });
+
+        revalidatePath('/dashboard');
+        return { success: true, data: notification };
+    } catch (error) {
+        console.error('Error applying to team:', error);
+        return { success: false, error: 'Failed to apply' };
+    }
+}
+
+export async function respondToTeamApplication(notificationId: number, accept: boolean) {
+    try {
+        const application = await prisma.notification.findUnique({
+            where: { id: notificationId },
+            include: { team: true, user: true }
+        });
+
+        if (!application || application.type !== 'TEAM_APPLICATION') {
+            return { success: false, error: 'Application not found' };
+        }
+
+        if (accept) {
+            // Add user to team
+            await prisma.userTeam.create({
+                data: {
+                    userId: application.userId!,
+                    teamId: application.teamId,
+                    rola: 'uczestniczka'
+                }
+            });
+
+            // Update application status
+            await prisma.notification.update({
+                where: { id: notificationId },
+                data: { status: 'ACCEPTED' }
+            });
+
+            // Create result notification for user
+            await prisma.notification.create({
+                data: {
+                    type: 'APPLICATION_RESULT',
+                    status: 'ACCEPTED',
+                    teamId: application.teamId,
+                    userId: application.userId,
+                    data: {
+                        teamName: application.team.nazwa,
+                        message: `Zostałaś przyjęta do zespołu "${application.team.nazwa}"!`
+                    }
+                }
+            });
+        } else {
+            // Revert status to REJECTED (keep it to block future apps)
+            await prisma.notification.update({
+                where: { id: notificationId },
+                data: { status: 'REJECTED' }
+            });
+
+            // Create result notification for user
+            await prisma.notification.create({
+                data: {
+                    type: 'APPLICATION_RESULT',
+                    status: 'REJECTED',
+                    teamId: application.teamId,
+                    userId: application.userId,
+                    data: {
+                        teamName: application.team.nazwa,
+                        message: `Niestety nie udało Ci się dostać do zespołu "${application.team.nazwa}".`
+                    }
+                }
+            });
+        }
+
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error processing application:', error);
+        return { success: false, error: 'Failed to process application' };
+    }
+}

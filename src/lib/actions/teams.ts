@@ -137,10 +137,10 @@ export async function getUserTeams(userId: number) {
     }
 }
 
-export async function createTeam(nazwa: string, kolor: string = '#5400FF') {
+export async function createTeam(nazwa: string, kolor: string = '#5400FF', opis?: string) {
     try {
         const team = await prisma.team.create({
-            data: { nazwa, kolor },
+            data: { nazwa, kolor, opis },
         })
         revalidatePath('/admin-teams')
         revalidatePath('/admin-users')
@@ -152,13 +152,14 @@ export async function createTeam(nazwa: string, kolor: string = '#5400FF') {
     }
 }
 
-export async function updateTeam(id: number, nazwa: string, kolor?: string) {
+export async function updateTeam(id: number, nazwa: string, kolor?: string, opis?: string) {
     try {
         const team = await prisma.team.update({
             where: { id },
             data: {
                 nazwa,
-                ...(kolor && { kolor })
+                ...(kolor && { kolor }),
+                ...(opis !== undefined && { opis })
             },
         })
         revalidatePath('/admin-teams')
@@ -261,5 +262,19 @@ export async function removeUserFromTeam(userId: number, teamId: number) {
     } catch (error) {
         console.error('Error removing user from team:', error)
         return { success: false, error: 'Failed to remove user from team' }
+    }
+}
+export async function toggleTeamApplications(teamId: number, enabled: boolean) {
+    try {
+        await prisma.team.update({
+            where: { id: teamId },
+            data: { allowApplications: enabled }
+        });
+        revalidatePath('/dashboard');
+        revalidatePath('/admin-teams');
+        return { success: true };
+    } catch (error) {
+        console.error('Error toggling team applications:', error);
+        return { success: false, error: 'Failed to toggle applications' };
     }
 }
