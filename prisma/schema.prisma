@@ -33,6 +33,7 @@ model User {
   registrations   EventRegistration[]
   attendance      Attendance[]
   announcementAssignments AnnouncementAssignment[]
+  notifications           Notification[]
   
   @@map("users")
 }
@@ -46,6 +47,7 @@ model Team {
   meetings    Meeting[]
   tasks       Task[]
   taskAssignments TaskAssignment[]
+  notifications   Notification[]
 
   @@map("zespoly")
 }
@@ -236,6 +238,23 @@ model SystemSettings {
   alertsPoprawki    Boolean  @default(true) @map("alerts_poprawki")
   alertsRaporty     Boolean  @default(true) @map("alerts_raporty")
   coordinatorTasks  Boolean  @default(false) @map("coordinator_tasks")
+  coordinatorResignationAlerts Boolean @default(true) @map("coordinator_resignation_alerts")
   
   @@map("ustawienia_systemu")
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  type      String   // 'RESIGNATION'
+  status    String   @default("PENDING") // 'PENDING', 'WAITING_FOR_CONFIRMATION', 'ACCEPTED', 'COMPLETED'
+  teamId    Int      @map("zespol_id")
+  userId    Int?     @map("user_id") // Target user for appointment or resigning user
+  data      Json?    // { resignedUserName: string, targetUserName: string, multiCoord: boolean }
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("powiadomienia")
 }

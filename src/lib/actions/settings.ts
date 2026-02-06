@@ -9,6 +9,7 @@ export interface SystemSettingsData {
     alertsPoprawki: boolean;
     alertsRaporty: boolean;
     coordinatorTasks: boolean;
+    coordinatorResignationAlerts: boolean;
 }
 
 // Get current system settings (creates defaults if none exist)
@@ -23,12 +24,13 @@ export async function getSystemSettings(): Promise<{ success: boolean; data?: Sy
                     alertsTerminy: true,
                     alertsPoprawki: true,
                     alertsRaporty: true,
-                    coordinatorTasks: false
+                    coordinatorTasks: false,
+                    coordinatorResignationAlerts: true
                 }
             });
         }
 
-        return { success: true, data: settings };
+        return { success: true, data: settings as SystemSettingsData };
     } catch (error) {
         console.error('Error fetching system settings:', error);
         return { success: false, error: 'Failed to fetch settings' };
@@ -47,7 +49,8 @@ export async function updateSystemSettings(data: Partial<Omit<SystemSettingsData
                     alertsTerminy: data.alertsTerminy ?? true,
                     alertsPoprawki: data.alertsPoprawki ?? true,
                     alertsRaporty: data.alertsRaporty ?? true,
-                    coordinatorTasks: data.coordinatorTasks ?? false
+                    coordinatorTasks: data.coordinatorTasks ?? false,
+                    coordinatorResignationAlerts: data.coordinatorResignationAlerts ?? true
                 }
             });
         } else {
@@ -58,7 +61,8 @@ export async function updateSystemSettings(data: Partial<Omit<SystemSettingsData
                     ...(data.alertsTerminy !== undefined && { alertsTerminy: data.alertsTerminy }),
                     ...(data.alertsPoprawki !== undefined && { alertsPoprawki: data.alertsPoprawki }),
                     ...(data.alertsRaporty !== undefined && { alertsRaporty: data.alertsRaporty }),
-                    ...(data.coordinatorTasks !== undefined && { coordinatorTasks: data.coordinatorTasks })
+                    ...(data.coordinatorTasks !== undefined && { coordinatorTasks: data.coordinatorTasks }),
+                    ...(data.coordinatorResignationAlerts !== undefined && { coordinatorResignationAlerts: data.coordinatorResignationAlerts })
                 }
             });
         }

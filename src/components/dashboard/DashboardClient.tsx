@@ -18,7 +18,8 @@ import {
     Sparkles,
     AlertTriangle,
     Trash2,
-    Settings
+    Settings,
+    XCircle
 } from "lucide-react";
 
 const menuItems = [
@@ -35,10 +36,11 @@ const menuItems = [
     { title: "Ustawienia", description: "Konfiguracja alertów i powiadomień", icon: Settings, tone: "lux-gradient", href: "/admin-settings", adminOnly: true, special: true },
 ];
 
-import { getUserTeams, removeUserFromTeam } from "@/lib/actions/teams";
+import { getUserTeams, getTeamById, removeUserFromTeam } from "@/lib/actions/teams";
 import { checkMissingReports } from "@/lib/actions/reports";
 import { getParticipantAlerts, ParticipantAlert } from "@/lib/actions/alerts";
 import { getSystemSettings, SystemSettingsData } from "@/lib/actions/settings";
+import { getNotifications, nominateCoordinator, respondToInvitation, dismissNotification } from "@/lib/actions/notifications";
 import { useRouter } from "next/navigation";
 
 interface DashboardClientProps {
@@ -54,6 +56,9 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
     const [missingReportsCount, setMissingReportsCount] = useState(0);
     const [participantAlerts, setParticipantAlerts] = useState<ParticipantAlert[]>([]);
     const [systemSettings, setSystemSettings] = useState<SystemSettingsData | null>(null);
+    const [notifications, setNotifications] = useState<any[]>([]);
+    const [selectedNomination, setSelectedNomination] = useState<{ notificationId: number, teamId: number } | null>(null);
+    const [nominationTeamData, setNominationTeamData] = useState<any>(null);
 
     const refreshSession = () => {
         const storedUser = localStorage.getItem("user");
@@ -63,6 +68,13 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
         if (storedUser) setUser(JSON.parse(storedUser));
         if (storedTeam) setActiveTeam(storedTeam);
         if (storedRole) setActiveRole(storedRole.toUpperCase());
+    };
+
+    const fetchNotifications = async (userId?: number) => {
+        const res = await getNotifications(userId);
+        if (res.success && res.data) {
+            setNotifications(res.data);
+        }
     };
 
     useEffect(() => {
@@ -77,6 +89,12 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
             getUserTeams(parsed.id).then(res => {
                 if (res.success && res.data) setTeams(res.data);
             });
+        }
+
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+            const parsedUser = JSON.parse(storedUser);
+            fetchNotifications(parsedUser.id);
         }
 
         // --- CRITICAL FIX: Validate Active Team & Role ---
@@ -215,6 +233,38 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
         window.location.reload();
     };
 
+    const handleNominate = async (memberUserId: number) => {
+        if (!selectedNomination) return;
+        const res = await nominateCoordinator(selectedNomination.notificationId, memberUserId);
+        if (res.success) {
+            setSelectedNomination(null);
+            fetchNotifications(user?.id);
+        }
+    };
+
+    const handleInvitation = async (notificationId: number, accept: boolean) => {
+        const res = await respondToInvitation(notificationId, accept);
+        if (res.success) {
+            if (accept) window.location.reload(); // Refresh to update roles/UI
+            else fetchNotifications(user?.id);
+        }
+    };
+
+    const handleDismiss = async (notificationId: number) => {
+        const res = await dismissNotification(notificationId);
+        if (res.success) {
+            fetchNotifications(user?.id);
+        }
+    };
+
+    const handleOpenNomination = async (notificationId: number, teamId: number) => {
+        setSelectedNomination({ notificationId, teamId });
+        const res = await getTeamById(teamId);
+        if (res.success) {
+            setNominationTeamData(res.data);
+        }
+    };
+
     const currentActive = activeTeam || (teams.length > 0 ? teams[0]?.team.nazwa : null);
 
     const filteredMenu = menuItems.filter(item => {
@@ -243,6 +293,107 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
                         </p>
                     </div>
                 </motion.section>
+
+                {/* Resignation & Appointment Notifications */}
+                {notifications.length > 0 && (
+                    <div className="space-y-4">
+                        {notifications.map((notif) => {
+                            const data = notif.data as any;
+
+                            // 1. Admin: Resignation Alert (PENDING)
+                            if (isSystemAdmin && notif.type === 'RESIGNATION' && notif.status === 'PENDING') {
+                                return (
+                                    <motion.div key={notif.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                                        className="bg-red-50 border-l-4 border-red-500 p-6 rounded-r-xl flex items-center justify-between shadow-sm"
+                                    >
+                                        <div className="flex gap-4">
+                                            <div className="bg-red-100 p-2 rounded-full text-red-600"><AlertTriangle size={24} /></div>
+                                            <div>
+                                                <h3 className="text-lg font-bold text-red-800">Koordynatorka opuściła zespół!</h3>
+                                                <p className="text-red-700 font-medium">Użytkowniczka <strong>{data.resignedUserName}</strong> opuściła zespół <strong>{notif.team.nazwa}</strong>.</p>
+                                            </div>
+                                        </div>
+                                        {data.multiCoord ? (
+                                            <button onClick={() => handleDismiss(notif.id)} className="px-6 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors shadow-lg">OK</button>
+                                        ) : (
+                                            <button
+                                                onClick={() => handleOpenNomination(notif.id, notif.teamId)}
+                                                className="px-6 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-lg"
+                                            >
+                                                Wybierz nową koordynatorkę
+                                            </button>
+                                        )}
+                                    </motion.div>
+                                );
+                            }
+
+                            // 2. Admin: Waiting for Confirmation
+                            if (isSystemAdmin && notif.type === 'RESIGNATION' && notif.status === 'WAITING_FOR_CONFIRMATION') {
+                                return (
+                                    <motion.div key={notif.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                                        className="bg-blue-50 border-l-4 border-blue-500 p-6 rounded-r-xl flex items-center justify-between shadow-sm"
+                                    >
+                                        <div className="flex gap-4">
+                                            <div className="bg-blue-100 p-2 rounded-full text-blue-600"><Settings size={24} className="animate-spin-slow" /></div>
+                                            <div>
+                                                <h3 className="text-lg font-bold text-blue-800">Oczekiwanie na potwierdzenie</h3>
+                                                <p className="text-blue-700 font-medium">Wysłano zaproszenie do <strong>{data.targetUserName}</strong> na funkcję koordynatorki zespołu <strong>{notif.team.nazwa}</strong>.</p>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                );
+                            }
+
+                            // 3. Admin: Accepted
+                            if (isSystemAdmin && notif.status === 'ACCEPTED') {
+                                return (
+                                    <motion.div key={notif.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                                        className="bg-green-50 border-l-4 border-green-500 p-6 rounded-r-xl flex items-center justify-between shadow-sm"
+                                    >
+                                        <div className="flex gap-4">
+                                            <div className="bg-green-100 p-2 rounded-full text-green-600"><CheckCircle2 size={24} /></div>
+                                            <div>
+                                                <h3 className="text-lg font-bold text-green-800">Nowa koordynatorka przyjęta!</h3>
+                                                <p className="text-green-700 font-medium">Użytkowniczka <strong>{data.targetUserName}</strong> przyjęła funkcję koordynatorki w zespole <strong>{notif.team.nazwa}</strong>.</p>
+                                            </div>
+                                        </div>
+                                        <button onClick={() => handleDismiss(notif.id)} className="px-6 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors shadow-lg">OK</button>
+                                    </motion.div>
+                                );
+                            }
+
+                            // 4. User: Invitation
+                            if (!isSystemAdmin && notif.status === 'WAITING_FOR_CONFIRMATION' && notif.userId === user?.id) {
+                                return (
+                                    <motion.div key={notif.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                                        className="bg-purple-50 border-l-4 border-purple-500 p-8 rounded-r-2xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl relative overflow-hidden group"
+                                    >
+                                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform"><Crown size={80} /></div>
+                                        <div className="flex gap-6 items-center">
+                                            <div className="bg-purple-100 p-4 rounded-2xl text-purple-600 shadow-inner"><Crown size={32} /></div>
+                                            <div>
+                                                <h3 className="text-2xl font-black text-purple-900 uppercase tracking-tight">Zostałaś mianowana!</h3>
+                                                <p className="text-purple-700 text-lg font-medium">Czy chcesz przyjąć funkcję koordynatorki w zespole <strong>{notif.team.nazwa}</strong>?</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-4 w-full md:w-auto">
+                                            <button
+                                                onClick={() => handleInvitation(notif.id, true)}
+                                                className="flex-1 md:flex-none px-10 py-4 bg-purple-600 text-white font-black rounded-xl hover:bg-purple-700 hover:scale-105 active:scale-95 transition-all shadow-lg uppercase tracking-widest text-sm"
+                                            >Tak, przyjmuję</button>
+                                            <button
+                                                onClick={() => handleInvitation(notif.id, false)}
+                                                className="flex-1 md:flex-none px-10 py-4 bg-white text-purple-600 border-2 border-purple-100 font-bold rounded-xl hover:bg-purple-50 transition-all uppercase tracking-widest text-sm"
+                                            >Nie</button>
+                                        </div>
+                                    </motion.div>
+                                );
+                            }
+
+                            return null;
+                        })}
+                    </div>
+                )}
 
                 {isTeamCoord && missingReportsCount > 0 && systemSettings?.alertsRaporty !== false && (
                     <motion.div
@@ -443,6 +594,51 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
                         ))}
                     </motion.div>
                 </motion.section>
+
+                {/* Nomination Modal for Admin */}
+                {selectedNomination && (
+                    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-xl animate-in fade-in duration-300">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            className="bg-white rounded-[32px] shadow-2xl w-full max-w-2xl overflow-hidden"
+                        >
+                            <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                                <div>
+                                    <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">Wybierz nową koordynatorkę</h2>
+                                    <p className="text-muted-foreground font-medium">Lista osób w zespole {nominationTeamData?.nazwa || '...'}</p>
+                                </div>
+                                <button onClick={() => { setSelectedNomination(null); setNominationTeamData(null); }} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><XCircle size={24} className="text-gray-400" /></button>
+                            </div>
+                            <div className="p-8 max-h-[60vh] overflow-y-auto space-y-3">
+                                {nominationTeamData?.users
+                                    ?.filter((ut: any) => ut.rola !== 'koordynatorka')
+                                    .map((ut: any) => (
+                                        <div key={ut.userId} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-primary/20 transition-all group">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center font-bold text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                                                    {ut.user.imieNazwisko.charAt(0)}
+                                                </div>
+                                                <span className="font-bold text-gray-800">{ut.user.imieNazwisko}</span>
+                                            </div>
+                                            <button
+                                                onClick={() => handleNominate(ut.userId)}
+                                                className="px-6 py-2 bg-primary text-white font-bold rounded-lg hover:scale-105 active:scale-95 transition-all shadow-md opacity-0 group-hover:opacity-100"
+                                            >
+                                                Mianuj
+                                            </button>
+                                        </div>
+                                    ))}
+                                {(!nominationTeamData?.users ||
+                                    nominationTeamData.users.filter((ut: any) => ut.rola !== 'koordynatorka').length === 0) && (
+                                        <div className="text-center py-12 text-muted-foreground font-medium">
+                                            {nominationTeamData ? 'Brak dostępnych osób w zespole do mianowania.' : 'Ładowanie listy osób...'}
+                                        </div>
+                                    )}
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
             </motion.div>
         </DashboardLayout>
     );

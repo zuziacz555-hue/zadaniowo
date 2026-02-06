@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
+import { createResignationNotification } from './notifications'
 
 export async function getTeams() {
     try {
@@ -86,6 +87,11 @@ export async function getUserTeams(userId: number) {
             include: {
                 team: {
                     include: {
+                        users: {
+                            include: {
+                                user: true
+                            }
+                        },
                         tasks: {
                             where: {
                                 executions: {
@@ -221,12 +227,33 @@ export async function addUserToTeam(userId: number, teamId: number, rola: string
 
 export async function removeUserFromTeam(userId: number, teamId: number) {
     try {
+        // 1. Check if user was a coordinator
+        const userTeam = await prisma.userTeam.findFirst({
+            where: { userId, teamId }
+        });
+
+        const wasCoordinator = userTeam?.rola === 'koordynatorka';
+
+        // 2. Delete membership
         await prisma.userTeam.deleteMany({
             where: {
                 userId,
                 teamId,
             },
         })
+
+        // 3. If was coordinator, check settings and create notification
+        if (wasCoordinator) {
+            const settings = await prisma.systemSettings.findFirst();
+            if (settings?.coordinatorResignationAlerts !== false) {
+                // Import dynamiclly to avoid circular dependency if any, 
+                // or just call it if we ensure order. 
+                // For simplicity, I'll just use prisma directly here or import at top.
+                // But I'll import createResignationNotification at the top of the file.
+                await createResignationNotification(teamId, userId);
+            }
+        }
+
         revalidatePath('/admin-teams')
         revalidatePath('/admin-users')
         revalidatePath('/dashboard')

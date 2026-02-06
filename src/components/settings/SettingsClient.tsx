@@ -69,6 +69,13 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
             title: 'Zadania dla koordynatorek',
             description: 'Zezwól na przydzielanie zadań koordynatorkom (opcja dostępna przy tworzeniu zadania)',
             color: 'purple'
+        },
+        {
+            key: 'coordinatorResignationAlerts' as const,
+            icon: Bell,
+            title: 'Alerty o rezygnacji',
+            description: 'Powiadomienia dla administratora o rezygnacji koordynatorki z zespołu (wyświetlane na Dashboard)',
+            color: 'red'
         }
     ];
 
