@@ -86,6 +86,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
     const [userSearchTerm, setUserSearchTerm] = useState("");
     const [sortConfig, setSortConfig] = useState<{ field: "PRIORYTET" | "TERMIN", direction: "ASC" | "DESC" }>({ field: "PRIORYTET", direction: "DESC" });
     const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+    const [selectedExecutionForDetail, setSelectedExecutionForDetail] = useState<any>(null);
 
     // --- TASK FILTERING LOGIC ---
 
@@ -854,9 +855,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                         <CollapsibleExecutionCard
                                                             key={exec.id}
                                                             execution={exec}
-                                                            onApprove={handleApproveWork}
-                                                            onReject={(task: any, userId: number) => setSelectedTask({ ...task, targetUserId: userId, targetUserName: exec.user?.imieNazwisko })}
-                                                            isAdmin={isAdmin}
+                                                            onViewDetail={() => setSelectedExecutionForDetail({ ...exec, tabType: verificationTab })}
                                                             tabType={verificationTab}
                                                         />
                                                     ))}
@@ -1096,6 +1095,24 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                 </AnimatePresence>,
                 document.body
             )}
+
+            {/* Execution Detail Modal */}
+            {mounted && selectedExecutionForDetail && createPortal(
+                <ExecutionDetailModal
+                    execution={selectedExecutionForDetail}
+                    onClose={() => setSelectedExecutionForDetail(null)}
+                    onApprove={(taskId: number, userId: number) => {
+                        handleApproveWork(taskId, userId);
+                        setSelectedExecutionForDetail(null);
+                    }}
+                    onReject={(task: any, userId: number) => {
+                        setSelectedTask({ ...task, targetUserId: userId, targetUserName: selectedExecutionForDetail.user?.imieNazwisko });
+                        setSelectedExecutionForDetail(null);
+                    }}
+                    isAdmin={isAdmin}
+                />,
+                document.body
+            )}
         </DashboardLayout>
 
     );
@@ -1273,11 +1290,9 @@ function AdminTaskCard({ task, onDelete, onApprove, onReject, isCoord, isAdmin }
     );
 }
 
-// Collapsible Verification Card for specific Execution (Tabbed View)
-function CollapsibleExecutionCard({ execution, onApprove, onReject, isAdmin, tabType }: any) {
-    const [isExpanded, setIsExpanded] = useState(false);
+// Simplified Execution Card that triggers the Detail Modal
+function CollapsibleExecutionCard({ execution, onViewDetail, tabType }: any) {
     const task = execution.task;
-
     const deadline = task.termin ? new Date(task.termin) : null;
     const isOverdue = deadline && deadline < new Date() && task.status === "AKTYWNE";
 
@@ -1292,158 +1307,246 @@ function CollapsibleExecutionCard({ execution, onApprove, onReject, isAdmin, tab
 
     return (
         <motion.div
-            layout
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             className={cn(
-                "rounded-[20px] overflow-hidden transition-all cursor-pointer border-2",
-                isExpanded
-                    ? `bg-white shadow-xl border-${statusColor}-500/20`
-                    : `bg-gradient-to-br from-${statusColor}-50 to-white border-${statusColor}-100 hover:border-${statusColor}-300 shadow-sm hover:shadow-md`,
-                // Overdue styling only for pending
-                tabType === "oczekujace" && isOverdue && !isExpanded && "from-red-50 to-red-100 border-red-200/50"
+                "rounded-[20px] p-4 flex items-center justify-between gap-3 cursor-pointer border-2 transition-all shadow-sm hover:shadow-md",
+                `bg-gradient-to-br from-${statusColor}-50 to-white border-${statusColor}-100 hover:border-${statusColor}-300`,
+                tabType === "oczekujace" && isOverdue && "from-red-50 to-red-100 border-red-200/50"
             )}
-            onClick={() => setIsExpanded(!isExpanded)}
+            onClick={onViewDetail}
         >
-            {/* Collapsed View - Small Tile */}
-            <div className={cn("p-4 flex items-center justify-between gap-3", isExpanded && `border-b border-gray-100 bg-${statusColor}-50/30`)}>
-                <div className="flex items-center gap-3 min-w-0">
-                    <div className={cn(
-                        "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-white shadow-sm",
-                        tabType === "oczekujace" ? (isOverdue ? "bg-red-500" : "bg-amber-500") :
-                            tabType === "zaakceptowane" ? "bg-emerald-500" : "bg-red-500"
-                    )}>
-                        <StatusIcon size={18} />
-                    </div>
-                    <div className="min-w-0">
-                        <div className="flex items-baseline gap-2 mb-0.5">
-                            <h4 className="font-bold text-gray-900 truncate text-sm">{task.tytul}</h4>
-                        </div>
-                        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                            <span>{execution.user?.imieNazwisko}</span>
-                            {execution.terminPoprawki && tabType === "doPoprawy" && (
-                                <span className="text-red-500 flex items-center gap-1">
-                                    <Clock size={10} /> Poprawa: {new Date(execution.terminPoprawki).toLocaleDateString()}
-                                </span>
-                            )}
-                        </div>
+            <div className="flex items-center gap-3 min-w-0">
+                <div className={cn(
+                    "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-white shadow-sm",
+                    tabType === "oczekujace" ? (isOverdue ? "bg-red-500" : "bg-amber-500") :
+                        tabType === "zaakceptowane" ? "bg-emerald-500" : "bg-red-500"
+                )}>
+                    <StatusIcon size={18} />
+                </div>
+                <div className="min-w-0">
+                    <h4 className="font-bold text-gray-900 truncate text-sm mb-0.5">{task.tytul}</h4>
+                    <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                        <span>{execution.user?.imieNazwisko}</span>
+                        {execution.terminPoprawki && tabType === "doPoprawy" && (
+                            <span className="text-red-500 flex items-center gap-1">
+                                <Clock size={10} /> Poprawa: {new Date(execution.terminPoprawki).toLocaleDateString()}
+                            </span>
+                        )}
                     </div>
                 </div>
-                <motion.div
-                    animate={{ rotate: isExpanded ? 180 : 0 }}
-                    className="text-gray-400 flex-shrink-0"
-                >
-                    <ChevronDown size={20} />
-                </motion.div>
             </div>
+            <ChevronDown className="text-gray-400 rotate-270" size={18} />
+        </motion.div>
+    );
+}
 
-            {/* Expanded View - Full Details */}
-            <AnimatePresence>
-                {isExpanded && (
-                    <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="overflow-hidden"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="p-5 space-y-4 bg-white">
-                            {/* Task & Exec Info */}
-                            <div className="space-y-3">
-                                <div className="flex flex-wrap gap-2 text-[9px] font-black uppercase tracking-widest">
-                                    <span className={cn(
-                                        "px-2 py-0.5 rounded-full border",
-                                        task.priorytet === "WYSOKI" ? "bg-red-50 text-red-600 border-red-100" :
-                                            task.priorytet === "NISKI" ? "bg-blue-50 text-blue-600 border-blue-100" :
-                                                "bg-gray-50 text-gray-600 border-gray-100"
-                                    )}>
-                                        Priorytet: {task.priorytet}
-                                    </span>
-                                    {deadline && (
-                                        <span className={cn("flex items-center gap-1", isOverdue ? "text-red-600" : "text-muted-foreground")}>
-                                            <Clock size={9} />
-                                            Termin: {deadline.toLocaleDateString()}
-                                        </span>
-                                    )}
-                                    <span className="bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-                                        Wysłano: {new Date(execution.dataWyslania || execution.updatedAt).toLocaleString()}
-                                    </span>
-                                </div>
-                                {task.opis && (
-                                    <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">Opis zadania</span>
-                                        <p className="text-xs text-gray-600">{task.opis}</p>
-                                    </div>
+// Full Screen Detail Modal for Verification
+function ExecutionDetailModal({ execution, onClose, onApprove, onReject, isAdmin }: any) {
+    if (!execution) return null;
+    const task = execution.task;
+    const tabType = execution.tabType || execution.status.toLowerCase();
+    const deadline = task.termin ? new Date(task.termin) : null;
+    const isOverdue = deadline && deadline < new Date() && task.status === "AKTYWNE";
+
+    return (
+        <AnimatePresence>
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 md:p-10"
+            >
+                {/* Backdrop with Blur */}
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-[20px]" onClick={onClose} />
+
+                {/* Modal Content */}
+                <motion.div
+                    initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                    className="bg-white w-full max-w-4xl max-h-[90vh] rounded-[40px] shadow-2xl relative overflow-hidden flex flex-col"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    {/* Modal Header */}
+                    <div className="p-8 pb-6 border-b border-gray-100 flex justify-between items-start gap-6 bg-gray-50/50">
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                                <span className={cn(
+                                    "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border",
+                                    tabType === "oczekujace" ? "bg-amber-50 text-amber-600 border-amber-200" :
+                                        tabType === "zaakceptowane" ? "bg-emerald-50 text-emerald-600 border-emerald-200" :
+                                            "bg-red-50 text-red-600 border-red-200"
+                                )}>
+                                    {tabType === "oczekujace" ? "Oczekuje na weryfikację" :
+                                        tabType === "zaakceptowane" ? "Zatwierdzone" : "Do poprawy"}
+                                </span>
+                                {isOverdue && tabType === "oczekujace" && (
+                                    <span className="bg-red-500 text-white px-2 py-1 rounded-full text-[8px] font-black uppercase animate-pulse">PO TERMINIE</span>
                                 )}
                             </div>
+                            <h2 className="text-3xl font-bold text-gray-900 leading-tight">{task.tytul}</h2>
+                            <div className="flex items-center gap-3 text-sm text-muted-foreground font-medium">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary text-[10px] font-bold">
+                                        {execution.user?.imieNazwisko?.[0]}
+                                    </div>
+                                    <span>{execution.user?.imieNazwisko}</span>
+                                </div>
+                                <span>•</span>
+                                <div className="flex items-center gap-1.5">
+                                    <Clock size={14} />
+                                    <span>Wysłano: {new Date(execution.dataWyslania || execution.updatedAt).toLocaleString()}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button onClick={onClose} className="p-3 hover:bg-white rounded-2xl transition-all shadow-sm hover:shadow-md border border-transparent hover:border-gray-100 text-gray-400 hover:text-gray-900 group">
+                            <X size={24} className="group-hover:rotate-90 transition-transform duration-300" />
+                        </button>
+                    </div>
 
-                            {/* User Response */}
-                            <div className="space-y-2">
-                                <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest pl-1">Odpowiedź uczestnika</p>
-                                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 text-sm text-gray-800">
-                                    {(task.submissions?.find((s: any) => s.userId === execution.userId)?.opis) || execution.odpowiedz || <span className="italic text-gray-400">Brak opisu tekstowego</span>}
+                    {/* Modal Body - Scrollable */}
+                    <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
+                        {/* Grid for Quick Info */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="bg-gray-50 rounded-[24px] p-6 border border-gray-100 space-y-3 shadow-sm">
+                                <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                                    <Filter size={14} /> Szczegóły zadania
+                                </h4>
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-gray-500">Priorytet:</span>
+                                        <span className={cn(
+                                            "font-bold",
+                                            task.priorytet === "WYSOKI" ? "text-red-500" :
+                                                task.priorytet === "NISKI" ? "text-blue-500" : "text-gray-700"
+                                        )}>{task.priorytet}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-gray-500">Termin oddania:</span>
+                                        <span className="font-bold text-gray-700">{deadline ? deadline.toLocaleDateString() : "Brak"}</span>
+                                    </div>
+                                    {task.team && (
+                                        <div className="flex justify-between items-center text-sm">
+                                            <span className="text-gray-500">Zespół:</span>
+                                            <span className="px-3 py-1 bg-white rounded-lg border border-gray-100 shadow-sm font-bold text-gray-700 text-xs">{task.team.nazwa}</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
-                            {/* Previous Rejection Notes (if any) */}
-                            {execution.uwagiOdrzucenia && (
-                                <div className="space-y-2">
-                                    <p className="text-[9px] font-black uppercase text-red-400 tracking-widest pl-1">Uwagi odrzucenia</p>
-                                    <div className="bg-red-50 rounded-xl p-4 border border-red-100 text-sm text-red-800 italic">
-                                        "{execution.uwagiOdrzucenia}"
+                            <div className="bg-gray-50 rounded-[24px] p-6 border border-gray-100 space-y-3 shadow-sm">
+                                <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                                    <CheckCircle size={14} /> Status zgłoszenia
+                                </h4>
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-gray-500">Obecny stan:</span>
+                                        <span className="font-bold text-gray-700 uppercase tracking-tight">{tabType}</span>
+                                    </div>
+                                    {execution.poprawione && (
+                                        <div className="flex justify-between items-center text-sm">
+                                            <span className="text-gray-500">Po poprawce:</span>
+                                            <span className="bg-emerald-500 text-white px-2 py-0.5 rounded-full text-[9px] font-black uppercase">TAK</span>
+                                        </div>
+                                    )}
+                                    {execution.terminPoprawki && (
+                                        <div className="flex justify-between items-center text-sm">
+                                            <span className="text-red-500 font-bold">Termin poprawki:</span>
+                                            <span className="font-bold text-red-500">{new Date(execution.terminPoprawki).toLocaleDateString()}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Task Description */}
+                        {task.opis && (
+                            <div className="space-y-3 animate-in fade-in slide-in-from-top-4">
+                                <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest pl-1">Instrukcja do zadania</h4>
+                                <div className="bg-blue-50/50 rounded-[24px] p-6 border border-blue-100/50 text-gray-700 text-base leading-relaxed">
+                                    {task.opis}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* User Response - The Core Content */}
+                        <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4">
+                            <div className="flex justify-between items-end">
+                                <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest pl-1">Odpowiedź uczestnika</h4>
+                                <span className="text-[10px] font-bold text-muted-foreground bg-gray-100 px-3 py-1 rounded-full">{execution.user?.imieNazwisko}</span>
+                            </div>
+                            <div className="bg-white rounded-[32px] p-8 border-2 border-gray-100 text-lg text-gray-800 leading-relaxed shadow-inner min-h-[200px]">
+                                {(task.submissions?.find((s: any) => s.userId === execution.userId)?.opis) || execution.odpowiedz || <span className="italic text-gray-300">Brak treści odpowiedzi uczestnika...</span>}
+                            </div>
+                        </div>
+
+                        {/* Rejection Notes */}
+                        {execution.uwagiOdrzucenia && (
+                            <div className="space-y-3 animate-in fade-in zoom-in-95">
+                                <h4 className="text-xs font-black text-red-500 uppercase tracking-widest pl-1">Uwagi do poprawy</h4>
+                                <div className="bg-red-50 rounded-[24px] p-6 border border-red-100 text-red-800 italic text-base">
+                                    "{execution.uwagiOdrzucenia}"
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Modal Footer - Actions */}
+                    <div className="p-8 border-t border-gray-100 bg-gray-50/80 backdrop-blur-md flex gap-4">
+                        {tabType === "oczekujace" ? (
+                            <>
+                                <button
+                                    onClick={() => onApprove(task.id, execution.userId)}
+                                    className="flex-1 py-5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-[24px] transition-all flex items-center justify-center gap-3 shadow-xl shadow-emerald-200 hover:-translate-y-1"
+                                >
+                                    <CheckCircle size={24} /> Zatwierdź zgłoszenie
+                                </button>
+                                <button
+                                    onClick={() => onReject(task, execution.userId)}
+                                    className="flex-1 py-5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-[24px] transition-all flex items-center justify-center gap-3 shadow-xl shadow-red-200 hover:-translate-y-1"
+                                >
+                                    <X size={24} /> Odrzuć do poprawy
+                                </button>
+                            </>
+                        ) : (
+                            <div className="w-full flex justify-between items-center bg-white p-4 rounded-[24px] border border-gray-100 shadow-sm">
+                                <div className="flex items-center gap-3 px-4">
+                                    <div className={cn(
+                                        "p-2 rounded-xl text-white",
+                                        tabType === "zaakceptowane" ? "bg-emerald-500" : "bg-red-500"
+                                    )}>
+                                        {tabType === "zaakceptowane" ? <CheckCircle size={20} /> : <AlertTriangle size={20} />}
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none mb-1">Status końcowy</p>
+                                        <p className={cn(
+                                            "text-lg font-bold leading-none",
+                                            tabType === "zaakceptowane" ? "text-emerald-600" : "text-red-600"
+                                        )}>
+                                            {tabType === "zaakceptowane" ? "Zatwierdzono" : "Odrzucono do poprawy"}
+                                        </p>
                                     </div>
                                 </div>
-                            )}
 
-                            {/* Actions - Only for Pending or if we want to allow re-evaluation */}
-                            {tabType === "oczekujace" && (
-                                <div className="flex gap-2 pt-2">
+                                {tabType === "zaakceptowane" && (
                                     <button
-                                        onClick={(e) => { e.stopPropagation(); onApprove(task.id, execution.userId); }}
-                                        className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"
-                                    >
-                                        <CheckCircle size={16} /> Akceptuj
-                                    </button>
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); onReject({ ...task, targetExecution: execution }, execution.userId); }}
-                                        className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-200"
-                                    >
-                                        <X size={16} /> Odrzuć
-                                    </button>
-                                </div>
-                            )}
-
-                            {/* Actions for Accepted/Rejected - Revert possibility? For now maybe just read-only or status change */}
-                            {tabType !== "oczekujace" && (
-                                <div className="flex justify-end pt-2">
-                                    <span className={cn(
-                                        "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5",
-                                        tabType === "zaakceptowane" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
-                                    )}>
-                                        {tabType === "zaakceptowane" ? <CheckCircle size={12} /> : <AlertTriangle size={12} />}
-                                        {tabType === "zaakceptowane" ? "ZAAKCEPTOWANE" : "ODRZUCONE DO POPRAWY"}
-                                    </span>
-                                </div>
-                            )}
-
-                            {/* DELETE BUTTON FOR ACCEPTED TASKS */}
-                            {tabType === "zaakceptowane" && (
-                                <div className="pt-4 border-t border-gray-100 mt-4">
-                                    <button
-                                        onClick={async (e) => {
-                                            e.stopPropagation();
+                                        onClick={async () => {
                                             if (confirm("Czy na pewno chcesz trwale usunąć to zgłoszenie? Tej operacji nie można cofnąć.")) {
                                                 await deleteTaskExecution(task.id, execution.userId);
+                                                onClose();
                                             }
                                         }}
-                                        className="w-full py-3 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 border border-red-100"
+                                        className="px-6 py-4 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-2xl transition-all flex items-center gap-2 border border-red-100"
                                     >
-                                        <Trash2 size={16} /> Usuń zgłoszenie trwale
+                                        <Trash2 size={20} /> Usuń trwale
                                     </button>
-                                </div>
-                            )}
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </motion.div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </motion.div>
+            </motion.div>
+        </AnimatePresence>
     );
 }
