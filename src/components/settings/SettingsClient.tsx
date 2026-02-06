@@ -1,10 +1,9 @@
-"use client";
-
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { motion, AnimatePresence } from "framer-motion";
-import { Settings, Bell, AlertTriangle, FileText, CheckCircle, XCircle, Users } from "lucide-react";
+import { Settings, Bell, AlertTriangle, FileText, CheckCircle, XCircle, Users, Sparkles, ToggleLeft, ToggleRight } from "lucide-react";
 import { updateSystemSettings, SystemSettingsData } from "@/lib/actions/settings";
+import { getTeamById, toggleTeamApplications } from "@/lib/actions/teams";
 import { cn } from "@/lib/utils";
 
 interface SettingsClientProps {
@@ -15,6 +14,26 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
     const [settings, setSettings] = useState(initialSettings);
     const [saving, setSaving] = useState(false);
     const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [user, setUser] = useState<any>(null);
+    const [teamData, setTeamData] = useState<any>(null);
+    const [activeTeamId, setActiveTeamId] = useState<number | null>(null);
+
+    useEffect(() => {
+        const storedUser = localStorage.getItem("user");
+        const storedTeamId = localStorage.getItem("activeTeamId");
+
+        if (storedUser) setUser(JSON.parse(storedUser));
+        if (storedTeamId) {
+            const tId = parseInt(storedTeamId);
+            setActiveTeamId(tId);
+            fetchTeamData(tId);
+        }
+    }, []);
+
+    const fetchTeamData = async (teamId: number) => {
+        const res = await getTeamById(teamId);
+        if (res.success) setTeamData(res.data);
+    };
 
     const handleToggle = async (key: keyof Omit<SystemSettingsData, 'id'>) => {
         setSaving(true);
@@ -36,10 +55,29 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
         }
 
         setSaving(false);
-
-        // Auto-hide message
         setTimeout(() => setStatusMessage(null), 3000);
     };
+
+    const handleToggleApplications = async () => {
+        if (!teamData || !activeTeamId) return;
+        setSaving(true);
+        const newValue = !teamData.allowApplications;
+
+        // Optimistic update
+        setTeamData((prev: any) => ({ ...prev, allowApplications: newValue }));
+
+        const res = await toggleTeamApplications(activeTeamId, newValue);
+        if (res.success) {
+            setStatusMessage({ type: 'success', text: 'Zmieniono status rekrutacji!' });
+        } else {
+            setTeamData((prev: any) => ({ ...prev, allowApplications: !newValue }));
+            setStatusMessage({ type: 'error', text: res.error || 'Błąd zmiany statusu' });
+        }
+        setSaving(false);
+        setTimeout(() => setStatusMessage(null), 3000);
+    };
+
+    const isSystemAdmin = user?.role === "ADMINISTRATOR" || user?.role === "admin";
 
     const toggleItems = [
         {
@@ -118,57 +156,102 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
                 </AnimatePresence>
 
                 {/* Settings Cards */}
-                <div className="lux-card p-8">
-                    <h2 className="text-2xl font-bold mb-8 pb-4 border-b-4 border-primary inline-block">
-                        Powiadomienia i alerty
-                    </h2>
+                {/* System Settings Cards - ONLY FOR ADMINS */}
+                {isSystemAdmin && (
+                    <div className="lux-card p-8">
+                        <h2 className="text-2xl font-bold mb-8 pb-4 border-b-4 border-primary inline-block">
+                            Powiadomienia i alerty systemowe
+                        </h2>
 
-                    <div className="space-y-6">
-                        {toggleItems.map((item) => (
+                        <div className="space-y-6">
+                            {toggleItems.map((item) => (
+                                <motion.div
+                                    key={item.key}
+                                    className="flex items-center justify-between p-6 bg-gray-50/50 rounded-2xl border border-gray-100 hover:border-gray-200 transition-all"
+                                    whileHover={{ scale: 1.005 }}
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className={cn(
+                                            "w-12 h-12 rounded-xl flex items-center justify-center",
+                                            item.color === 'red' && "bg-red-100 text-red-600",
+                                            item.color === 'orange' && "bg-orange-100 text-orange-600",
+                                            item.color === 'blue' && "bg-blue-100 text-blue-600",
+                                            item.color === 'purple' && "bg-purple-100 text-purple-600"
+                                        )}>
+                                            <item.icon size={24} />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-lg text-foreground">{item.title}</h3>
+                                            <p className="text-sm text-muted-foreground max-w-md">{item.description}</p>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={() => handleToggle(item.key)}
+                                        disabled={saving}
+                                        className={cn(
+                                            "relative w-14 h-7 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary/50",
+                                            settings[item.key]
+                                                ? "bg-primary"
+                                                : "bg-gray-300",
+                                            saving && "opacity-50 cursor-not-allowed"
+                                        )}
+                                    >
+                                        <span
+                                            className={cn(
+                                                "absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-300",
+                                                settings[item.key] ? "translate-x-7" : "translate-x-0"
+                                            )}
+                                        />
+                                    </button>
+                                </motion.div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Team Specific Settings - FOR COORDS AND ADMINS */}
+                {teamData && (
+                    <div className="lux-card p-8">
+                        <h2 className="text-2xl font-bold mb-8 pb-4 border-b-4 border-purple-500 inline-block">
+                            Ustawienia zespołu: {teamData.nazwa}
+                        </h2>
+
+                        <div className="space-y-6">
                             <motion.div
-                                key={item.key}
-                                className="flex items-center justify-between p-6 bg-gray-50/50 rounded-2xl border border-gray-100 hover:border-gray-200 transition-all"
+                                className="flex items-center justify-between p-8 bg-purple-50/30 rounded-3xl border border-purple-100 hover:border-purple-200 transition-all"
                                 whileHover={{ scale: 1.005 }}
                             >
-                                <div className="flex items-center gap-4">
-                                    <div className={cn(
-                                        "w-12 h-12 rounded-xl flex items-center justify-center",
-                                        item.color === 'red' && "bg-red-100 text-red-600",
-                                        item.color === 'orange' && "bg-orange-100 text-orange-600",
-                                        item.color === 'blue' && "bg-blue-100 text-blue-600",
-                                        item.color === 'purple' && "bg-purple-100 text-purple-600"
-                                    )}>
-                                        <item.icon size={24} />
+                                <div className="flex items-center gap-6">
+                                    <div className="w-16 h-16 rounded-2xl bg-purple-100 text-purple-600 flex items-center justify-center shadow-sm">
+                                        <Sparkles size={32} />
                                     </div>
                                     <div>
-                                        <h3 className="font-bold text-lg text-foreground">{item.title}</h3>
-                                        <p className="text-sm text-muted-foreground max-w-md">{item.description}</p>
+                                        <h3 className="font-bold text-xl text-gray-900">System aplikowania</h3>
+                                        <p className="text-muted-foreground font-medium max-w-lg">
+                                            Zezwól nowym osobom na wysyłanie zgłoszeń do Twojego zespołu.
+                                            Kandydatki będą widzieć Twój zespół w sekcji "Dostępne zespoły".
+                                        </p>
                                     </div>
                                 </div>
 
-                                {/* Toggle Switch */}
                                 <button
-                                    onClick={() => handleToggle(item.key)}
+                                    onClick={handleToggleApplications}
                                     disabled={saving}
                                     className={cn(
-                                        "relative w-14 h-7 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary/50",
-                                        settings[item.key]
-                                            ? "bg-primary"
-                                            : "bg-gray-300",
-                                        saving && "opacity-50 cursor-not-allowed"
+                                        "flex items-center gap-3 px-6 py-3 rounded-2xl font-black uppercase tracking-widest transition-all",
+                                        teamData.allowApplications
+                                            ? "bg-green-600 text-white shadow-lg shadow-green-200"
+                                            : "bg-gray-200 text-gray-500"
                                     )}
                                 >
-                                    <span
-                                        className={cn(
-                                            "absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-300",
-                                            settings[item.key] ? "translate-x-7" : "translate-x-0"
-                                        )}
-                                    />
+                                    {teamData.allowApplications ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
+                                    {teamData.allowApplications ? "Aktywne" : "Wyłączone"}
                                 </button>
                             </motion.div>
-                        ))}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Info Box */}
                 <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6 flex items-start gap-4">

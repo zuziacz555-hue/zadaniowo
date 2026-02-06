@@ -3,13 +3,35 @@
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 
+export async function getTeamApplications(teamId: number) {
+    try {
+        const applications = await prisma.notification.findMany({
+            where: {
+                teamId: teamId,
+                type: 'TEAM_APPLICATION'
+            },
+            include: {
+                user: true
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+        return { success: true, data: applications }
+    } catch (error) {
+        console.error('Error fetching team applications:', error);
+        return { success: false, error: 'Failed to fetch team applications' }
+    }
+}
+
 export async function getNotifications(userId?: number) {
     try {
         const notifications = await prisma.notification.findMany({
             where: {
                 OR: [
                     { type: 'RESIGNATION', status: { in: ['PENDING', 'WAITING_FOR_CONFIRMATION', 'ACCEPTED'] } },
-                    ...(userId ? [{ userId, status: 'WAITING_FOR_CONFIRMATION' }] : [])
+                    ...(userId ? [
+                        { userId, status: 'WAITING_FOR_CONFIRMATION' },
+                        { userId, type: 'APPLICATION_RESULT' }
+                    ] : [])
                 ]
             },
             include: {
@@ -222,7 +244,7 @@ export async function respondToTeamApplication(notificationId: number, accept: b
                     userId: application.userId,
                     data: {
                         teamName: application.team.nazwa,
-                        message: `Zostałaś przyjęta do zespołu "${application.team.nazwa}"!`
+                        message: `Gratulacje! Dostałaś się do zespołu "${application.team.nazwa}"!`
                     }
                 }
             });

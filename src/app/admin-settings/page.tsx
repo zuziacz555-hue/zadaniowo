@@ -19,9 +19,12 @@ export default function SettingsPage() {
         }
 
         const user = JSON.parse(storedUser);
+        const activeRole = localStorage.getItem("activeRole");
 
-        // Admin only page
-        if (user.role !== "ADMINISTRATOR" && user.role !== "admin") {
+        const isAdmin = user.role === "ADMINISTRATOR" || user.role === "admin";
+        const isCoord = activeRole === "KOORDYNATORKA" || activeRole === "koordynatorka";
+
+        if (!isAdmin && !isCoord) {
             router.push("/dashboard");
             return;
         }
@@ -36,7 +39,8 @@ export default function SettingsPage() {
                     alertsTerminy: true,
                     alertsPoprawki: true,
                     alertsRaporty: true,
-                    coordinatorTasks: false
+                    coordinatorTasks: false,
+                    coordinatorResignationAlerts: true
                 });
             }
             setIsLoading(false);
