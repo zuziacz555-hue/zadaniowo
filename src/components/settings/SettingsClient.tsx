@@ -36,6 +36,7 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
     };
 
     const handleToggle = async (key: keyof Omit<SystemSettingsData, 'id'>) => {
+        console.log(`Toggling setting: ${key} to ${!settings[key]}`);
         setSaving(true);
         setStatusMessage(null);
 
@@ -45,10 +46,12 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
         setSettings(prev => ({ ...prev, [key]: newValue }));
 
         const res = await updateSystemSettings({ [key]: newValue });
+        console.log(`Toggle result for ${key}:`, res);
 
         if (res.success) {
             setStatusMessage({ type: 'success', text: 'Ustawienia zostały zapisane!' });
         } else {
+            console.error(`Failed to toggle ${key}:`, res.error);
             // Revert on error
             setSettings(prev => ({ ...prev, [key]: !newValue }));
             setStatusMessage({ type: 'error', text: res.error || 'Błąd zapisu ustawień' });
@@ -109,6 +112,13 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
             color: 'purple'
         },
         {
+            key: 'coordinatorTeamEditing' as const,
+            icon: Users,
+            title: 'Edycja zespołów przez koordynatorki',
+            description: 'Zezwól koordynatorkom na zmianę nazwy, opisu i koloru swojego zespołu',
+            color: 'purple'
+        },
+        {
             key: 'coordinatorResignationAlerts' as const,
             icon: Bell,
             title: 'Alerty o rezygnacji',
@@ -158,54 +168,35 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
                 {/* Settings Cards */}
                 {/* System Settings Cards - ONLY FOR ADMINS */}
                 {isSystemAdmin && (
-                    <div className="lux-card p-8">
-                        <h2 className="text-2xl font-bold mb-8 pb-4 border-b-4 border-primary inline-block">
-                            Powiadomienia i alerty systemowe
-                        </h2>
+                    <div className="space-y-8">
+                        {/* Group: Zarządzanie Koordynatorkami */}
+                        <div className="lux-card p-8 bg-purple-50/20 border-purple-100">
+                            <h2 className="text-2xl font-bold mb-8 pb-4 border-b-4 border-purple-500 inline-block text-purple-900">
+                                <Users className="inline-block mr-3 mb-1" size={28} />
+                                Zarządzanie Koordynatorkami
+                            </h2>
+                            <div className="space-y-6">
+                                {toggleItems.filter(i =>
+                                    ['coordinatorTasks', 'coordinatorTeamEditing'].includes(i.key)
+                                ).map((item) => (
+                                    <ToggleItem key={item.key} item={item} settings={settings} onToggle={handleToggle} saving={saving} />
+                                ))}
+                            </div>
+                        </div>
 
-                        <div className="space-y-6">
-                            {toggleItems.map((item) => (
-                                <motion.div
-                                    key={item.key}
-                                    className="flex items-center justify-between p-6 bg-gray-50/50 rounded-2xl border border-gray-100 hover:border-gray-200 transition-all"
-                                    whileHover={{ scale: 1.005 }}
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className={cn(
-                                            "w-12 h-12 rounded-xl flex items-center justify-center",
-                                            item.color === 'red' && "bg-red-100 text-red-600",
-                                            item.color === 'orange' && "bg-orange-100 text-orange-600",
-                                            item.color === 'blue' && "bg-blue-100 text-blue-600",
-                                            item.color === 'purple' && "bg-purple-100 text-purple-600"
-                                        )}>
-                                            <item.icon size={24} />
-                                        </div>
-                                        <div>
-                                            <h3 className="font-bold text-lg text-foreground">{item.title}</h3>
-                                            <p className="text-sm text-muted-foreground max-w-md">{item.description}</p>
-                                        </div>
-                                    </div>
-
-                                    <button
-                                        onClick={() => handleToggle(item.key)}
-                                        disabled={saving}
-                                        className={cn(
-                                            "relative w-14 h-7 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary/50",
-                                            settings[item.key]
-                                                ? "bg-primary"
-                                                : "bg-gray-300",
-                                            saving && "opacity-50 cursor-not-allowed"
-                                        )}
-                                    >
-                                        <span
-                                            className={cn(
-                                                "absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-300",
-                                                settings[item.key] ? "translate-x-7" : "translate-x-0"
-                                            )}
-                                        />
-                                    </button>
-                                </motion.div>
-                            ))}
+                        {/* Group: Centrum Powiadomień */}
+                        <div className="lux-card p-8 bg-blue-50/20 border-blue-100">
+                            <h2 className="text-2xl font-bold mb-8 pb-4 border-b-4 border-blue-500 inline-block text-blue-900">
+                                <Bell className="inline-block mr-3 mb-1" size={28} />
+                                Centrum Powiadomień
+                            </h2>
+                            <div className="space-y-6">
+                                {toggleItems.filter(i =>
+                                    ['alertsTerminy', 'alertsPoprawki', 'alertsRaporty', 'coordinatorResignationAlerts'].includes(i.key)
+                                ).map((item) => (
+                                    <ToggleItem key={item.key} item={item} settings={settings} onToggle={handleToggle} saving={saving} />
+                                ))}
+                            </div>
                         </div>
                     </div>
                 )}
@@ -270,3 +261,46 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
         </DashboardLayout>
     );
 }
+
+// Subcomponent for cleaner render
+const ToggleItem = ({ item, settings, onToggle, saving }: { item: any, settings: any, onToggle: (key: any) => void, saving: boolean }) => (
+    <motion.div
+        className="flex items-center justify-between p-6 bg-gray-50/50 rounded-2xl border border-gray-100 hover:border-gray-200 transition-all"
+        whileHover={{ scale: 1.005 }}
+    >
+        <div className="flex items-center gap-4">
+            <div className={cn(
+                "w-12 h-12 rounded-xl flex items-center justify-center",
+                item.color === 'red' && "bg-red-100 text-red-600",
+                item.color === 'orange' && "bg-orange-100 text-orange-600",
+                item.color === 'blue' && "bg-blue-100 text-blue-600",
+                item.color === 'purple' && "bg-purple-100 text-purple-600"
+            )}>
+                <item.icon size={24} />
+            </div>
+            <div>
+                <h3 className="font-bold text-lg text-foreground">{item.title}</h3>
+                <p className="text-sm text-muted-foreground max-w-md">{item.description}</p>
+            </div>
+        </div>
+
+        <button
+            onClick={() => onToggle(item.key)}
+            disabled={saving}
+            className={cn(
+                "relative w-14 h-7 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary/50",
+                settings[item.key]
+                    ? "bg-primary"
+                    : "bg-gray-300",
+                saving && "opacity-50 cursor-not-allowed"
+            )}
+        >
+            <span
+                className={cn(
+                    "absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-300",
+                    settings[item.key] ? "translate-x-7" : "translate-x-0"
+                )}
+            />
+        </button>
+    </motion.div>
+);

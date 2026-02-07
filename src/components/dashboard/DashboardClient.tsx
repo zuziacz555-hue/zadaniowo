@@ -302,6 +302,7 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
 
     const filteredMenu = menuItems.filter(item => {
         if (item.adminOnly) return isSystemAdmin;
+        if (item.excludeAdmin && isSystemAdmin) return false;
 
         // Coordinator only items
         if (item.coordOnly) {
@@ -317,7 +318,6 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
             return true;
         }
 
-        if (item.excludeAdmin && isSystemAdmin) return false;
         return true;
     });
 

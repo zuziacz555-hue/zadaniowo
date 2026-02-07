@@ -152,8 +152,50 @@ export async function createTeam(nazwa: string, kolor: string = '#5400FF', opis?
     }
 }
 
-export async function updateTeam(id: number, nazwa: string, kolor?: string, opis?: string) {
+export async function updateTeam(id: number, nazwa: string, kolor?: string, opis?: string, userId?: number) {
     try {
+        // 1. Permission Check
+        if (userId) {
+            console.log(`[updateTeam] Checking permissions for user ${userId} on team ${id}`);
+            const user = await prisma.user.findUnique({ where: { id: userId } });
+
+            // Fix: rola (Polish) not role
+            const userRole = user?.rola;
+            const isAdmin = userRole === 'ADMINISTRATOR' || userRole === 'admin';
+
+            console.log(`[updateTeam] Is Admin: ${isAdmin} (role: ${userRole})`);
+
+            if (!isAdmin) {
+                // Check if is coordinator of this team
+                // Fix: Check both lowercase and uppercase role just in case
+                const userTeam = await prisma.userTeam.findFirst({
+                    where: {
+                        userId,
+                        teamId: id,
+                        rola: { in: ['koordynatorka', 'KOORDYNATORKA'] }
+                    }
+                });
+
+                console.log(`[updateTeam] UserTeam found:`, userTeam);
+
+                if (!userTeam) {
+                    console.error('[updateTeam] User is not a coordinator of this team');
+                    return { success: false, error: 'Brak uprawnień do edycji tego zespołu.' };
+                }
+
+                // Check system setting
+                const settings = await prisma.systemSettings.findFirst();
+                console.log(`[updateTeam] System Settings:`, settings);
+
+                if (!settings?.coordinatorTeamEditing) {
+                    console.error('[updateTeam] Coordinator editing disabled in settings');
+                    return { success: false, error: 'Edycja zespołu przez koordynatorki jest wyłączona.' };
+                }
+            }
+        } else {
+            console.warn('[updateTeam] Warning: No userId provided for permission check');
+        }
+
         const team = await prisma.team.update({
             where: { id },
             data: {

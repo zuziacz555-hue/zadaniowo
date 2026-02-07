@@ -102,6 +102,7 @@ model Meeting {
   godzina       DateTime
   opis          String
   opisDodatkowy String?     @map("opis_dodatkowy")
+  signupDeadline DateTime?  @map("termin_zapisow")
   team          Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
   attendance    Attendance[]
   report        Report?
@@ -141,6 +142,7 @@ model Event {
   nazwa      String
   data       DateTime?
   limitOsob  Int?                @map("limit_osob")
+  signupDeadline DateTime?       @map("termin_zapisow")
   participants EventRegistration[]
 
   @@map("wydarzenia")
@@ -241,6 +243,7 @@ model SystemSettings {
   alertsPoprawki    Boolean  @default(true) @map("alerts_poprawki")
   alertsRaporty     Boolean  @default(true) @map("alerts_raporty")
   coordinatorTasks  Boolean  @default(false) @map("coordinator_tasks")
+  coordinatorTeamEditing Boolean @default(false) @map("coordinator_team_editing")
   coordinatorResignationAlerts Boolean @default(true) @map("coordinator_resignation_alerts")
   
   @@map("ustawienia_systemu")

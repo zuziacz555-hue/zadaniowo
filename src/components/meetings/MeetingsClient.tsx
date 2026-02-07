@@ -66,7 +66,8 @@ export default function MeetingsClient({
         data: "", // Date string
         godzina: "", // Time string e.g. "18:00"
         opis: "",
-        opis_dodatkowy: ""
+        opis_dodatkowy: "",
+        signupDeadline: ""
     });
 
     // Recurrence State
@@ -79,7 +80,8 @@ export default function MeetingsClient({
     const [editMeetingData, setEditMeetingData] = useState({
         id: 0,
         opis: "",
-        opisDodatkowy: ""
+        opisDodatkowy: "",
+        signupDeadline: ""
     });
 
     // Meetings state - for admin filtering
@@ -204,6 +206,7 @@ export default function MeetingsClient({
             godzina: newMeeting.godzina,
             opis: newMeeting.opis.trim(),
             opisDodatkowy: newMeeting.opis_dodatkowy.trim(),
+            signupDeadline: newMeeting.signupDeadline || undefined,
             recurrence: isRecurring ? {
                 intervalDays: recurrenceInterval,
                 endDate: recurrenceEndDate
@@ -216,7 +219,8 @@ export default function MeetingsClient({
                 await addAttendance(res.data.id, currentUser, currentUserId);
             }
             setShowAddMeeting(false);
-            setNewMeeting({ data: "", godzina: "", opis: "", opis_dodatkowy: "" });
+            setShowAddMeeting(false);
+            setNewMeeting({ data: "", godzina: "", opis: "", opis_dodatkowy: "", signupDeadline: "" });
             setIsRecurring(false);
             setRecurrenceEndDate("");
             setRecurrenceInterval(7);
@@ -256,7 +260,8 @@ export default function MeetingsClient({
         setEditMeetingData({
             id: meeting.id,
             opis: meeting.opis || "",
-            opisDodatkowy: meeting.opisDodatkowy || ""
+            opisDodatkowy: meeting.opisDodatkowy || "",
+            signupDeadline: meeting.signupDeadline ? new Date(meeting.signupDeadline).toISOString().slice(0, 16) : ""
         });
         setShowEditMeeting(true);
     };
@@ -264,7 +269,8 @@ export default function MeetingsClient({
     const handleSaveEditMeeting = async () => {
         const res = await updateMeeting(editMeetingData.id, {
             opis: editMeetingData.opis,
-            opisDodatkowy: editMeetingData.opisDodatkowy
+            opisDodatkowy: editMeetingData.opisDodatkowy,
+            signupDeadline: editMeetingData.signupDeadline || null
         });
         if (res.success) {
             router.refresh();
@@ -272,7 +278,8 @@ export default function MeetingsClient({
             setSelectedMeeting((prev: any) => ({
                 ...prev,
                 opis: editMeetingData.opis,
-                opisDodatkowy: editMeetingData.opisDodatkowy
+                opisDodatkowy: editMeetingData.opisDodatkowy,
+                signupDeadline: editMeetingData.signupDeadline ? new Date(editMeetingData.signupDeadline) : null
             }));
             setShowEditMeeting(false);
         }
@@ -582,12 +589,23 @@ export default function MeetingsClient({
                                         </div>
 
                                         <div className="pt-6 border-t border-gray-100 space-y-3">
+                                            {selectedMeeting.signupDeadline && (
+                                                <div className="text-center pb-2">
+                                                    <span className={cn(
+                                                        "text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full",
+                                                        new Date() > new Date(selectedMeeting.signupDeadline) ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"
+                                                    )}>
+                                                        {new Date() > new Date(selectedMeeting.signupDeadline) ? "Zapisy zamknięte" : `Zapisy do: ${new Date(selectedMeeting.signupDeadline).toLocaleDateString()} ${new Date(selectedMeeting.signupDeadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                                                    </span>
+                                                </div>
+                                            )}
+
                                             {!isCoord && (
                                                 <button
-                                                    disabled={selectedMeeting.attendance?.some((a: any) => a.imieNazwisko === currentUser)}
+                                                    disabled={selectedMeeting.attendance?.some((a: any) => a.imieNazwisko === currentUser) || (selectedMeeting.signupDeadline && new Date() > new Date(selectedMeeting.signupDeadline))}
                                                     className={cn(
                                                         "w-full py-4 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2",
-                                                        selectedMeeting.attendance?.some((a: any) => a.imieNazwisko === currentUser)
+                                                        selectedMeeting.attendance?.some((a: any) => a.imieNazwisko === currentUser) || (selectedMeeting.signupDeadline && new Date() > new Date(selectedMeeting.signupDeadline))
                                                             ? "bg-gray-100 text-muted-foreground cursor-not-allowed"
                                                             : "lux-gradient text-white shadow-[0_12px_30px_rgba(61,15,26,0.2)] hover:-translate-y-1"
                                                     )}
@@ -698,6 +716,15 @@ export default function MeetingsClient({
                                                 onChange={(e) => setNewMeeting(prev => ({ ...prev, opis_dodatkowy: e.target.value }))}
                                             ></textarea>
                                         </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Koniec zapisów (opcjonalne)</label>
+                                            <input
+                                                type="datetime-local"
+                                                className="lux-input"
+                                                value={newMeeting.signupDeadline}
+                                                onChange={(e) => setNewMeeting(prev => ({ ...prev, signupDeadline: e.target.value }))}
+                                            />
+                                        </div>
 
                                         {/* Recurrence Options */}
                                         <div className="space-y-4 pt-4 border-t border-gray-100">
@@ -805,8 +832,18 @@ export default function MeetingsClient({
                                                 placeholder="Opcjonalnie"
                                                 value={editMeetingData.opisDodatkowy}
                                                 onChange={(e) => setEditMeetingData(prev => ({ ...prev, opisDodatkowy: e.target.value }))}
-                                            ></textarea>
+                                            />
                                         </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Koniec zapisów</label>
+                                            <input
+                                                type="datetime-local"
+                                                className="lux-input"
+                                                value={editMeetingData.signupDeadline}
+                                                onChange={(e) => setEditMeetingData(prev => ({ ...prev, signupDeadline: e.target.value }))}
+                                            />
+                                        </div>
+
                                         <div className="flex justify-end gap-3 pt-2">
                                             <button className="lux-btn-outline px-6 py-3" onClick={() => setShowEditMeeting(false)}>
                                                 Anuluj

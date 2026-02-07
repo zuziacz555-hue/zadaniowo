@@ -9,6 +9,7 @@ export interface SystemSettingsData {
     alertsPoprawki: boolean;
     alertsRaporty: boolean;
     coordinatorTasks: boolean;
+    coordinatorTeamEditing: boolean;
     coordinatorResignationAlerts: boolean;
 }
 
@@ -25,6 +26,7 @@ export async function getSystemSettings(): Promise<{ success: boolean; data?: Sy
                     alertsPoprawki: true,
                     alertsRaporty: true,
                     coordinatorTasks: false,
+                    coordinatorTeamEditing: false,
                     coordinatorResignationAlerts: true
                 }
             });
@@ -50,6 +52,7 @@ export async function updateSystemSettings(data: Partial<Omit<SystemSettingsData
                     alertsPoprawki: data.alertsPoprawki ?? true,
                     alertsRaporty: data.alertsRaporty ?? true,
                     coordinatorTasks: data.coordinatorTasks ?? false,
+                    coordinatorTeamEditing: data.coordinatorTeamEditing ?? false,
                     coordinatorResignationAlerts: data.coordinatorResignationAlerts ?? true
                 }
             });
@@ -62,6 +65,7 @@ export async function updateSystemSettings(data: Partial<Omit<SystemSettingsData
                     ...(data.alertsPoprawki !== undefined && { alertsPoprawki: data.alertsPoprawki }),
                     ...(data.alertsRaporty !== undefined && { alertsRaporty: data.alertsRaporty }),
                     ...(data.coordinatorTasks !== undefined && { coordinatorTasks: data.coordinatorTasks }),
+                    ...(data.coordinatorTeamEditing !== undefined && { coordinatorTeamEditing: data.coordinatorTeamEditing }),
                     ...(data.coordinatorResignationAlerts !== undefined && { coordinatorResignationAlerts: data.coordinatorResignationAlerts })
                 }
             });
@@ -73,6 +77,9 @@ export async function updateSystemSettings(data: Partial<Omit<SystemSettingsData
         return { success: true };
     } catch (error) {
         console.error('Error updating system settings:', error);
-        return { success: false, error: 'Failed to update settings' };
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error updating settings'
+        };
     }
 }

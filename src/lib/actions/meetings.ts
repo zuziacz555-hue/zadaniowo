@@ -36,6 +36,7 @@ export async function createMeeting(data: {
         intervalDays: number
         endDate: string
     }
+    signupDeadline?: string
 }) {
     try {
         const meetingsToCreate = [];
@@ -48,6 +49,7 @@ export async function createMeeting(data: {
             godzina: timeDate,
             opis: data.opis,
             opisDodatkowy: data.opisDodatkowy,
+            signupDeadline: data.signupDeadline ? new Date(data.signupDeadline) : null,
             teamId: data.teamId
         });
 
@@ -64,6 +66,7 @@ export async function createMeeting(data: {
                     godzina: timeDate,
                     opis: data.opis,
                     opisDodatkowy: data.opisDodatkowy,
+                    signupDeadline: data.signupDeadline ? new Date(data.signupDeadline) : null,
                     teamId: data.teamId
                 });
 
@@ -91,6 +94,7 @@ export async function updateMeeting(id: number, data: Partial<{
     godzina: string
     opis: string
     opisDodatkowy: string
+    signupDeadline: string | null
 }>) {
     try {
         // Fetch existing meeting to merge date/time if only one is updated
@@ -111,6 +115,7 @@ export async function updateMeeting(id: number, data: Partial<{
                 ...(data.godzina && { godzina: new Date(`1970-01-01T${data.godzina}`) }),
                 ...(data.opis && { opis: data.opis }),
                 ...(data.opisDodatkowy !== undefined && { opisDodatkowy: data.opisDodatkowy }),
+                ...(data.signupDeadline !== undefined && { signupDeadline: data.signupDeadline ? new Date(data.signupDeadline) : null }),
             },
         })
         revalidatePath('/meetings')
@@ -147,6 +152,17 @@ export async function addAttendance(meetingId: number, imieNazwisko: string, use
                 ]
             }
         });
+
+        // Check deadline
+        const meeting = await prisma.meeting.findUnique({ where: { id: meetingId } });
+        if (meeting && meeting.signupDeadline && new Date() > meeting.signupDeadline) {
+            // Allow admin/coord to add anyway? For now block everyone or just users?
+            // Assuming normal user flow. If admin adds via this function, they might want to bypass?
+            // But UI handles that. Let's enforce it strictly for now, or check role if passed.
+            // We don't have role here easily without fetching user.
+            // Let's return error if deadline passed.
+            return { success: false, error: "Termin zapisów na to spotkanie już minął." };
+        }
 
         if (existing) {
             return { success: true, data: existing, message: "Already registered" }

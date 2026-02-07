@@ -10,9 +10,10 @@ import {
     Calendar,
     Clock,
     Plus,
-    Infinity as InfinityIcon
+    Infinity as InfinityIcon,
+    Edit2
 } from "lucide-react";
-import { createEvent, deleteEvent, registerForEvent, unregisterFromEvent } from "@/lib/actions/events";
+import { createEvent, deleteEvent, registerForEvent, unregisterFromEvent, updateEvent } from "@/lib/actions/events";
 import { useRouter } from "next/navigation";
 
 export default function EventsClient({
@@ -30,7 +31,54 @@ export default function EventsClient({
 }) {
     const router = useRouter();
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
-    const [newEvent, setNewEvent] = useState({ name: "", datetime: "", limit: "0" });
+    const [newEvent, setNewEvent] = useState({ name: "", datetime: "", limit: "0", signupDeadline: "" });
+
+    // Edit State
+    const [showEditEvent, setShowEditEvent] = useState(false);
+    const [editEventData, setEditEventData] = useState({
+        id: 0,
+        name: "",
+        datetime: "",
+        limit: "0",
+        signupDeadline: ""
+    });
+
+    const handleEditEvent = (event: any) => {
+        console.log("Editing event:", event);
+        setEditEventData({
+            id: event.id,
+            name: event.nazwa,
+            datetime: event.data ? new Date(event.data).toISOString().slice(0, 16) : "",
+            limit: event.limitOsob ? String(event.limitOsob) : "0",
+            signupDeadline: event.signupDeadline ? new Date(event.signupDeadline).toISOString().slice(0, 16) : ""
+        });
+        setShowEditEvent(true);
+    };
+
+    const handleSaveEditEvent = async () => {
+        console.log("Saving edit...", editEventData);
+        if (!editEventData.name || !editEventData.datetime) {
+            alert("Nazwa i data są wymagane!");
+            return;
+        }
+
+        const limitNumber = Number(editEventData.limit);
+        const res = await updateEvent(editEventData.id, {
+            nazwa: editEventData.name,
+            data: editEventData.datetime || undefined,
+            limitOsob: limitNumber <= 0 ? undefined : limitNumber,
+            signupDeadline: editEventData.signupDeadline
+        });
+
+        console.log("Update result:", res);
+        if (res.success) {
+            setShowEditEvent(false);
+            router.refresh();
+            onRefresh?.();
+        } else {
+            alert("Błąd podczas zapisywania zmian.");
+        }
+    };
 
     const handleToggleRegistration = (id: number) => {
         setSelectedIds(prev =>
@@ -39,19 +87,28 @@ export default function EventsClient({
     };
 
     const handleAddEvent = async () => {
-        if (!newEvent.name.trim() || !newEvent.datetime) return;
+        console.log("Adding event...", newEvent);
+        if (!newEvent.name.trim() || !newEvent.datetime) {
+            alert("Wypełnij nazwę i datę wydarzenia!");
+            return;
+        }
+
         const limitNumber = Number(newEvent.limit);
 
         const res = await createEvent({
             nazwa: newEvent.name.trim(),
             data: newEvent.datetime,
-            limitOsob: limitNumber <= 0 ? undefined : limitNumber
+            limitOsob: limitNumber <= 0 ? undefined : limitNumber,
+            signupDeadline: newEvent.signupDeadline || undefined
         });
 
+        console.log("Create result:", res);
         if (res.success) {
-            setNewEvent({ name: "", datetime: "", limit: "0" });
-            router.refresh(); // Keep for server components if any
+            setNewEvent({ name: "", datetime: "", limit: "0", signupDeadline: "" });
+            router.refresh();
             onRefresh?.();
+        } else {
+            alert("Błąd podczas dodawania wydarzenia.");
         }
     };
 
@@ -102,7 +159,7 @@ export default function EventsClient({
                         <h3 className="text-xl font-bold mb-6 text-primary flex items-center gap-2">
                             <Plus size={20} /> Dodaj nowe wydarzenie
                         </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                             <div className="space-y-2">
                                 <label className="text-sm font-bold text-muted-foreground">Nazwa wydarzenia</label>
                                 <input
@@ -130,6 +187,15 @@ export default function EventsClient({
                                     className="lux-input"
                                     value={newEvent.limit}
                                     onChange={(e) => setNewEvent(prev => ({ ...prev, limit: e.target.value }))}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-muted-foreground">Termin zapisów</label>
+                                <input
+                                    type="datetime-local"
+                                    className="lux-input"
+                                    value={newEvent.signupDeadline}
+                                    onChange={(e) => setNewEvent(prev => ({ ...prev, signupDeadline: e.target.value }))}
                                 />
                             </div>
                         </div>
@@ -176,6 +242,16 @@ export default function EventsClient({
                                             <td className="px-6 py-6">
                                                 <div className="font-bold text-lg">{event.nazwa}</div>
                                                 {isPast && <span className="text-xs text-muted-foreground font-bold uppercase">(Zakończone)</span>}
+                                                {event.signupDeadline && (
+                                                    <div className="mt-2">
+                                                        <span className={cn(
+                                                            "text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full inline-block",
+                                                            new Date() > new Date(event.signupDeadline) ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"
+                                                        )}>
+                                                            {new Date() > new Date(event.signupDeadline) ? "Zapisy zamknięte" : `Zapisy do: ${new Date(event.signupDeadline).toLocaleDateString()} ${new Date(event.signupDeadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </td>
                                             <td className="px-6 py-6">
                                                 <div className="flex flex-col gap-2">
@@ -242,6 +318,9 @@ export default function EventsClient({
                                                                 <Plus size={16} />
                                                             </button>
                                                         )}
+                                                        <button className="bg-blue-50 text-blue-600 p-2 rounded-lg hover:bg-blue-600 hover:text-white transition-all" onClick={() => handleEditEvent(event)}>
+                                                            <Edit2 size={16} />
+                                                        </button>
                                                         <button className="lux-btn-outline p-2" onClick={() => handleDeleteEvent(event.id)}>
                                                             <Trash2 size={16} />
                                                         </button>
@@ -255,7 +334,7 @@ export default function EventsClient({
                                                         ) : (
                                                             <input
                                                                 type="checkbox"
-                                                                disabled={isFull}
+                                                                disabled={isFull || (event.signupDeadline && new Date() > new Date(event.signupDeadline))}
                                                                 checked={selectedIds.includes(event.id)}
                                                                 onChange={() => handleToggleRegistration(event.id)}
                                                                 className="w-6 h-6 rounded-lg text-primary focus:ring-primary accent-primary cursor-pointer disabled:opacity-50"
@@ -283,6 +362,93 @@ export default function EventsClient({
                     )}
                 </div>
             </div>
-        </DashboardLayout>
+
+            <AnimatePresence>
+                {showEditEvent && (
+                    <EditEventModal
+                        show={showEditEvent}
+                        onClose={() => setShowEditEvent(false)}
+                        onSave={handleSaveEditEvent}
+                        data={editEventData}
+                        setData={setEditEventData}
+                    />
+                )}
+            </AnimatePresence>
+        </DashboardLayout >
+    );
+}
+
+function EditEventModal({ show, onClose, onSave, data, setData }: any) {
+    if (!show) return null;
+
+    return (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6">
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/60 backdrop-blur-md"
+                onClick={onClose}
+            />
+            <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="relative bg-white w-full max-w-[500px] rounded-[30px] shadow-2xl overflow-hidden"
+            >
+                <div className="gradient-bg p-6 text-white flex justify-between items-center">
+                    <h3 className="text-xl font-bold flex items-center gap-2">
+                        <Edit2 size={20} /> Edytuj wydarzenie
+                    </h3>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-white/20">
+                        <X size={20} />
+                    </button>
+                </div>
+                <div className="p-6 space-y-4">
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-muted-foreground uppercase">Nazwa</label>
+                        <input
+                            type="text"
+                            className="lux-input"
+                            value={data.name}
+                            onChange={(e) => setData((prev: any) => ({ ...prev, name: e.target.value }))}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-muted-foreground uppercase">Data i godzina</label>
+                        <input
+                            type="datetime-local"
+                            className="lux-input"
+                            value={data.datetime}
+                            onChange={(e) => setData((prev: any) => ({ ...prev, datetime: e.target.value }))}
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-muted-foreground uppercase">Limit (0=brak)</label>
+                            <input
+                                type="number"
+                                className="lux-input"
+                                value={data.limit}
+                                onChange={(e) => setData((prev: any) => ({ ...prev, limit: e.target.value }))}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-muted-foreground uppercase">Koniec zapisów</label>
+                            <input
+                                type="datetime-local"
+                                className="lux-input"
+                                value={data.signupDeadline}
+                                onChange={(e) => setData((prev: any) => ({ ...prev, signupDeadline: e.target.value }))}
+                            />
+                        </div>
+                    </div>
+                    <div className="pt-4 flex justify-end gap-3">
+                        <button className="lux-btn-outline px-6 py-2" onClick={onClose}>Anuluj</button>
+                        <button className="lux-btn px-6 py-2" onClick={onSave}>Zapisz zmiany</button>
+                    </div>
+                </div>
+            </motion.div>
+        </div>
     );
 }

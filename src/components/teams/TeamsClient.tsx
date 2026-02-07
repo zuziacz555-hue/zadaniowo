@@ -22,11 +22,15 @@ import {
     ToggleLeft,
     ToggleRight,
     AlignLeft,
-    RefreshCw
+    RefreshCw,
+    Pencil,
+    Edit,
+    Save
 } from "lucide-react";
 import Link from "next/link";
 import { getUsers } from "@/lib/actions/users";
 import { createTeam, deleteTeam, removeUserFromTeam, addUserToTeam, updateTeam, toggleTeamApplications, resetTeamApplications } from "@/lib/actions/teams";
+import { getSystemSettings } from "@/lib/actions/settings";
 import { useRouter } from "next/navigation";
 
 interface TeamsClientProps {
@@ -45,7 +49,50 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
     useEffect(() => {
         console.log("TeamsClient mounted", { isAdmin, isCoord, initialTeamsCount: initialTeams.length });
         setMounted(true);
+        // Fetch settings
+        getSystemSettings().then(res => {
+            if (res.success) setSystemSettings(res.data);
+        });
     }, []);
+
+    const [systemSettings, setSystemSettings] = useState<any>(null);
+    const [isEditingTeam, setIsEditingTeam] = useState(false);
+    const [editTeamData, setEditTeamData] = useState({ id: 0, nazwa: "", kolor: "", opis: "" });
+
+    const handleEditTeam = (team: any) => {
+        setEditTeamData({
+            id: team.id,
+            nazwa: team.nazwa,
+            kolor: team.kolor || "#5400FF",
+            opis: team.opis || ""
+        });
+        setIsEditingTeam(true);
+    };
+
+    const saveTeamChanges = async () => {
+        const teamId = editTeamData.id || currentTeam?.id;
+        if (!teamId) return;
+
+        console.log("Saving team changes:", { id: teamId, ...editTeamData, currentUserId });
+
+        try {
+            const res = await updateTeam(teamId, editTeamData.nazwa, editTeamData.kolor, editTeamData.opis, currentUserId);
+            console.log("Update team response:", res);
+            if (res.success) {
+                setIsEditingTeam(false);
+                router.refresh();
+                onRefresh?.();
+            } else {
+                alert(res.error || "Błąd podczas zapisu zmian.");
+            }
+        } catch (error) {
+            console.error("Failed to save team:", error);
+            alert("Wystąpił błąd podczas zapisu.");
+        }
+    };
+
+    const canEditTeam = isAdmin || (isCoord && systemSettings?.coordinatorTeamEditing);
+    console.log("TeamsClient Render:", { isAdmin, isCoord, canEditTeam, settings: systemSettings, currentUserId });
 
     const [selectedTeam, setSelectedTeam] = useState<any>(null);
     const [newTeamName, setNewTeamName] = useState("");
@@ -222,7 +269,18 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
                                     <Users size={32} />
                                 </div>
                                 <div>
-                                    <h2 className="text-2xl font-bold text-foreground">{currentTeam.nazwa}</h2>
+                                    <div className="flex items-center gap-3">
+                                        <h2 className="text-2xl font-bold text-foreground">{currentTeam.nazwa}</h2>
+                                        {canEditTeam && (
+                                            <button
+                                                onClick={() => handleEditTeam(currentTeam)}
+                                                className="p-1.5 text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
+                                                title="Edytuj zespół"
+                                            >
+                                                <Edit size={16} />
+                                            </button>
+                                        )}
+                                    </div>
                                     <p className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] mt-1">Lista członków i aktywność</p>
                                 </div>
                             </div>
@@ -413,14 +471,39 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
                                                 </button>
                                             )}
 
-                                            {isAdmin && (
-                                                <button
-                                                    className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition-all ml-auto"
-                                                    onClick={() => handleDeleteTeam(team.id)}
-                                                >
-                                                    <Trash2 size={20} />
-                                                </button>
-                                            )}
+                                            <div className="flex gap-2 ml-auto">
+                                                {canEditTeam && (
+                                                    <button
+                                                        className="p-3 text-gray-500 hover:bg-gray-100 hover:text-primary rounded-xl transition-all"
+                                                        title="Edytuj zespół"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setEditTeamData({
+                                                                id: team.id,
+                                                                nazwa: team.nazwa,
+                                                                opis: team.opis || "",
+                                                                kolor: team.kolor || "#5400FF"
+                                                            });
+                                                            // setSelectedTeam(team); // Removed to prevent opening member list
+                                                            setIsEditingTeam(true);
+                                                        }}
+                                                    >
+                                                        <Pencil size={20} />
+                                                    </button>
+                                                )}
+
+                                                {isAdmin && (
+                                                    <button
+                                                        className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDeleteTeam(team.id);
+                                                        }}
+                                                    >
+                                                        <Trash2 size={20} />
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     </motion.div>
                                 )
@@ -453,27 +536,6 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
                                                 <h3 className="text-3xl font-bold flex items-center gap-3" style={{ color: getContrastColor(selectedTeam.kolor || '#5400FF') }}>
                                                     <Users size={32} /> {selectedTeam.nazwa}
                                                 </h3>
-                                                {isAdmin && (
-                                                    <div className="relative group">
-                                                        <label htmlFor="team-color-picker" className="p-2 bg-white/20 rounded-xl hover:bg-white/30 cursor-pointer transition-all flex items-center gap-2">
-                                                            <Palette size={16} /> <span className="text-[10px] font-bold uppercase">Zmień kolor</span>
-                                                        </label>
-                                                        <input
-                                                            id="team-color-picker"
-                                                            type="color"
-                                                            className="absolute opacity-0 inset-0 cursor-pointer w-full h-full"
-                                                            value={selectedTeam.kolor || "#5400FF"}
-                                                            onChange={async (e) => {
-                                                                const newColor = e.target.value;
-                                                                // Optimistic update
-                                                                setSelectedTeam((prev: any) => ({ ...prev, kolor: newColor }));
-                                                                await updateTeam(selectedTeam.id, selectedTeam.nazwa, newColor);
-                                                                router.refresh();
-                                                                onRefresh?.();
-                                                            }}
-                                                        />
-                                                    </div>
-                                                )}
                                             </div>
                                             <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: getContrastColor(selectedTeam.kolor || '#5400FF'), opacity: 0.7 }}>Przegląd aktywności zespołu</p>
                                         </div>
@@ -580,9 +642,92 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
                         )}
                     </AnimatePresence>,
                     document.body
-                )}
-            </div>
-        </DashboardLayout>
+                )
+                }
+            </div >
+
+            {/* Edit Team Modal */}
+            {
+                mounted && createPortal(
+                    <AnimatePresence>
+                        {isEditingTeam && (
+                            <div className="fixed inset-0 z-[10001] flex items-center justify-center p-6 bg-black/60 backdrop-blur-xl">
+                                <motion.div
+                                    key="edit-team-modal"
+                                    initial={{ scale: 0.95, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    exit={{ scale: 0.95, opacity: 0 }}
+                                    className="relative bg-white w-full max-w-[500px] rounded-[32px] shadow-2xl overflow-hidden p-8 space-y-6"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-2xl font-bold flex items-center gap-2">
+                                            <Edit size={24} className="text-primary" /> Edytuj zespół
+                                        </h3>
+                                        <button
+                                            onClick={() => setIsEditingTeam(false)}
+                                            className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+                                        >
+                                            <X size={20} />
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Nazwa zespołu</label>
+                                            <input
+                                                type="text"
+                                                className="lux-input font-bold"
+                                                value={editTeamData.nazwa}
+                                                onChange={(e) => setEditTeamData({ ...editTeamData, nazwa: e.target.value })}
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Kolor zespołu</label>
+                                            <div className="flex gap-3 items-center">
+                                                <input
+                                                    type="color"
+                                                    className="w-16 h-12 rounded-xl border-2 border-gray-200 cursor-pointer"
+                                                    value={editTeamData.kolor}
+                                                    onChange={(e) => setEditTeamData({ ...editTeamData, kolor: e.target.value })}
+                                                />
+                                                <span className="font-mono text-sm bg-gray-100 px-3 py-1 rounded-lg">{editTeamData.kolor}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Opis zespołu</label>
+                                            <textarea
+                                                className="lux-input min-h-[100px] resize-none"
+                                                value={editTeamData.opis}
+                                                onChange={(e) => setEditTeamData({ ...editTeamData, opis: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-end gap-4 pt-4">
+                                        <button
+                                            onClick={() => setIsEditingTeam(false)}
+                                            className="px-6 py-3 font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-xl transition-colors"
+                                        >
+                                            Anuluj
+                                        </button>
+                                        <button
+                                            onClick={saveTeamChanges}
+                                            className="lux-btn flex items-center gap-2 px-8"
+                                        >
+                                            <Save size={20} /> Zapisz zmiany
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            </div>
+                        )}
+                    </AnimatePresence>,
+                    document.body
+                )
+            }
+
+        </DashboardLayout >
     );
 }
 

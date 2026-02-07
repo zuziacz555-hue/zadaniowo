@@ -32,24 +32,65 @@ export async function createEvent(data: {
     nazwa: string
     data?: string
     limitOsob?: number
+    signupDeadline?: string
 }) {
     try {
         const event = await prisma.event.create({
             data: {
                 ...data,
                 data: data.data ? new Date(data.data) : null,
+                signupDeadline: data.signupDeadline ? new Date(data.signupDeadline) : null,
             },
         })
         revalidatePath('/events')
         return { success: true, data: event }
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error creating event:', error)
-        return { success: false, error: 'Failed to create event' }
+        return { success: false, error: error.message || 'Failed to create event' }
+    }
+}
+
+export async function updateEvent(id: number, data: {
+    nazwa?: string
+    data?: string
+    limitOsob?: number
+    signupDeadline?: string
+}) {
+    try {
+        const event = await prisma.event.update({
+            where: { id },
+            data: {
+                ...(data.nazwa && { nazwa: data.nazwa }),
+                ...(data.data !== undefined && { data: data.data ? new Date(data.data) : null }),
+                ...(data.limitOsob !== undefined && { limitOsob: data.limitOsob }),
+                ...(data.signupDeadline !== undefined && { signupDeadline: data.signupDeadline ? new Date(data.signupDeadline) : null }),
+            },
+        })
+        revalidatePath('/events')
+        return { success: true, data: event }
+    } catch (error: any) {
+        console.error('Error updating event:', error)
+        return { success: false, error: error.message || 'Failed to update event' }
     }
 }
 
 export async function registerForEvent(eventId: number, imieNazwisko: string, userId?: number) {
     try {
+        // Check deadline and limit
+        const event = await prisma.event.findUnique({
+            where: { id: eventId },
+            include: { participants: true }
+        });
+
+        if (event) {
+            if (event.signupDeadline && new Date() > event.signupDeadline) {
+                return { success: false, error: "Termin zapisów minął" };
+            }
+            if (event.limitOsob && event.participants.length >= event.limitOsob) {
+                return { success: false, error: "Limit miejsc wyczerpany" };
+            }
+        }
+
         const registration = await prisma.eventRegistration.create({
             data: {
                 eventId,
