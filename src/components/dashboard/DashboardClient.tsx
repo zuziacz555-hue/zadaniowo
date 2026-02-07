@@ -55,7 +55,15 @@ const menuItems = [
         icon: Megaphone,
         tone: "from-amber-400 to-orange-500",
         href: "/announcements",
-        span: "md:col-span-1" // Make it full width on md?
+        span: "md:col-span-1"
+    },
+    {
+        title: "Czat",
+        description: "Bezpieczna komunikacja 24h.",
+        icon: MessageSquareText,
+        tone: "from-blue-400 to-indigo-500",
+        href: "/chat",
+        span: "md:col-span-1"
     },
 
     // Coordinator Specific
@@ -151,7 +159,7 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
         const storedTeamName = localStorage.getItem("activeTeam");
         const currentUserData = JSON.parse(localStorage.getItem("user") || "{}");
         // Check both potential admin flags
-        const isAdmin = currentUserData.rola === "ADMINISTRATOR" || currentUserData.role === "ADMINISTRATOR" || currentUserData.role === "admin";
+        const isAdmin = currentUserData.rola === "ADMINISTRATOR" || currentUserData.role === "ADMINISTRATOR" || currentUserData.role === "admin" || currentUserData.role === "ADMIN";
 
         if (isAdmin) {
             // Force clear team/role context for Admins to ensure default theme
@@ -203,7 +211,7 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
         return () => window.removeEventListener('teamChanged', refreshSession);
     }, [initialTeams, user?.id]); // Re-run whenever server data changes
 
-    const isSystemAdmin = user?.role === "ADMINISTRATOR" || user?.role === "admin";
+    const isSystemAdmin = user?.role === "ADMINISTRATOR" || user?.role === "admin" || user?.role === "ADMIN";
     const isTeamCoord = activeRole === "KOORDYNATORKA" || isSystemAdmin;
 
     useEffect(() => {
