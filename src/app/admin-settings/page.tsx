@@ -40,6 +40,7 @@ export default function SettingsPage() {
                     alertsPoprawki: true,
                     alertsRaporty: true,
                     coordinatorTasks: false,
+                    coordinatorTeamEditing: false,
                     coordinatorResignationAlerts: true
                 });
             }

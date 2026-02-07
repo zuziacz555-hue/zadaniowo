@@ -24,7 +24,10 @@ import {
     ChevronRight,
     Calendar,
     Edit2,
-    Save
+    Save,
+    Link as LinkIcon,
+    Paperclip,
+    ExternalLink
 } from "lucide-react";
 import {
     createTask,
@@ -34,7 +37,10 @@ import {
     rejectTaskWork,
     closeTaskGlobally,
     deleteTaskExecution,
-    updateTask
+    updateTask,
+    addTaskAttachment,
+    deleteTaskAttachment,
+    uploadTaskFile
 } from "@/lib/actions/tasks";
 import { getTeams, getTeamById } from "@/lib/actions/teams";
 import { useRouter } from "next/navigation";
@@ -149,6 +155,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
     // UI Local State
     const [activeTab, setActiveTab] = useState("do-zrobienia");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
     const [showAddForm, setShowAddForm] = useState(false);
     const [showCloseConfirmation, setShowCloseConfirmation] = useState(false);
     const [coordViewMode, setCoordViewMode] = useState<"MANAGEMENT" | "PERSONAL">("MANAGEMENT");
@@ -181,6 +188,9 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
         priorytet: "NORMALNY",
         termin: ""
     });
+    const [attachmentInputs, setAttachmentInputs] = useState<{ nazwa: string, url: string }[]>([]);
+    const [newAttachment, setNewAttachment] = useState({ nazwa: "", url: "" });
+    const [newDetailAttachment, setNewDetailAttachment] = useState({ nazwa: "", url: "" });
 
     // --- DERIVED STATE ---
     const isAdmin = activeRole?.toUpperCase() === "ADMINISTRATOR";
@@ -218,6 +228,37 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
         } catch (e) {
             console.error(e);
             alert("Błąd połączenia");
+        }
+    };
+
+    const handleFileUpload = async (file: File) => {
+        if (!selectedTask || !file) return;
+
+        setIsUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const uploadRes = await uploadTaskFile(formData);
+            if (uploadRes.success && uploadRes.url) {
+                const addRes = await addTaskAttachment(selectedTask.id, uploadRes.name || file.name, uploadRes.url);
+                if (addRes.success && addRes.data) {
+                    setSelectedTask({
+                        ...selectedTask,
+                        attachments: [...(selectedTask.attachments || []), addRes.data]
+                    });
+                    onRefresh();
+                } else {
+                    alert("Błąd podczas zapisywania załącznika w bazie");
+                }
+            } else {
+                alert("Błąd podczas przesyłania pliku: " + (uploadRes.error || "Nieznany błąd"));
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Błąd połączenia podczas przesyłania");
+        } finally {
+            setIsUploading(false);
         }
     };
 
@@ -291,8 +332,6 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
             } else if (adminTeamFilter === -2) {
                 // MIXED TASKS FOLDER (Zadania Mieszane)
                 // Rule: "Selected People" (OSOBY) AND includes at least one participant.
-                // - If assigned ONLY to coordinators -> Coordinator Tasks folder (not here).
-                // - If assigned to Participant + Coordinator -> Here (and also in Coordinator folder).
                 tasks = tasks.filter(t => {
                     const isSelectedPeople = t.typPrzypisania === 'OSOBY' || (t.assignments && t.assignments.length > 0);
                     if (!isSelectedPeople) return false;
@@ -308,8 +347,8 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                 });
             } else {
                 // TEAM FOLDERS
-                // Rule: Only "Whole Team" tasks.
-                tasks = tasks.filter(t => t.teamId === adminTeamFilter && t.typPrzypisania === 'CALY_ZESPOL');
+                // Rule: Show ALL tasks that belong to this team (including OSOBY assignments)
+                tasks = tasks.filter(t => t.teamId === adminTeamFilter);
             }
         }
 
@@ -320,11 +359,10 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
         }
 
         // Zlecone zadania - all accessible tasks
-        // USER REQUEST FIX: Hide globally accepted tasks OR tasks where ALL executions are accepted
         const zlecone = tasks.filter(t => {
             if (t.status === "ZAAKCEPTOWANE") return false;
 
-            // NEW: Hide orphans (no assignments, no executions) - effectively deleted for all users
+            // NEW: Hide orphans (no assignments, no executions)
             if ((!t.executions || t.executions.length === 0) && (!t.assignments || t.assignments.length === 0)) {
                 return false;
             }
@@ -332,8 +370,8 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
             // If executions exist, check if ALL are accepted (ignoring coordinators)
             if (t.executions && t.executions.length > 0) {
                 const participantExecutions = t.executions.filter((e: any) => {
-                    const teamRole = e.user?.zespoly?.find((ut: any) => ut.teamId === t.teamId)?.rola;
-                    return teamRole?.toLowerCase() === 'uczestniczka';
+                    const teamRole = e.user?.zespoly?.find((ut: any) => ut.teamId === t.teamId)?.rola || e.user?.rola;
+                    return teamRole?.toUpperCase() === 'UCZESTNICZKA';
                 });
 
                 // If there are participants and ALL are accepted -> hide
@@ -348,11 +386,10 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
 
 
 
-        // Verification section: Get all executions grouped by status
         // Helper to check if execution should be visible to this user
         const isVisibleExecution = (e: any, t: any) => {
             if (isAdmin) return true;
-            // Coordinator view: show only participant submissions
+            // Coordinator view: show participant submissions
             const teamRole = t.teamId
                 ? e.user?.zespoly?.find((ut: any) => ut.teamId === t.teamId)?.rola
                 : e.user?.rola;
@@ -389,29 +426,37 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
         setNewTask({ tytul: "", opis: "", termin: "", priorytet: "NORMALNY", teamId: "-1", typPrzypisania: "CALY_ZESPOL", includeCoordinators: false });
         setAssignedUserIds([]);
         setUserSearchTerm("");
+        setAttachmentInputs([]);
+        setNewAttachment({ nazwa: "", url: "" });
     };
 
     const handleAddTask = async () => {
-        setIsSubmitting(true);
         if (!newTask.tytul) return;
+        setIsSubmitting(true);
+        try {
+            const res = await createTask({
+                ...newTask,
+                teamId: newTask.teamId === "-1" ? undefined : Number(newTask.teamId),
+                utworzonePrzez: userName,
+                utworzonePrzezId: userId,
+                assignedUserIds: newTask.typPrzypisania === "OSOBY" ? assignedUserIds : undefined,
+                includeCoordinators: newTask.includeCoordinators,
+                attachments: attachmentInputs.length > 0 ? attachmentInputs : undefined
+            });
 
-        const res = await createTask({
-            ...newTask,
-            teamId: newTask.teamId === "-1" ? undefined : Number(newTask.teamId),
-            utworzonePrzez: userName,
-            utworzonePrzezId: userId,
-            assignedUserIds: newTask.typPrzypisania === "OSOBY" ? assignedUserIds : undefined,
-            includeCoordinators: newTask.includeCoordinators
-        });
-
-        if (res.success) {
-            setShowAddForm(false);
-            resetAddForm();
-            onRefresh();
-        } else {
-            alert("Błąd: " + res.error);
+            if (res.success) {
+                setShowAddForm(false);
+                resetAddForm();
+                onRefresh();
+            } else {
+                alert("Błąd: " + res.error);
+            }
+        } catch (error) {
+            console.error("Error adding task:", error);
+            alert("Wystąpił nieoczekiwany błąd podczas dodawania zadania.");
+        } finally {
+            setIsSubmitting(false);
         }
-        setIsSubmitting(false);
     };
 
     // Load teams and members
@@ -438,20 +483,20 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                 if (res.success && res.data) {
                     const members = res.data.users
                         .filter((u: any) => {
-                            const role = u.rola?.toLowerCase();
+                            const role = u.rola?.toUpperCase();
 
                             // Coordinator View: Only Participants
                             if (isCoord && !isAdmin) {
-                                return role === 'uczestniczka';
+                                return role === 'UCZESTNICZKA';
                             }
 
                             // Admin View
                             if (isAdmin) {
                                 // If Coordinator, check settings
-                                if (role === 'koordynatorka') {
+                                if (role === 'KOORDYNATORKA') {
                                     return !!settings?.coordinatorTasks;
                                 }
-                                return true;
+                                return role === 'UCZESTNICZKA';
                             }
 
                             return true;
@@ -627,6 +672,64 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                             />
                                         </div>
 
+                                        {/* ATTACHMENTS SECTION */}
+                                        <div className="col-span-2 space-y-4 pt-4 border-t border-gray-100">
+                                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-1">Załączniki (linki)</label>
+
+                                            {attachmentInputs.length > 0 && (
+                                                <div className="flex flex-wrap gap-2 mb-3">
+                                                    {attachmentInputs.map((att, idx) => (
+                                                        <div key={idx} className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-gray-100 rounded-xl group/att">
+                                                            <LinkIcon size={12} className="text-primary" />
+                                                            <span className="text-xs font-bold text-gray-700">{att.nazwa}</span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setAttachmentInputs(prev => prev.filter((_, i) => i !== idx))}
+                                                                className="text-gray-400 hover:text-red-500 transition-colors"
+                                                            >
+                                                                <X size={14} />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 bg-gray-50/50 rounded-2xl border border-gray-100">
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-black uppercase text-gray-400">Nazwa linku</label>
+                                                    <input
+                                                        className="lux-input py-2 text-sm bg-white"
+                                                        value={newAttachment.nazwa}
+                                                        onChange={e => setNewAttachment(prev => ({ ...prev, nazwa: e.target.value }))}
+                                                        placeholder="Np. Instrukcja PDF"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-black uppercase text-gray-400">URL</label>
+                                                    <div className="flex gap-2">
+                                                        <input
+                                                            className="lux-input py-2 text-sm bg-white flex-1"
+                                                            value={newAttachment.url}
+                                                            onChange={e => setNewAttachment(prev => ({ ...prev, url: e.target.value }))}
+                                                            placeholder="https://..."
+                                                        />
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                if (!newAttachment.nazwa || !newAttachment.url) return;
+                                                                setAttachmentInputs(prev => [...prev, newAttachment]);
+                                                                setNewAttachment({ nazwa: "", url: "" });
+                                                            }}
+                                                            className="p-2 bg-white border border-gray-200 rounded-xl text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
+                                                            type="button"
+                                                        >
+                                                            <Plus size={18} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
                                         <div className="col-span-2 pt-4 border-t border-gray-100 space-y-4">
                                             <div className="space-y-2">
                                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-1">Przypisanie</label>
@@ -733,8 +836,15 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                     </div>
                                     <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-gray-100">
                                         <button onClick={() => setShowCloseConfirmation(true)} className="px-6 py-3 font-bold text-gray-400 hover:text-gray-600 transition-colors">Anuluj</button>
-                                        <button className="lux-btn shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all" onClick={handleAddTask} disabled={isSubmitting}>
-                                            {newTask.teamId === "-1" ? "Opublikuj wszędzie" : "Zapisz zadanie"}
+                                        <button
+                                            className={cn(
+                                                "lux-btn shadow-lg transition-all",
+                                                (!newTask.tytul || isSubmitting) ? "opacity-50 cursor-not-allowed hover:translate-y-0" : "hover:shadow-xl hover:-translate-y-0.5"
+                                            )}
+                                            onClick={handleAddTask}
+                                            disabled={!newTask.tytul || isSubmitting}
+                                        >
+                                            {isSubmitting ? "Zapisywanie..." : (newTask.teamId === "-1" ? "Opublikuj wszędzie" : "Zapisz zadanie")}
                                         </button>
                                     </div>
                                 </div>
@@ -1309,6 +1419,108 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                 onChange={e => setSubmissionText(e.target.value)}
                                             />
                                         </div>
+
+                                        {/* NEW: Attachments Section for Participants */}
+                                        <div className="bg-gray-50 border border-gray-100 rounded-[28px] p-6">
+                                            <h4 className="text-[10px] font-black uppercase text-primary/40 tracking-widest mb-4 flex items-center gap-2">
+                                                <LinkIcon size={14} /> Załączniki (linki)
+                                            </h4>
+
+                                            <div className="space-y-3 mb-4">
+                                                {selectedTask.attachments && selectedTask.attachments.length > 0 ? (
+                                                    <div className="grid grid-cols-1 gap-2">
+                                                        {selectedTask.attachments.map((att: any) => (
+                                                            <div key={att.id} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-2xl group transition-all hover:shadow-sm">
+                                                                <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold text-gray-700 hover:text-primary transition-colors overflow-hidden">
+                                                                    <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-primary transition-all">
+                                                                        {att.url.startsWith('/uploads/') ? <Paperclip size={14} /> : <LinkIcon size={14} />}
+                                                                    </div>
+                                                                    <span className="truncate">{att.nazwa}</span>
+                                                                </a>
+                                                                <button
+                                                                    onClick={async () => {
+                                                                        if (!confirm("Czy na pewno usunąć ten załącznik?")) return;
+                                                                        const res = await deleteTaskAttachment(att.id);
+                                                                        if (res.success) {
+                                                                            setSelectedTask({
+                                                                                ...selectedTask,
+                                                                                attachments: selectedTask.attachments.filter((a: any) => a.id !== att.id)
+                                                                            });
+                                                                            onRefresh();
+                                                                        }
+                                                                    }}
+                                                                    className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-[10px] text-muted-foreground italic text-center py-2">Brak dodanych załączników</p>
+                                                )}
+                                            </div>
+
+                                            <div className="bg-white p-3 rounded-[22px] border border-gray-100">
+                                                <div className="flex flex-col gap-2">
+                                                    <input
+                                                        className="lux-input py-2 text-[10px] bg-gray-50/50"
+                                                        placeholder="Nazwa linku..."
+                                                        value={newDetailAttachment.nazwa}
+                                                        onChange={e => setNewDetailAttachment(prev => ({ ...prev, nazwa: e.target.value }))}
+                                                    />
+                                                    <div className="flex gap-2">
+                                                        <input
+                                                            className="lux-input py-2 text-[10px] bg-gray-50/50 flex-1"
+                                                            placeholder="https://..."
+                                                            value={newDetailAttachment.url}
+                                                            onChange={e => setNewDetailAttachment(prev => ({ ...prev, url: e.target.value }))}
+                                                        />
+                                                        <button
+                                                            onClick={async () => {
+                                                                if (!newDetailAttachment.nazwa || !newDetailAttachment.url) return;
+                                                                const res = await addTaskAttachment(selectedTask.id, newDetailAttachment.nazwa, newDetailAttachment.url);
+                                                                if (res.success && res.data) {
+                                                                    setSelectedTask({
+                                                                        ...selectedTask,
+                                                                        attachments: [...(selectedTask.attachments || []), res.data]
+                                                                    });
+                                                                    setNewDetailAttachment({ nazwa: "", url: "" });
+                                                                    onRefresh();
+                                                                }
+                                                            }}
+                                                            className="p-2 bg-primary text-white rounded-xl shadow-md hover:translate-y-[-1px] transition-all"
+                                                        >
+                                                            <Plus size={18} />
+                                                        </button>
+                                                    </div>
+
+                                                    <div className="flex gap-2 border-t border-gray-100 pt-3 mt-1">
+                                                        <input
+                                                            type="file"
+                                                            id="file-upload-participant"
+                                                            className="hidden"
+                                                            onChange={(e) => {
+                                                                const file = e.target.files?.[0];
+                                                                if (file) handleFileUpload(file);
+                                                            }}
+                                                        />
+                                                        <button
+                                                            onClick={() => document.getElementById('file-upload-participant')?.click()}
+                                                            disabled={isUploading}
+                                                            className="flex-1 py-2 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-all flex items-center justify-center gap-2 shadow-sm"
+                                                        >
+                                                            {isUploading ? (
+                                                                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                            ) : (
+                                                                <Paperclip size={14} />
+                                                            )}
+                                                            {isUploading ? "Wgrywanie..." : "Wgraj plik z urządzenia"}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div className="flex gap-4 mt-8">
@@ -1550,6 +1762,110 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                         )}
                                     </div>
 
+                                    {/* NEW: Attachments Section for Admins/Coordinators */}
+                                    <div className="bg-white border-2 border-primary/5 rounded-[28px] p-6 shadow-sm">
+                                        <h4 className="text-[10px] font-black uppercase text-primary/40 tracking-widest mb-4 flex items-center gap-2">
+                                            <LinkIcon size={14} /> Załączniki do zadania
+                                        </h4>
+                                        <div className="space-y-3 mb-6">
+                                            {selectedTask.attachments && selectedTask.attachments.length > 0 ? (
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                    {selectedTask.attachments.map((att: any) => (
+                                                        <div key={att.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-2xl group transition-all hover:bg-white hover:shadow-sm">
+                                                            <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold text-gray-700 hover:text-primary transition-colors overflow-hidden">
+                                                                <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-primary shadow-sm group-hover:bg-primary group-hover:text-white transition-all">
+                                                                    {att.url.startsWith('/uploads/') ? <Paperclip size={14} /> : <LinkIcon size={14} />}
+                                                                </div>
+                                                                <span className="truncate">{att.nazwa}</span>
+                                                            </a>
+                                                            <button
+                                                                onClick={async () => {
+                                                                    if (!confirm("Czy na pewno usunąć ten załącznik?")) return;
+                                                                    const res = await deleteTaskAttachment(att.id);
+                                                                    if (res.success) {
+                                                                        setSelectedTask({
+                                                                            ...selectedTask,
+                                                                            attachments: selectedTask.attachments.filter((a: any) => a.id !== att.id)
+                                                                        });
+                                                                        onRefresh();
+                                                                    }
+                                                                }}
+                                                                className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl opacity-0 group-hover:opacity-100 transition-all"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="py-4 text-center border-2 border-dashed border-gray-100 rounded-[20px]">
+                                                    <p className="text-xs text-muted-foreground italic">Brak dodanych załączników</p>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="bg-gray-50 p-4 rounded-[22px] border border-gray-100">
+                                            <span className="text-[9px] font-black uppercase text-gray-400 block mb-3 ml-1">Dodaj nowy link lub plik</span>
+                                            <div className="flex flex-col sm:flex-row gap-3">
+                                                <input
+                                                    className="lux-input py-2 text-xs bg-white flex-[2]"
+                                                    placeholder="Nazwa np. Prezentacja"
+                                                    value={newDetailAttachment.nazwa}
+                                                    onChange={e => setNewDetailAttachment(prev => ({ ...prev, nazwa: e.target.value }))}
+                                                />
+                                                <div className="flex flex-1 gap-2">
+                                                    <input
+                                                        className="lux-input py-2 text-xs bg-white flex-1"
+                                                        placeholder="https://..."
+                                                        value={newDetailAttachment.url}
+                                                        onChange={e => setNewDetailAttachment(prev => ({ ...prev, url: e.target.value }))}
+                                                    />
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (!newDetailAttachment.nazwa || !newDetailAttachment.url) return;
+                                                            const res = await addTaskAttachment(selectedTask.id, newDetailAttachment.nazwa, newDetailAttachment.url);
+                                                            if (res.success && res.data) {
+                                                                setSelectedTask({
+                                                                    ...selectedTask,
+                                                                    attachments: [...(selectedTask.attachments || []), res.data]
+                                                                });
+                                                                setNewDetailAttachment({ nazwa: "", url: "" });
+                                                                onRefresh();
+                                                            }
+                                                        }}
+                                                        className="p-2 bg-primary text-white rounded-xl shadow-md hover:translate-y-[-2px] transition-all"
+                                                    >
+                                                        <Plus size={20} />
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-3 pt-3 border-t border-gray-200/50 flex gap-2">
+                                                <input
+                                                    type="file"
+                                                    id="file-upload-admin"
+                                                    className="hidden"
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) handleFileUpload(file);
+                                                    }}
+                                                />
+                                                <button
+                                                    onClick={() => document.getElementById('file-upload-admin')?.click()}
+                                                    disabled={isUploading}
+                                                    className="flex-1 py-3 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-all flex items-center justify-center gap-2 shadow-sm"
+                                                >
+                                                    {isUploading ? (
+                                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                    ) : (
+                                                        <Paperclip size={16} />
+                                                    )}
+                                                    {isUploading ? "Wgrywanie..." : "Dodaj plik z urządzenia"}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     {/* Execution Status / Table */}
                                     <div>
                                         <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4">Postęp Realizacji</h3>
@@ -1665,7 +1981,30 @@ function ParticipantTaskCard({ task, userId, onClick, status }: any) {
             </div>
 
             <h3 className="font-bold text-xl mb-2 text-gray-900">{task.tytul}</h3>
-            <p className="text-sm text-muted-foreground flex-1 line-clamp-3 mb-8 leading-relaxed">{task.opis || "Brak opisu dodatkowego."}</p>
+            <p className="text-sm text-muted-foreground flex-1 line-clamp-2 mb-4 leading-relaxed">{task.opis || "Brak opisu dodatkowego."}</p>
+
+            {/* NEW: Attachments for Participants */}
+            {task.attachments && task.attachments.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-6 p-3 bg-gray-50 rounded-2xl border border-gray-100/50">
+                    <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest w-full mb-1 ml-1 opacity-60">Załączniki:</span>
+                    {task.attachments.slice(0, 3).map((att: any) => (
+                        <a
+                            key={att.id}
+                            href={att.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-100 rounded-xl text-[10px] font-bold text-gray-600 hover:text-primary hover:border-primary/20 transition-all shadow-sm hover:shadow-md"
+                        >
+                            <ExternalLink size={10} className="text-primary/60" />
+                            {att.nazwa}
+                        </a>
+                    ))}
+                    {task.attachments.length > 3 && (
+                        <span className="text-[10px] text-gray-400 font-bold self-center ml-1">+{task.attachments.length - 3}</span>
+                    )}
+                </div>
+            )}
 
             <div className="space-y-5 pt-5 border-t border-gray-50 mt-auto">
                 <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
@@ -1882,15 +2221,45 @@ function ExecutionDetailModal({ execution, onClose, onApprove, onReject, isAdmin
                             </div>
                         </div>
 
-                        {/* Task Description */}
-                        {task.opis && (
+                        {/* Task Description & Attachments */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {task.opis && (
+                                <div className="space-y-3 animate-in fade-in slide-in-from-top-4">
+                                    <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest pl-1">Instrukcja do zadania</h4>
+                                    <div className="bg-blue-50/50 rounded-[24px] p-6 border border-blue-100/50 text-gray-700 text-base leading-relaxed h-full">
+                                        {task.opis}
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="space-y-3 animate-in fade-in slide-in-from-top-4">
-                                <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest pl-1">Instrukcja do zadania</h4>
-                                <div className="bg-blue-50/50 rounded-[24px] p-6 border border-blue-100/50 text-gray-700 text-base leading-relaxed">
-                                    {task.opis}
+                                <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest pl-1">Załączniki</h4>
+                                <div className="bg-gray-50/50 rounded-[24px] p-6 border border-gray-100 flex-1 h-full min-h-[100px]">
+                                    {task.attachments && task.attachments.length > 0 ? (
+                                        <div className="space-y-2">
+                                            {task.attachments.map((att: any) => (
+                                                <a
+                                                    key={att.id}
+                                                    href={att.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center gap-3 p-3 bg-white border border-gray-100 rounded-xl text-sm font-bold text-gray-700 hover:text-primary transition-all shadow-sm hover:shadow-md"
+                                                >
+                                                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                                                        <ExternalLink size={14} />
+                                                    </div>
+                                                    {att.nazwa}
+                                                </a>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center justify-center h-full text-xs text-muted-foreground italic">
+                                            Brak załączników
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-                        )}
+                        </div>
 
                         {/* User Response - The Core Content */}
                         <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4">

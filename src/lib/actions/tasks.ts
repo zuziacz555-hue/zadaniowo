@@ -2,6 +2,9 @@
 
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
+import fs from 'fs'
+import path from 'path'
+import { writeFile, mkdir } from 'fs/promises'
 
 export async function getTasks(filters?: {
     teamId?: number
@@ -47,7 +50,8 @@ export async function getTasks(filters?: {
                     include: {
                         user: true
                     }
-                }
+                },
+                attachments: true
             },
             orderBy: {
                 dataUtworzenia: 'desc',
@@ -154,6 +158,7 @@ export async function getTaskById(id: number) {
                         dataDodania: 'desc'
                     }
                 },
+                attachments: true,
             },
         })
         return { success: true, data: task }
@@ -174,9 +179,10 @@ export async function createTask(data: {
     typPrzypisania?: string
     assignedUserIds?: number[]
     includeCoordinators?: boolean
+    attachments?: { nazwa: string, url: string }[]
 }) {
     try {
-        const { assignedUserIds, teamId, includeCoordinators, ...rest } = data;
+        const { assignedUserIds, teamId, includeCoordinators, attachments, ...rest } = data;
 
         const task = await prisma.task.create({
             data: {
@@ -189,6 +195,9 @@ export async function createTask(data: {
                     create: assignedUserIds.map(userId => ({
                         userId
                     }))
+                } : undefined,
+                attachments: attachments && attachments.length > 0 ? {
+                    create: attachments
                 } : undefined
             },
         });
@@ -206,7 +215,12 @@ export async function createTask(data: {
                 const teamMembers = await prisma.userTeam.findMany({
                     where: {
                         teamId: task.teamId,
-                        rola: { in: rolesToInclude }
+                        rola: {
+                            in: [
+                                ...rolesToInclude.map(r => r.toLowerCase()),
+                                ...rolesToInclude.map(r => r.toUpperCase())
+                            ]
+                        }
                     },
                     include: { user: true }
                 });
@@ -441,5 +455,73 @@ export async function updateTask(taskId: number, data: {
     } catch (error) {
         console.error('Error updating task:', error);
         return { success: false, error: 'Failed to update task' };
+    }
+}
+
+export async function addTaskAttachment(taskId: number, nazwa: string, url: string) {
+    try {
+        const attachment = await prisma.taskAttachment.create({
+            data: {
+                taskId,
+                nazwa,
+                url,
+            },
+        });
+        revalidatePath('/tasks');
+        revalidatePath('/admin-teams');
+        return { success: true, data: attachment };
+    } catch (error) {
+        console.error('Error adding attachment:', error);
+        return { success: false, error: 'Failed to add attachment' };
+    }
+}
+
+export async function deleteTaskAttachment(attachmentId: number) {
+    try {
+        await prisma.taskAttachment.delete({
+            where: { id: attachmentId },
+        });
+        revalidatePath('/tasks');
+        revalidatePath('/admin-teams');
+        return { success: true };
+    } catch (error) {
+        console.error('Error deleting attachment:', error);
+        return { success: false, error: 'Failed to delete attachment' };
+    }
+}
+
+export async function uploadTaskFile(formData: FormData) {
+    try {
+        const file = formData.get('file') as File;
+        if (!file) {
+            return { success: false, error: 'No file uploaded' };
+        }
+
+        const bytes = await file.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+
+        // Path to public/uploads
+        const pathPublic = path.join(process.cwd(), 'public');
+        const pathUploads = path.join(pathPublic, 'uploads');
+
+        // Create dir if not exists
+        if (!fs.existsSync(pathUploads)) {
+            await mkdir(pathUploads, { recursive: true });
+        }
+
+        // Unique filename
+        const filename = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+        const filePath = path.join(pathUploads, filename);
+
+        await writeFile(filePath, buffer);
+
+        return {
+            success: true,
+            url: `/uploads/${filename}`,
+            name: file.name
+        };
+    } catch (error) {
+        console.error('Error uploading file:', error);
+        return { success: false, error: 'Failed to upload file' };
     }
 }

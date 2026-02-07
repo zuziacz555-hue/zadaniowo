@@ -180,10 +180,21 @@ model Task {
   submissions     TaskSubmission[]
   assignments     TaskAssignment[]
   executions      TaskExecution[]
+  attachments     TaskAttachment[]
 
   @@index([teamId])
   @@index([termin])
   @@map("zadania")
+}
+
+model TaskAttachment {
+  id        Int      @id @default(autoincrement())
+  taskId    Int      @map("zadanie_id")
+  nazwa     String
+  url       String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("zadania_zalaczniki")
 }
 
 model TaskSubmission {
