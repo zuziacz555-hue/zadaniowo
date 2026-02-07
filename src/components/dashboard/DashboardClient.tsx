@@ -19,7 +19,8 @@ import {
     AlertTriangle,
     Trash2,
     Settings,
-    XCircle
+    XCircle,
+    Archive
 } from "lucide-react";
 
 const menuItems = [
@@ -67,6 +68,7 @@ const menuItems = [
     { title: "Użytkownicy", description: "Baza użytkowników", icon: UserCog, tone: "from-slate-600 to-slate-800", href: "/admin-users", adminOnly: true, span: "md:col-span-1" },
 
     // Shared Settings
+    { title: "Archiwum", description: "Zarchiwizowane zadania", icon: Archive, tone: "from-gray-500 to-slate-600", href: "/archive", coordOnly: true, span: "md:col-span-1" },
     { title: "Ustawienia", description: "Konfiguracja systemu", icon: Settings, tone: "from-gray-400 to-gray-600", href: "/admin-settings", coordOnly: true, special: true, span: "md:col-span-1" },
 ];
 
@@ -75,6 +77,7 @@ import { checkMissingReports } from "@/lib/actions/reports";
 import { getParticipantAlerts, ParticipantAlert } from "@/lib/actions/alerts";
 import { getSystemSettings, SystemSettingsData } from "@/lib/actions/settings";
 import { getNotifications, nominateCoordinator, respondToInvitation, dismissNotification, applyToTeam, respondToTeamApplication } from "@/lib/actions/notifications";
+import { getUnreadChatCount } from "@/lib/actions/chat";
 import { useRouter } from "next/navigation";
 
 interface DashboardClientProps {
@@ -96,6 +99,7 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
     const [allTeams, setAllTeams] = useState<any[]>([]);
     const [applyingToTeam, setApplyingToTeam] = useState<any>(null);
     const [motivationText, setMotivationText] = useState("");
+    const [unreadChatCount, setUnreadChatCount] = useState(0);
 
     const refreshSession = () => {
         const storedUser = localStorage.getItem("user");
@@ -126,6 +130,7 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
         if (storedUser) {
             const parsedUser = JSON.parse(storedUser);
             fetchNotifications(parsedUser.id);
+            fetchUnreadChat(parsedUser.id);
 
             // Sync teams if needed
             if (initialTeams.length === 0) {
@@ -328,6 +333,13 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
         if (res.success) {
             fetchNotifications(user?.id);
             if (accept) window.location.reload();
+        }
+    };
+
+    const fetchUnreadChat = async (userId: number) => {
+        const res = await getUnreadChatCount(userId);
+        if (res.success) {
+            setUnreadChatCount(res.count || 0);
         }
     };
 
@@ -558,6 +570,27 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
                         </div>
                         <Link href="/reports" className="px-6 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors shadow-lg">
                             Uzupełnij teraz
+                        </Link>
+                    </motion.div>
+                )}
+
+                {unreadChatCount > 0 && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-primary/5 border-l-4 border-primary p-6 rounded-r-xl flex items-start justify-between shadow-sm"
+                    >
+                        <div className="flex gap-4">
+                            <div className="bg-primary/10 p-2 rounded-full text-primary">
+                                <MessageSquareText size={24} />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900">Masz nowe wiadomości!</h3>
+                                <p className="text-gray-700 font-medium">Czeka na Ciebie {unreadChatCount} nieprzeczytanych wiadomości na czacie.</p>
+                            </div>
+                        </div>
+                        <Link href="/chat" className="px-6 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 transition-colors shadow-lg">
+                            Otwórz czat
                         </Link>
                     </motion.div>
                 )}

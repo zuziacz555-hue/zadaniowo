@@ -28,7 +28,8 @@ import {
     Link as LinkIcon,
     Paperclip,
     ExternalLink,
-    Layers
+    Layers,
+    Archive
 } from "lucide-react";
 import {
     createTask,
@@ -43,8 +44,11 @@ import {
     deleteTaskAttachment,
     uploadTaskFile
 } from "@/lib/actions/tasks";
+import { moveExecutionToArchive } from "@/lib/actions/archive";
 import { getTeams, getTeamById } from "@/lib/actions/teams";
 import { useRouter } from "next/navigation";
+
+import ArchiveSelectFolderModal from "./archive/ArchiveSelectFolderModal";
 
 interface TasksClientProps {
     initialTasks: any[];
@@ -169,6 +173,11 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
     const [showAddForm, setShowAddForm] = useState(false);
     const [showCloseConfirmation, setShowCloseConfirmation] = useState(false);
     const [coordViewMode, setCoordViewMode] = useState<"MANAGEMENT" | "PERSONAL">("MANAGEMENT");
+
+    // Archive State
+
+    const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
+    const [executionToArchive, setExecutionToArchive] = useState<any>(null);
 
     // Data State
     const [allTeams, setAllTeams] = useState<any[]>([]);
@@ -561,473 +570,400 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
 
     return (
         <DashboardLayout>
-            <div className="space-y-10 animate-slide-in pb-10">
-                {/* Header Section */}
-                <div className="glass-panel p-10 rounded-[32px] flex flex-wrap justify-between items-center gap-8 relative overflow-hidden">
-                    {/* Background Glow */}
-                    <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/10 rounded-full blur-[80px]" />
+            <div>
+                <div className="space-y-10 animate-slide-in pb-10">
+                    {/* Header Section */}
+                    <div className="glass-panel p-10 rounded-[32px] flex flex-wrap justify-between items-center gap-8 relative overflow-hidden">
+                        {/* Background Glow */}
+                        <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/10 rounded-full blur-[80px]" />
 
-                    <div className="relative z-10 space-y-2">
-                        <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
-                                <CheckCircle size={24} />
-                            </div>
-                            <h1 className="text-4xl font-black tracking-tight text-foreground">Zadania</h1>
-                        </div>
-                        <p className="text-muted-foreground font-medium">
-                            {isAdmin ? "Pełna kontrola nad wszystkimi zespołami i procesami" :
-                                isCoord ? "Zarządzaj zespołem i weryfikuj zgłoszenia uczestników" :
-                                    "Przeglądaj i wykonuj przypisane Ci zadania"}
-                        </p>
-                    </div>
-
-                    <div className="relative z-10 flex flex-wrap gap-4 items-center">
-                        {(isAdmin || (isCoord && coordViewMode === "MANAGEMENT")) && (
-                            <button
-                                onClick={() => setShowAddForm(true)}
-                                className="lux-btn flex items-center gap-2 group bg-primary hover:bg-primary/90 shadow-primary/20"
-                            >
-                                <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center group-hover:rotate-90 transition-transform">
-                                    <Plus size={14} />
+                        <div className="relative z-10 space-y-2">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                                    <CheckCircle size={24} />
                                 </div>
-                                Nowe zadanie
-                            </button>
-                        )}
+                                <h1 className="text-4xl font-black tracking-tight text-foreground">Zadania</h1>
+                            </div>
+                            <p className="text-muted-foreground font-medium">
+                                {isAdmin ? "Pełna kontrola nad wszystkimi zespołami i procesami" :
+                                    isCoord ? "Zarządzaj zespołem i weryfikuj zgłoszenia uczestników" :
+                                        "Przeglądaj i wykonuj przypisane Ci zadania"}
+                            </p>
+                        </div>
+
+                        <div className="relative z-10 flex flex-wrap gap-4 items-center">
+
+                            {(isAdmin || (isCoord && coordViewMode === "MANAGEMENT")) && (
+                                <button
+                                    onClick={() => setShowAddForm(true)}
+                                    className="lux-btn flex items-center gap-2 group bg-primary hover:bg-primary/90 shadow-primary/20"
+                                >
+                                    <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center group-hover:rotate-90 transition-transform">
+                                        <Plus size={14} />
+                                    </div>
+                                    Nowe zadanie
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Add Form (Admin / Coord) */}
-            {mounted && createPortal(
-                <AnimatePresence>
-                    {showAddForm && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-[20px] flex items-center justify-center p-4 overflow-y-auto"
-                            onClick={(e) => { if (e.target === e.currentTarget) setShowCloseConfirmation(true); }}
-                        >
-                            <div className="bg-white p-8 rounded-[32px] w-full max-w-2xl shadow-2xl relative my-8">
-                                <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-                                    <div className="p-2 bg-primary/10 rounded-xl text-primary"><Plus size={24} /></div>
-                                    Utwórz nowe zadanie
-                                </h2>
+                {/* Add Form (Admin / Coord) */}
+                {mounted && createPortal(
+                    <AnimatePresence>
+                        {showAddForm && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-[20px] flex items-center justify-center p-4 overflow-y-auto"
+                                onClick={(e) => { if (e.target === e.currentTarget) setShowCloseConfirmation(true); }}
+                            >
+                                <div className="bg-white p-8 rounded-[32px] w-full max-w-2xl shadow-2xl relative my-8">
+                                    <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+                                        <div className="p-2 bg-primary/10 rounded-xl text-primary"><Plus size={24} /></div>
+                                        Utwórz nowe zadanie
+                                    </h2>
 
-                                <div className="space-y-5">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="col-span-2 space-y-2">
-                                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-1">Tytuł zadania</label>
-                                            <input
-                                                className="lux-input text-lg font-bold"
-                                                placeholder="Np. Przygotowanie raportu miesięcznego"
-                                                value={newTask.tytul}
-                                                onChange={e => setNewTask(prev => ({ ...prev, tytul: e.target.value }))}
-                                            />
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-1">Zespół</label>
-                                            <div className="relative">
-                                                <select
-                                                    className={cn("lux-input appearance-none", newTask.teamId === "-1" && "bg-primary text-white border-primary")}
-                                                    value={newTask.teamId}
-                                                    onChange={e => setNewTask(prev => ({ ...prev, teamId: e.target.value }))}
-                                                    disabled={isCoord && !isAdmin}
-                                                >
-                                                    {!isAdmin && teamId && <option value={teamId}>Mój zespół</option>}
-                                                    {isAdmin && (
-                                                        <>
-                                                            <option value="-1" className="font-bold bg-gray-100">📢 WSZYSTKIE ZESPOŁY</option>
-                                                            {allTeams.map(t => <option key={t.id} value={t.id}>{t.nazwa}</option>)}
-                                                        </>
-                                                    )}
-                                                </select>
-                                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 opacity-50 pointer-events-none" size={16} />
+                                    <div className="space-y-5">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="col-span-2 space-y-2">
+                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-1">Tytuł zadania</label>
+                                                <input
+                                                    className="lux-input text-lg font-bold"
+                                                    placeholder="Np. Przygotowanie raportu miesięcznego"
+                                                    value={newTask.tytul}
+                                                    onChange={e => setNewTask(prev => ({ ...prev, tytul: e.target.value }))}
+                                                />
                                             </div>
-                                        </div>
 
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-1">Priorytet</label>
-                                            <div className="flex p-1 bg-gray-50 rounded-xl border border-gray-200">
-                                                {["NISKI", "NORMALNY", "WYSOKI"].map(p => (
-                                                    <button
-                                                        key={p}
-                                                        onClick={() => setNewTask(prev => ({ ...prev, priorytet: p }))}
-                                                        className={cn(
-                                                            "flex-1 py-2 text-xs font-bold rounded-lg transition-all",
-                                                            newTask.priorytet === p ? "bg-white shadow-sm text-primary" : "text-muted-foreground hover:bg-white/50"
-                                                        )}
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-1">Zespół</label>
+                                                <div className="relative">
+                                                    <select
+                                                        className={cn("lux-input appearance-none", newTask.teamId === "-1" && "bg-primary text-white border-primary")}
+                                                        value={newTask.teamId}
+                                                        onChange={e => setNewTask(prev => ({ ...prev, teamId: e.target.value }))}
+                                                        disabled={isCoord && !isAdmin}
                                                     >
-                                                        {p}
-                                                    </button>
-                                                ))}
+                                                        {!isAdmin && teamId && <option value={teamId}>Mój zespół</option>}
+                                                        {isAdmin && (
+                                                            <>
+                                                                <option value="-1" className="font-bold bg-gray-100">📢 WSZYSTKIE ZESPOŁY</option>
+                                                                {allTeams.map(t => <option key={t.id} value={t.id}>{t.nazwa}</option>)}
+                                                            </>
+                                                        )}
+                                                    </select>
+                                                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 opacity-50 pointer-events-none" size={16} />
+                                                </div>
                                             </div>
-                                        </div>
 
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between items-center">
-                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-1">Termin</label>
-                                                <button
-                                                    onClick={() => setNewTask(prev => ({ ...prev, termin: "" }))}
-                                                    className="text-[10px] font-bold text-primary hover:underline uppercase"
-                                                >
-                                                    Bezterminowo
-                                                </button>
-                                            </div>
-                                            <input
-                                                type="date"
-                                                className={cn("lux-input", !newTask.termin && "text-muted-foreground italic")}
-                                                value={newTask.termin}
-                                                onChange={e => setNewTask(prev => ({ ...prev, termin: e.target.value }))}
-                                            />
-                                        </div>
-
-                                        <div className="col-span-2 space-y-2">
-                                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-1">Opis</label>
-                                            <textarea
-                                                className="lux-textarea h-32"
-                                                placeholder="Szczegóły zadania..."
-                                                value={newTask.opis}
-                                                onChange={e => setNewTask(prev => ({ ...prev, opis: e.target.value }))}
-                                            />
-                                        </div>
-
-                                        {/* ATTACHMENTS SECTION */}
-                                        <div className="col-span-2 space-y-4 pt-4 border-t border-gray-100">
-                                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-1">Załączniki (linki)</label>
-
-                                            {attachmentInputs.length > 0 && (
-                                                <div className="flex flex-wrap gap-2 mb-3">
-                                                    {attachmentInputs.map((att, idx) => (
-                                                        <div key={idx} className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-gray-100 rounded-xl group/att">
-                                                            <LinkIcon size={12} className="text-primary" />
-                                                            <span className="text-xs font-bold text-gray-700">{att.nazwa}</span>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setAttachmentInputs(prev => prev.filter((_, i) => i !== idx))}
-                                                                className="text-gray-400 hover:text-red-500 transition-colors"
-                                                            >
-                                                                <X size={14} />
-                                                            </button>
-                                                        </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-1">Priorytet</label>
+                                                <div className="flex p-1 bg-gray-50 rounded-xl border border-gray-200">
+                                                    {["NISKI", "NORMALNY", "WYSOKI"].map(p => (
+                                                        <button
+                                                            key={p}
+                                                            onClick={() => setNewTask(prev => ({ ...prev, priorytet: p }))}
+                                                            className={cn(
+                                                                "flex-1 py-2 text-xs font-bold rounded-lg transition-all",
+                                                                newTask.priorytet === p ? "bg-white shadow-sm text-primary" : "text-muted-foreground hover:bg-white/50"
+                                                            )}
+                                                        >
+                                                            {p}
+                                                        </button>
                                                     ))}
                                                 </div>
-                                            )}
-
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 bg-gray-50/50 rounded-2xl border border-gray-100">
-                                                <div className="space-y-1">
-                                                    <label className="text-[10px] font-black uppercase text-gray-400">Nazwa linku</label>
-                                                    <input
-                                                        className="lux-input py-2 text-sm bg-white"
-                                                        value={newAttachment.nazwa}
-                                                        onChange={e => setNewAttachment(prev => ({ ...prev, nazwa: e.target.value }))}
-                                                        placeholder="Np. Instrukcja PDF"
-                                                    />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <label className="text-[10px] font-black uppercase text-gray-400">URL</label>
-                                                    <div className="flex gap-2">
-                                                        <input
-                                                            className="lux-input py-2 text-sm bg-white flex-1"
-                                                            value={newAttachment.url}
-                                                            onChange={e => setNewAttachment(prev => ({ ...prev, url: e.target.value }))}
-                                                            placeholder="https://..."
-                                                        />
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.preventDefault();
-                                                                if (!newAttachment.nazwa || !newAttachment.url) return;
-                                                                setAttachmentInputs(prev => [...prev, newAttachment]);
-                                                                setNewAttachment({ nazwa: "", url: "" });
-                                                            }}
-                                                            className="p-2 bg-white border border-gray-200 rounded-xl text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
-                                                            type="button"
-                                                        >
-                                                            <Plus size={18} />
-                                                        </button>
-                                                    </div>
-                                                </div>
                                             </div>
-                                        </div>
 
-                                        <div className="col-span-2 pt-4 border-t border-gray-100 space-y-4">
                                             <div className="space-y-2">
-                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-1">Przypisanie</label>
-                                                <div className="flex gap-4">
-                                                    <label className="flex items-center gap-2 cursor-pointer bg-gray-50 p-2 rounded-lg hover:bg-gray-100 transition-colors flex-1">
-                                                        <input
-                                                            type="radio"
-                                                            className="w-4 h-4 text-primary"
-                                                            checked={newTask.typPrzypisania === "CALY_ZESPOL"}
-                                                            onChange={() => setNewTask(prev => ({ ...prev, typPrzypisania: "CALY_ZESPOL", assignedUserIds: [] }))}
-                                                        />
-                                                        <span className="text-sm font-bold text-gray-700">Cały zespół</span>
-                                                    </label>
-                                                    <label className="flex items-center gap-2 cursor-pointer bg-gray-50 p-2 rounded-lg hover:bg-gray-100 transition-colors flex-1">
-                                                        <input
-                                                            type="radio"
-                                                            className="w-4 h-4 text-primary"
-                                                            checked={newTask.typPrzypisania === "OSOBY"}
-                                                            onChange={() => {
-                                                                if (newTask.teamId === "-1") {
-                                                                    alert("Wybór konkretnych osób dostępny tylko dla pojedynczego zespołu.");
-                                                                    return;
-                                                                }
-                                                                setNewTask(prev => ({ ...prev, typPrzypisania: "OSOBY" }));
-                                                            }}
-                                                        />
-                                                        <span className="text-sm font-bold text-gray-700">Wybrane osoby</span>
-                                                    </label>
+                                                <div className="flex justify-between items-center">
+                                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-1">Termin</label>
+                                                    <button
+                                                        onClick={() => setNewTask(prev => ({ ...prev, termin: "" }))}
+                                                        className="text-[10px] font-bold text-primary hover:underline uppercase"
+                                                    >
+                                                        Bezterminowo
+                                                    </button>
                                                 </div>
+                                                <input
+                                                    type="date"
+                                                    className={cn("lux-input", !newTask.termin && "text-muted-foreground italic")}
+                                                    value={newTask.termin}
+                                                    onChange={e => setNewTask(prev => ({ ...prev, termin: e.target.value }))}
+                                                />
                                             </div>
 
-                                            {/* COORDINATOR ASSIGNMENT CHECKBOX (Admin Only, Global Setting Check) */}
-                                            {settings?.coordinatorTasks && isAdmin && newTask.typPrzypisania === "CALY_ZESPOL" && (
-                                                <label className="flex items-center gap-3 cursor-pointer p-4 bg-purple-50 rounded-xl border border-purple-100 hover:bg-purple-100/50 transition-colors animate-in fade-in slide-in-from-top-2">
-                                                    <div className="relative flex items-center">
+                                            <div className="col-span-2 space-y-2">
+                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-1">Opis</label>
+                                                <textarea
+                                                    className="lux-textarea h-32"
+                                                    placeholder="Szczegóły zadania..."
+                                                    value={newTask.opis}
+                                                    onChange={e => setNewTask(prev => ({ ...prev, opis: e.target.value }))}
+                                                />
+                                            </div>
+
+                                            {/* ATTACHMENTS SECTION */}
+                                            <div className="col-span-2 space-y-4 pt-4 border-t border-gray-100">
+                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-1">Załączniki (linki)</label>
+
+                                                {attachmentInputs.length > 0 && (
+                                                    <div className="flex flex-wrap gap-2 mb-3">
+                                                        {attachmentInputs.map((att, idx) => (
+                                                            <div key={idx} className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-gray-100 rounded-xl group/att">
+                                                                <LinkIcon size={12} className="text-primary" />
+                                                                <span className="text-xs font-bold text-gray-700">{att.nazwa}</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setAttachmentInputs(prev => prev.filter((_, i) => i !== idx))}
+                                                                    className="text-gray-400 hover:text-red-500 transition-colors"
+                                                                >
+                                                                    <X size={14} />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 bg-gray-50/50 rounded-2xl border border-gray-100">
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-black uppercase text-gray-400">Nazwa linku</label>
                                                         <input
-                                                            type="checkbox"
-                                                            className="peer w-5 h-5 text-purple-600 rounded focus:ring-purple-500 border-purple-300"
-                                                            checked={newTask.includeCoordinators}
-                                                            onChange={(e) => setNewTask(prev => ({ ...prev, includeCoordinators: e.target.checked }))}
+                                                            className="lux-input py-2 text-sm bg-white"
+                                                            value={newAttachment.nazwa}
+                                                            onChange={e => setNewAttachment(prev => ({ ...prev, nazwa: e.target.value }))}
+                                                            placeholder="Np. Instrukcja PDF"
                                                         />
                                                     </div>
-                                                    <div>
-                                                        <span className="text-sm font-bold text-purple-900 block flex items-center gap-2">
-                                                            <Users size={16} />
-                                                            Przypisz również koordynatorkom
-                                                        </span>
-                                                        <span className="text-xs text-purple-600/80 mt-0.5 block">Jeśli zaznaczone, koordynatorki zespołu również otrzymają to zadanie do wykonania.</span>
-                                                    </div>
-                                                </label>
-                                            )}
-
-                                            {newTask.typPrzypisania === "OSOBY" && (
-                                                <div className="space-y-2 border rounded-xl p-4 bg-gray-50/50">
-                                                    <div className="flex justify-between items-center mb-2">
-                                                        <span className="text-xs font-bold text-muted-foreground">Wybierz osoby ({assignedUserIds.length})</span>
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-black uppercase text-gray-400">URL</label>
                                                         <div className="flex gap-2">
-                                                            <button onClick={() => setAssignedUserIds(teamMembers.map(u => u.id))} className="text-[10px] font-bold text-primary hover:underline">WSZYSCY</button>
-                                                            <button onClick={() => setAssignedUserIds([])} className="text-[10px] font-bold text-gray-400 hover:text-gray-600">RESET</button>
+                                                            <input
+                                                                className="lux-input py-2 text-sm bg-white flex-1"
+                                                                value={newAttachment.url}
+                                                                onChange={e => setNewAttachment(prev => ({ ...prev, url: e.target.value }))}
+                                                                placeholder="https://..."
+                                                            />
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    if (!newAttachment.nazwa || !newAttachment.url) return;
+                                                                    setAttachmentInputs(prev => [...prev, newAttachment]);
+                                                                    setNewAttachment({ nazwa: "", url: "" });
+                                                                }}
+                                                                className="p-2 bg-white border border-gray-200 rounded-xl text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
+                                                                type="button"
+                                                            >
+                                                                <Plus size={18} />
+                                                            </button>
                                                         </div>
                                                     </div>
-
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Szukaj osoby..."
-                                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-primary bg-white mb-2"
-                                                        value={userSearchTerm}
-                                                        onChange={(e) => setUserSearchTerm(e.target.value)}
-                                                    />
-
-                                                    <div className="max-h-40 overflow-y-auto space-y-1 pr-2 custom-scrollbar">
-                                                        {teamMembers
-                                                            .filter(u => (u.imieNazwisko || u.name || "").toLowerCase().includes(userSearchTerm.toLowerCase()))
-                                                            .map(member => (
-                                                                <label key={member.id} className="flex items-center gap-3 p-2 hover:bg-white rounded-lg cursor-pointer transition-colors border border-transparent hover:border-gray-100 hover:shadow-sm">
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        className="rounded border-gray-300 text-primary"
-                                                                        checked={assignedUserIds.includes(member.id)}
-                                                                        onChange={e => {
-                                                                            if (e.target.checked) {
-                                                                                setAssignedUserIds(prev => [...prev, member.id]);
-                                                                            } else {
-                                                                                setAssignedUserIds(prev => prev.filter(id => id !== member.id));
-                                                                            }
-                                                                        }}
-                                                                    />
-                                                                    <div className="flex items-center gap-2">
-                                                                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-600 border border-gray-200 shadow-sm">
-                                                                            {member.imieNazwisko?.[0]}
-                                                                        </div>
-                                                                        <div>
-                                                                            <span className="text-sm font-semibold text-gray-700 block leading-tight">{member.imieNazwisko}</span>
-                                                                            <span className="text-[9px] uppercase text-muted-foreground font-bold tracking-wider">{member.teamRole || member.rola}</span>
-                                                                        </div>
-                                                                    </div>
-                                                                </label>
-                                                            ))}
-                                                        {teamMembers.length === 0 && <p className="text-xs text-center text-muted-foreground italic py-4">Wybierz zespół aby zobaczyć osoby</p>}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-gray-100">
-                                        <button onClick={() => setShowCloseConfirmation(true)} className="px-6 py-3 font-bold text-gray-400 hover:text-gray-600 transition-colors">Anuluj</button>
-                                        <button
-                                            className={cn(
-                                                "lux-btn shadow-lg transition-all",
-                                                (!newTask.tytul || isSubmitting) ? "opacity-50 cursor-not-allowed hover:translate-y-0" : "hover:shadow-xl hover:-translate-y-0.5"
-                                            )}
-                                            onClick={handleAddTask}
-                                            disabled={!newTask.tytul || isSubmitting}
-                                        >
-                                            {isSubmitting ? "Zapisywanie..." : (newTask.teamId === "-1" ? "Opublikuj wszędzie" : "Zapisz zadanie")}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>,
-                document.body
-            )}
-
-            {/* Close Confirmation Modal */}
-            {mounted && createPortal(
-                <AnimatePresence>
-                    {showCloseConfirmation && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-[10000] bg-black/60 backdrop-blur-[20px] flex items-center justify-center p-4"
-
-                            onClick={(e) => { if (e.target === e.currentTarget) setShowCloseConfirmation(false); }}
-                        >
-                            <motion.div
-                                initial={{ scale: 0.9, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                exit={{ scale: 0.9, opacity: 0 }}
-                                className="bg-white p-8 rounded-[30px] w-full max-w-sm shadow-2xl text-center"
-                            >
-                                <div className="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                    <AlertTriangle size={32} />
-                                </div>
-                                <h3 className="text-xl font-bold text-gray-900 mb-2">Czy chcesz zamknąć to zadanie?</h3>
-                                <p className="text-sm text-muted-foreground mb-8">
-                                    Twoje niezapisane zmiany zostaną utracone, a formularz zostanie wyczyszczony.
-                                </p>
-                                <div className="space-y-3">
-                                    <button
-                                        onClick={() => {
-                                            resetAddForm();
-                                            setShowAddForm(false);
-                                            setShowCloseConfirmation(false);
-                                        }}
-                                        className="w-full py-4 bg-red-500 hover:bg-red-600 text-white font-bold rounded-2xl transition-all shadow-lg shadow-red-200"
-                                    >
-                                        Tak, zamknij
-                                    </button>
-                                    <button
-                                        onClick={() => setShowCloseConfirmation(false)}
-                                        className="w-full py-4 bg-gray-50 hover:bg-gray-100 text-gray-600 font-bold rounded-2xl transition-all"
-                                    >
-                                        Nie, kontynuuj
-                                    </button>
-                                </div>
-                            </motion.div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>,
-                document.body
-            )}
-
-            {/* CONTENT BY ROLE */}
-
-            {/* --- UNIFIED ADMIN/COORDINATOR VIEW --- */}
-
-            {(isAdmin || isCoord) && (
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                    {/* LEFT COLUMN: NAVIGATION (ADMIN TEAMS / COORD MODES) */}
-                    {(isAdmin || (isCoord && settings?.coordinatorTasks)) && (
-                        <div className="lg:col-span-1 space-y-6">
-                            <div className="flex items-center gap-3 px-2 mb-2">
-                                <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                                    <Folder size={18} />
-                                </div>
-                                <h2 className="text-xl font-black tracking-tight text-foreground">
-                                    {isAdmin ? "Zespoły" : "Moje widoki"}
-                                </h2>
-                            </div>
-
-                            <div className="space-y-3">
-                                {isAdmin ? (
-                                    <>
-                                        {/* All Teams Option */}
-                                        <button
-                                            onClick={() => setAdminTeamFilter("ALL")}
-                                            className={cn(
-                                                "w-full text-left p-5 rounded-[28px] transition-all flex items-center justify-between group",
-                                                adminTeamFilter === "ALL"
-                                                    ? "glass-panel bg-white/60 border-primary/20 shadow-lg scale-[1.02]"
-                                                    : "hover:bg-white/40 border border-transparent"
-                                            )}
-                                        >
-                                            <div className="flex items-center gap-4">
-                                                <div className={cn(
-                                                    "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-sm",
-                                                    adminTeamFilter === "ALL" ? "bg-primary text-white scale-110 shadow-primary/20" : "bg-white/60 text-muted-foreground group-hover:bg-white group-hover:text-primary"
-                                                )}>
-                                                    <Users size={22} />
-                                                </div>
-                                                <div>
-                                                    <span className={cn("font-bold block transition-colors", adminTeamFilter === "ALL" ? "text-primary" : "text-foreground")}>Wszystkie</span>
-                                                    <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest opacity-60">
-                                                        Suma: {initialTasks.length}
-                                                    </span>
                                                 </div>
                                             </div>
-                                        </button>
 
-                                        {allTeams.map((team: any) => {
-                                            const teamTaskCount = initialTasks.filter(t => t.teamId === team.id).length;
-                                            const isActive = adminTeamFilter === team.id;
-                                            return (
-                                                <button
-                                                    key={team.id}
-                                                    onClick={() => setAdminTeamFilter(team.id)}
-                                                    className={cn(
-                                                        "w-full text-left p-5 rounded-[28px] transition-all flex items-center justify-between group",
-                                                        isActive
-                                                            ? "glass-panel bg-white/60 border-primary/20 shadow-lg scale-[1.02]"
-                                                            : "hover:bg-white/40 border border-transparent"
-                                                    )}
-                                                >
-                                                    <div className="flex items-center gap-4">
-                                                        <div
-                                                            className={cn(
-                                                                "w-12 h-12 rounded-2xl flex items-center justify-center text-white transition-all duration-500 shadow-sm",
-                                                                isActive ? "scale-110" : "bg-white/60 text-muted-foreground group-hover:bg-white"
-                                                            )}
-                                                            style={isActive ? {
-                                                                backgroundColor: team.kolor || '#5400FF',
-                                                                boxShadow: `0 10px 20px -5px ${team.kolor || '#5400FF'}40`
-                                                            } : {}}
-                                                        >
-                                                            <Folder size={22} style={!isActive ? { color: team.kolor || '#9ca3af' } : {}} />
+                                            <div className="col-span-2 pt-4 border-t border-gray-100 space-y-4">
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-1">Przypisanie</label>
+                                                    <div className="flex gap-4">
+                                                        <label className="flex items-center gap-2 cursor-pointer bg-gray-50 p-2 rounded-lg hover:bg-gray-100 transition-colors flex-1">
+                                                            <input
+                                                                type="radio"
+                                                                className="w-4 h-4 text-primary"
+                                                                checked={newTask.typPrzypisania === "CALY_ZESPOL"}
+                                                                onChange={() => setNewTask(prev => ({ ...prev, typPrzypisania: "CALY_ZESPOL", assignedUserIds: [] }))}
+                                                            />
+                                                            <span className="text-sm font-bold text-gray-700">Cały zespół</span>
+                                                        </label>
+                                                        <label className="flex items-center gap-2 cursor-pointer bg-gray-50 p-2 rounded-lg hover:bg-gray-100 transition-colors flex-1">
+                                                            <input
+                                                                type="radio"
+                                                                className="w-4 h-4 text-primary"
+                                                                checked={newTask.typPrzypisania === "OSOBY"}
+                                                                onChange={() => {
+                                                                    if (newTask.teamId === "-1") {
+                                                                        alert("Wybór konkretnych osób dostępny tylko dla pojedynczego zespołu.");
+                                                                        return;
+                                                                    }
+                                                                    setNewTask(prev => ({ ...prev, typPrzypisania: "OSOBY" }));
+                                                                }}
+                                                            />
+                                                            <span className="text-sm font-bold text-gray-700">Wybrane osoby</span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+
+                                                {/* COORDINATOR ASSIGNMENT CHECKBOX (Admin Only, Global Setting Check) */}
+                                                {settings?.coordinatorTasks && isAdmin && newTask.typPrzypisania === "CALY_ZESPOL" && (
+                                                    <label className="flex items-center gap-3 cursor-pointer p-4 bg-purple-50 rounded-xl border border-purple-100 hover:bg-purple-100/50 transition-colors animate-in fade-in slide-in-from-top-2">
+                                                        <div className="relative flex items-center">
+                                                            <input
+                                                                type="checkbox"
+                                                                className="peer w-5 h-5 text-purple-600 rounded focus:ring-purple-500 border-purple-300"
+                                                                checked={newTask.includeCoordinators}
+                                                                onChange={(e) => setNewTask(prev => ({ ...prev, includeCoordinators: e.target.checked }))}
+                                                            />
                                                         </div>
                                                         <div>
-                                                            <span className={cn("font-bold block transition-colors", isActive ? "text-foreground" : "text-foreground/80")}>{team.nazwa}</span>
-                                                            <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest opacity-60">
-                                                                {teamTaskCount} zadań
+                                                            <span className="text-sm font-bold text-purple-900 block flex items-center gap-2">
+                                                                <Users size={16} />
+                                                                Przypisz również koordynatorkom
                                                             </span>
+                                                            <span className="text-xs text-purple-600/80 mt-0.5 block">Jeśli zaznaczone, koordynatorki zespołu również otrzymają to zadanie do wykonania.</span>
+                                                        </div>
+                                                    </label>
+                                                )}
+
+                                                {newTask.typPrzypisania === "OSOBY" && (
+                                                    <div className="space-y-2 border rounded-xl p-4 bg-gray-50/50">
+                                                        <div className="flex justify-between items-center mb-2">
+                                                            <span className="text-xs font-bold text-muted-foreground">Wybierz osoby ({assignedUserIds.length})</span>
+                                                            <div className="flex gap-2">
+                                                                <button onClick={() => setAssignedUserIds(teamMembers.map(u => u.id))} className="text-[10px] font-bold text-primary hover:underline">WSZYSCY</button>
+                                                                <button onClick={() => setAssignedUserIds([])} className="text-[10px] font-bold text-gray-400 hover:text-gray-600">RESET</button>
+                                                            </div>
+                                                        </div>
+
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Szukaj osoby..."
+                                                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-primary bg-white mb-2"
+                                                            value={userSearchTerm}
+                                                            onChange={(e) => setUserSearchTerm(e.target.value)}
+                                                        />
+
+                                                        <div className="max-h-40 overflow-y-auto space-y-1 pr-2 custom-scrollbar">
+                                                            {teamMembers
+                                                                .filter(u => (u.imieNazwisko || u.name || "").toLowerCase().includes(userSearchTerm.toLowerCase()))
+                                                                .map(member => (
+                                                                    <label key={member.id} className="flex items-center gap-3 p-2 hover:bg-white rounded-lg cursor-pointer transition-colors border border-transparent hover:border-gray-100 hover:shadow-sm">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            className="rounded border-gray-300 text-primary"
+                                                                            checked={assignedUserIds.includes(member.id)}
+                                                                            onChange={e => {
+                                                                                if (e.target.checked) {
+                                                                                    setAssignedUserIds(prev => [...prev, member.id]);
+                                                                                } else {
+                                                                                    setAssignedUserIds(prev => prev.filter(id => id !== member.id));
+                                                                                }
+                                                                            }}
+                                                                        />
+                                                                        <div className="flex items-center gap-2">
+                                                                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-600 border border-gray-200 shadow-sm">
+                                                                                {member.imieNazwisko?.[0]}
+                                                                            </div>
+                                                                            <div>
+                                                                                <span className="text-sm font-semibold text-gray-700 block leading-tight">{member.imieNazwisko}</span>
+                                                                                <span className="text-[9px] uppercase text-muted-foreground font-bold tracking-wider">{member.teamRole || member.rola}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    </label>
+                                                                ))}
+                                                            {teamMembers.length === 0 && <p className="text-xs text-center text-muted-foreground italic py-4">Wybierz zespół aby zobaczyć osoby</p>}
                                                         </div>
                                                     </div>
-                                                    {teamTaskCount > 0 && (
-                                                        <div className={cn(
-                                                            "w-7 h-7 flex items-center justify-center rounded-xl font-black text-[10px] transition-all duration-500",
-                                                            isActive ? "bg-white/60 text-foreground" : "bg-white/40 text-muted-foreground group-hover:bg-white"
-                                                        )}>
-                                                            {teamTaskCount}
-                                                        </div>
-                                                    )}
-                                                </button>
-                                            );
-                                        })}
-
-                                        <div className="h-px bg-white/40 mx-4 my-2" />
-
-                                        {/* Folder for Coordinator Tasks */}
-                                        {settings?.coordinatorTasks && (
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-gray-100">
+                                            <button onClick={() => setShowCloseConfirmation(true)} className="px-6 py-3 font-bold text-gray-400 hover:text-gray-600 transition-colors">Anuluj</button>
                                             <button
-                                                onClick={() => setAdminTeamFilter(-1)}
+                                                className={cn(
+                                                    "lux-btn shadow-lg transition-all",
+                                                    (!newTask.tytul || isSubmitting) ? "opacity-50 cursor-not-allowed hover:translate-y-0" : "hover:shadow-xl hover:-translate-y-0.5"
+                                                )}
+                                                onClick={handleAddTask}
+                                                disabled={!newTask.tytul || isSubmitting}
+                                            >
+                                                {isSubmitting ? "Zapisywanie..." : (newTask.teamId === "-1" ? "Opublikuj wszędzie" : "Zapisz zadanie")}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>,
+                    document.body
+                )}
+
+                {/* Close Confirmation Modal */}
+                {mounted && createPortal(
+                    <AnimatePresence>
+                        {showCloseConfirmation && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="fixed inset-0 z-[10000] bg-black/60 backdrop-blur-[20px] flex items-center justify-center p-4"
+
+                                onClick={(e) => { if (e.target === e.currentTarget) setShowCloseConfirmation(false); }}
+                            >
+                                <motion.div
+                                    initial={{ scale: 0.9, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    exit={{ scale: 0.9, opacity: 0 }}
+                                    className="bg-white p-8 rounded-[30px] w-full max-w-sm shadow-2xl text-center"
+                                >
+                                    <div className="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                        <AlertTriangle size={32} />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-gray-900 mb-2">Czy chcesz zamknąć to zadanie?</h3>
+                                    <p className="text-sm text-muted-foreground mb-8">
+                                        Twoje niezapisane zmiany zostaną utracone, a formularz zostanie wyczyszczony.
+                                    </p>
+                                    <div className="space-y-3">
+                                        <button
+                                            onClick={() => {
+                                                resetAddForm();
+                                                setShowAddForm(false);
+                                                setShowCloseConfirmation(false);
+                                            }}
+                                            className="w-full py-4 bg-red-500 hover:bg-red-600 text-white font-bold rounded-2xl transition-all shadow-lg shadow-red-200"
+                                        >
+                                            Tak, zamknij
+                                        </button>
+                                        <button
+                                            onClick={() => setShowCloseConfirmation(false)}
+                                            className="w-full py-4 bg-gray-50 hover:bg-gray-100 text-gray-600 font-bold rounded-2xl transition-all"
+                                        >
+                                            Nie, kontynuuj
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>,
+                    document.body
+                )}
+
+                {/* CONTENT BY ROLE */}
+
+                {/* --- UNIFIED ADMIN/COORDINATOR VIEW --- */}
+
+                {(isAdmin || isCoord) && (
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                        {/* LEFT COLUMN: NAVIGATION (ADMIN TEAMS / COORD MODES) */}
+                        {(isAdmin || (isCoord && settings?.coordinatorTasks)) && (
+                            <div className="lg:col-span-1 space-y-6">
+                                <div className="flex items-center gap-3 px-2 mb-2">
+                                    <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                        <Folder size={18} />
+                                    </div>
+                                    <h2 className="text-xl font-black tracking-tight text-foreground">
+                                        {isAdmin ? "Zespoły" : "Moje widoki"}
+                                    </h2>
+                                </div>
+
+                                <div className="space-y-3">
+                                    {isAdmin ? (
+                                        <>
+                                            {/* All Teams Option */}
+                                            <button
+                                                onClick={() => setAdminTeamFilter("ALL")}
                                                 className={cn(
                                                     "w-full text-left p-5 rounded-[28px] transition-all flex items-center justify-between group",
-                                                    adminTeamFilter === -1
+                                                    adminTeamFilter === "ALL"
                                                         ? "glass-panel bg-white/60 border-primary/20 shadow-lg scale-[1.02]"
                                                         : "hover:bg-white/40 border border-transparent"
                                                 )}
@@ -1035,520 +971,978 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                 <div className="flex items-center gap-4">
                                                     <div className={cn(
                                                         "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-sm",
-                                                        adminTeamFilter === -1 ? "bg-purple-600 text-white scale-110 shadow-purple-500/20" : "bg-white/60 text-muted-foreground group-hover:bg-white group-hover:text-purple-600"
+                                                        adminTeamFilter === "ALL" ? "bg-primary text-white scale-110 shadow-primary/20" : "bg-white/60 text-muted-foreground group-hover:bg-white group-hover:text-primary"
                                                     )}>
                                                         <Users size={22} />
                                                     </div>
                                                     <div>
-                                                        <span className={cn("font-bold block transition-colors", adminTeamFilter === -1 ? "text-purple-700" : "text-foreground")}>Koordynatorki</span>
+                                                        <span className={cn("font-bold block transition-colors", adminTeamFilter === "ALL" ? "text-primary" : "text-foreground")}>Wszystkie</span>
                                                         <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest opacity-60">
-                                                            Specjalne
+                                                            Suma: {initialTasks.length}
                                                         </span>
                                                     </div>
                                                 </div>
                                             </button>
-                                        )}
 
-                                        <button
-                                            onClick={() => setAdminTeamFilter(-2)}
-                                            className={cn(
-                                                "w-full text-left p-5 rounded-[28px] transition-all flex items-center justify-between group",
-                                                adminTeamFilter === -2
-                                                    ? "glass-panel bg-white/60 border-primary/20 shadow-lg scale-[1.02]"
-                                                    : "hover:bg-white/40 border border-transparent"
-                                            )}
-                                        >
-                                            <div className="flex items-center gap-4">
-                                                <div className={cn(
-                                                    "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-sm",
-                                                    adminTeamFilter === -2 ? "bg-indigo-600 text-white scale-110 shadow-indigo-500/20" : "bg-white/60 text-muted-foreground group-hover:bg-white group-hover:text-indigo-600"
-                                                )}>
-                                                    <Users size={22} />
-                                                </div>
-                                                <div>
-                                                    <span className={cn("font-bold block transition-colors", adminTeamFilter === -2 ? "text-indigo-700" : "text-foreground")}>Mieszane</span>
-                                                    <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest opacity-60">
-                                                        Wybrane osoby
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </button>
-                                    </>
-                                ) : (
-                                    <>
-                                        {/* Coordinator Sidebar */}
-                                        <button
-                                            onClick={() => setCoordViewMode("MANAGEMENT")}
-                                            className={cn(
-                                                "w-full text-left p-5 rounded-[28px] transition-all flex items-center group",
-                                                coordViewMode === "MANAGEMENT"
-                                                    ? "glass-panel bg-white/60 border-primary/20 shadow-lg scale-[1.02]"
-                                                    : "hover:bg-white/40 border border-transparent"
-                                            )}
-                                        >
-                                            <div className="flex items-center gap-4">
-                                                <div className={cn(
-                                                    "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-sm",
-                                                    coordViewMode === "MANAGEMENT" ? "bg-primary text-white scale-110 shadow-primary/20" : "bg-white/60 text-muted-foreground group-hover:bg-white group-hover:text-primary"
-                                                )}>
-                                                    <Users size={22} />
-                                                </div>
-                                                <div>
-                                                    <span className={cn("font-bold block transition-colors", coordViewMode === "MANAGEMENT" ? "text-primary" : "text-foreground")}>Zarządzanie</span>
-                                                    <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest opacity-60">
-                                                        Weryfikacja zespołu
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </button>
-
-                                        <button
-                                            onClick={() => setCoordViewMode("PERSONAL")}
-                                            className={cn(
-                                                "w-full text-left p-5 rounded-[28px] transition-all flex items-center group",
-                                                coordViewMode === "PERSONAL"
-                                                    ? "glass-panel bg-white/60 border-primary/20 shadow-lg scale-[1.02]"
-                                                    : "hover:bg-white/40 border border-transparent"
-                                            )}
-                                        >
-                                            <div className="flex items-center gap-4">
-                                                <div className={cn(
-                                                    "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-sm",
-                                                    coordViewMode === "PERSONAL" ? "bg-orange-600 text-white scale-110 shadow-orange-500/20" : "bg-white/60 text-muted-foreground group-hover:bg-white group-hover:text-orange-600"
-                                                )}>
-                                                    <CheckCircle size={22} />
-                                                </div>
-                                                <div>
-                                                    <span className={cn("font-bold block transition-colors", coordViewMode === "PERSONAL" ? "text-orange-700" : "text-foreground")}>Moje zadania</span>
-                                                    <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest opacity-60">
-                                                        {doZrobienia.length} aktywnych
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </button>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* RIGHT COLUMN: TASKS CONTENT */}
-                    <div className={cn("space-y-6", (isAdmin || (isCoord && settings?.coordinatorTasks)) ? "lg:col-span-3" : "lg:col-span-4")}>
-                        {showParticipantView ? (
-                            /* --- PARTICIPANT VIEW FOR COORDINATOR --- */
-                            <div className="glass-panel rounded-[40px] overflow-hidden border-white/40 animate-in fade-in slide-in-from-right-4">
-                                <div className="flex bg-white/40 p-10 border-b border-white/40 items-center justify-between">
-                                    <div className="space-y-1">
-                                        <h2 className="text-2xl font-black tracking-tight text-foreground">Moje zadania osobiste</h2>
-                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-60">Prywatna lista do wykonania</p>
-                                    </div>
-                                    <div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center text-orange-600 border border-orange-500/20">
-                                        <Clock size={24} />
-                                    </div>
-                                </div>
-
-                                <div className="flex bg-white/20 p-2 border-b border-white/40">
-                                    {[
-                                        { id: "do-zrobienia", label: "Do zrobienia", count: doZrobienia.length, icon: Clock },
-                                        { id: "wykonane", label: "Wykonane", count: wykonane.length, icon: History },
-                                        { id: "do-poprawy", label: "Do poprawy", count: doPoprawy.length, icon: AlertTriangle }
-                                    ].map((tab) => {
-                                        const Icon = tab.icon;
-                                        const isActive = activeTab === tab.id;
-                                        return (
-                                            <button
-                                                key={tab.id}
-                                                onClick={() => setActiveTab(tab.id)}
-                                                className={cn(
-                                                    "flex-1 py-5 rounded-[22px] flex items-center justify-center gap-3 transition-all relative group",
-                                                    isActive ? "bg-white text-primary shadow-lg scale-[1.02]" : "text-muted-foreground hover:bg-white/40"
-                                                )}
-                                            >
-                                                <Icon size={18} className={cn("transition-colors", isActive ? "text-primary" : "opacity-40 group-hover:opacity-100")} />
-                                                <span className="font-black text-[11px] uppercase tracking-wider">{tab.label}</span>
-                                                <span className={cn(
-                                                    "px-2 py-0.5 rounded-lg text-[9px] font-black",
-                                                    isActive ? "bg-primary text-white" : "bg-white/40 text-muted-foreground"
-                                                )}>
-                                                    {tab.count}
-                                                </span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-
-                                <div className="p-10">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        {(activeTab === "do-zrobienia" ? doZrobienia : activeTab === "wykonane" ? wykonane : doPoprawy).map((t: any) => (
-                                            <ParticipantTaskCard
-                                                key={t.id}
-                                                task={t}
-                                                userId={userId}
-                                                onClick={() => { setSelectedTask(t); setSubmissionText(""); }}
-                                                status={activeTab}
-                                            />
-                                        ))}
-                                        {(activeTab === "do-zrobienia" ? doZrobienia : activeTab === "wykonane" ? wykonane : doPoprawy).length === 0 && (
-                                            <div className="col-span-full py-20 text-center">
-                                                <div className="w-16 h-16 rounded-full bg-white/40 flex items-center justify-center mx-auto mb-4 text-muted-foreground/20">
-                                                    <Layers size={32} />
-                                                </div>
-                                                <p className="text-muted-foreground font-medium italic opacity-60">Brak zadań w tej sekcji</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            /* --- MANAGEMENT VIEW --- */
-                            <>
-                                {/* DO SPRAWDZENIA - Verification Section */}
-                                <div className="space-y-6">
-                                    <div className="flex items-center justify-between px-2">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600 border border-amber-500/20">
-                                                <Clock size={18} />
-                                            </div>
-                                            <h2 className="text-xl font-black tracking-tight text-foreground">Do sprawdzenia</h2>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            {[
-                                                { id: "oczekujace", color: "bg-amber-500" },
-                                                { id: "zaakceptowane", color: "bg-emerald-500" },
-                                                { id: "doPoprawy", color: "bg-red-500" }
-                                            ].map(t => (
-                                                <div
-                                                    key={t.id}
-                                                    className={cn(
-                                                        "w-2 h-2 rounded-full transition-all duration-500",
-                                                        verificationTab === t.id ? t.color : "bg-white/40"
-                                                    )}
-                                                />
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div className="glass-panel p-2 rounded-[32px] border-white/40">
-                                        <div className="flex p-1 gap-1">
-                                            {[
-                                                { id: "oczekujace", label: "Do sprawdzenia", count: weryfikacja_oczekujace.length, icon: Clock, color: "text-amber-500" },
-                                                { id: "zaakceptowane", label: "Zatwierdzone", count: weryfikacja_zaakceptowane.length, icon: CheckCircle, color: "text-emerald-500" },
-                                                { id: "doPoprawy", label: "Do poprawy", count: weryfikacja_doPoprawy.length, icon: AlertTriangle, color: "text-red-500" }
-                                            ].map((tab) => {
-                                                const Icon = tab.icon;
-                                                const isActive = verificationTab === tab.id;
+                                            {allTeams.map((team: any) => {
+                                                const teamTaskCount = initialTasks.filter(t => t.teamId === team.id).length;
+                                                const isActive = adminTeamFilter === team.id;
                                                 return (
                                                     <button
-                                                        key={tab.id}
-                                                        onClick={() => setVerificationTab(tab.id as any)}
+                                                        key={team.id}
+                                                        onClick={() => setAdminTeamFilter(team.id)}
                                                         className={cn(
-                                                            "flex-1 py-4 rounded-[20px] flex flex-col items-center justify-center gap-1.5 transition-all group",
-                                                            isActive ? "bg-white text-primary shadow-lg scale-[1.02]" : "text-muted-foreground hover:bg-white/40"
+                                                            "w-full text-left p-5 rounded-[28px] transition-all flex items-center justify-between group",
+                                                            isActive
+                                                                ? "glass-panel bg-white/60 border-primary/20 shadow-lg scale-[1.02]"
+                                                                : "hover:bg-white/40 border border-transparent"
                                                         )}
                                                     >
-                                                        <Icon size={16} className={cn("transition-colors", isActive ? tab.color : "opacity-40 group-hover:opacity-100")} />
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-[10px] font-black uppercase tracking-widest">{tab.label}</span>
-                                                            <span className={cn(
-                                                                "px-1.5 py-0.5 rounded-md text-[8px] font-black",
-                                                                isActive ? "bg-primary/10 text-primary" : "bg-white/40 text-muted-foreground"
-                                                            )}>{tab.count}</span>
+                                                        <div className="flex items-center gap-4">
+                                                            <div
+                                                                className={cn(
+                                                                    "w-12 h-12 rounded-2xl flex items-center justify-center text-white transition-all duration-500 shadow-sm",
+                                                                    isActive ? "scale-110" : "bg-white/60 text-muted-foreground group-hover:bg-white"
+                                                                )}
+                                                                style={isActive ? {
+                                                                    backgroundColor: team.kolor || '#5400FF',
+                                                                    boxShadow: `0 10px 20px -5px ${team.kolor || '#5400FF'}40`
+                                                                } : {}}
+                                                            >
+                                                                <Folder size={22} style={!isActive ? { color: team.kolor || '#9ca3af' } : {}} />
+                                                            </div>
+                                                            <div>
+                                                                <span className={cn("font-bold block transition-colors", isActive ? "text-foreground" : "text-foreground/80")}>{team.nazwa}</span>
+                                                                <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest opacity-60">
+                                                                    {teamTaskCount} zadań
+                                                                </span>
+                                                            </div>
                                                         </div>
+                                                        {teamTaskCount > 0 && (
+                                                            <div className={cn(
+                                                                "w-7 h-7 flex items-center justify-center rounded-xl font-black text-[10px] transition-all duration-500",
+                                                                isActive ? "bg-white/60 text-foreground" : "bg-white/40 text-muted-foreground group-hover:bg-white"
+                                                            )}>
+                                                                {teamTaskCount}
+                                                            </div>
+                                                        )}
                                                     </button>
                                                 );
                                             })}
+
+                                            <div className="h-px bg-white/40 mx-4 my-2" />
+
+                                            {/* Folder for Coordinator Tasks */}
+                                            {settings?.coordinatorTasks && (
+                                                <button
+                                                    onClick={() => setAdminTeamFilter(-1)}
+                                                    className={cn(
+                                                        "w-full text-left p-5 rounded-[28px] transition-all flex items-center justify-between group",
+                                                        adminTeamFilter === -1
+                                                            ? "glass-panel bg-white/60 border-primary/20 shadow-lg scale-[1.02]"
+                                                            : "hover:bg-white/40 border border-transparent"
+                                                    )}
+                                                >
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={cn(
+                                                            "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-sm",
+                                                            adminTeamFilter === -1 ? "bg-purple-600 text-white scale-110 shadow-purple-500/20" : "bg-white/60 text-muted-foreground group-hover:bg-white group-hover:text-purple-600"
+                                                        )}>
+                                                            <Users size={22} />
+                                                        </div>
+                                                        <div>
+                                                            <span className={cn("font-bold block transition-colors", adminTeamFilter === -1 ? "text-purple-700" : "text-foreground")}>Koordynatorki</span>
+                                                            <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest opacity-60">
+                                                                Specjalne
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            )}
+
+                                            <button
+                                                onClick={() => setAdminTeamFilter(-2)}
+                                                className={cn(
+                                                    "w-full text-left p-5 rounded-[28px] transition-all flex items-center justify-between group",
+                                                    adminTeamFilter === -2
+                                                        ? "glass-panel bg-white/60 border-primary/20 shadow-lg scale-[1.02]"
+                                                        : "hover:bg-white/40 border border-transparent"
+                                                )}
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className={cn(
+                                                        "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-sm",
+                                                        adminTeamFilter === -2 ? "bg-indigo-600 text-white scale-110 shadow-indigo-500/20" : "bg-white/60 text-muted-foreground group-hover:bg-white group-hover:text-indigo-600"
+                                                    )}>
+                                                        <Users size={22} />
+                                                    </div>
+                                                    <div>
+                                                        <span className={cn("font-bold block transition-colors", adminTeamFilter === -2 ? "text-indigo-700" : "text-foreground")}>Mieszane</span>
+                                                        <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest opacity-60">
+                                                            Wybrane osoby
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </button>
+
+                                            <div className="h-px bg-white/40 mx-4 my-2" />
+
+
+                                        </>
+                                    ) : (
+                                        <>
+                                            {/* Coordinator Sidebar */}
+                                            <button
+                                                onClick={() => setCoordViewMode("MANAGEMENT")}
+                                                className={cn(
+                                                    "w-full text-left p-5 rounded-[28px] transition-all flex items-center group",
+                                                    coordViewMode === "MANAGEMENT"
+                                                        ? "glass-panel bg-white/60 border-primary/20 shadow-lg scale-[1.02]"
+                                                        : "hover:bg-white/40 border border-transparent"
+                                                )}
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className={cn(
+                                                        "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-sm",
+                                                        coordViewMode === "MANAGEMENT" ? "bg-primary text-white scale-110 shadow-primary/20" : "bg-white/60 text-muted-foreground group-hover:bg-white group-hover:text-primary"
+                                                    )}>
+                                                        <Users size={22} />
+                                                    </div>
+                                                    <div>
+                                                        <span className={cn("font-bold block transition-colors", coordViewMode === "MANAGEMENT" ? "text-primary" : "text-foreground")}>Zarządzanie</span>
+                                                        <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest opacity-60">
+                                                            Weryfikacja zespołu
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </button>
+
+                                            <button
+                                                onClick={() => setCoordViewMode("PERSONAL")}
+                                                className={cn(
+                                                    "w-full text-left p-5 rounded-[28px] transition-all flex items-center group",
+                                                    coordViewMode === "PERSONAL"
+                                                        ? "glass-panel bg-white/60 border-primary/20 shadow-lg scale-[1.02]"
+                                                        : "hover:bg-white/40 border border-transparent"
+                                                )}
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className={cn(
+                                                        "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-sm",
+                                                        coordViewMode === "PERSONAL" ? "bg-orange-600 text-white scale-110 shadow-orange-500/20" : "bg-white/60 text-muted-foreground group-hover:bg-white group-hover:text-orange-600"
+                                                    )}>
+                                                        <CheckCircle size={22} />
+                                                    </div>
+                                                    <div>
+                                                        <span className={cn("font-bold block transition-colors", coordViewMode === "PERSONAL" ? "text-orange-700" : "text-foreground")}>Moje zadania</span>
+                                                        <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest opacity-60">
+                                                            {doZrobienia.length} aktywnych
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </button>
+
+
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* RIGHT COLUMN: TASKS CONTENT */}
+                        <div className={cn("space-y-6", (isAdmin || (isCoord && settings?.coordinatorTasks)) ? "lg:col-span-3" : "lg:col-span-4")}>
+                            {showParticipantView ? (
+                                /* --- PARTICIPANT VIEW FOR COORDINATOR --- */
+                                <div className="glass-panel rounded-[40px] overflow-hidden border-white/40 animate-in fade-in slide-in-from-right-4">
+                                    <div className="flex bg-white/40 p-10 border-b border-white/40 items-center justify-between">
+                                        <div className="space-y-1">
+                                            <h2 className="text-2xl font-black tracking-tight text-foreground">Moje zadania osobiste</h2>
+                                            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-60">Prywatna lista do wykonania</p>
+                                        </div>
+                                        <div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center text-orange-600 border border-orange-500/20">
+                                            <Clock size={24} />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex bg-white/20 p-2 border-b border-white/40">
+                                        {[
+                                            { id: "do-zrobienia", label: "Do zrobienia", count: doZrobienia.length, icon: Clock },
+                                            { id: "wykonane", label: "Wykonane", count: wykonane.length, icon: History },
+                                            { id: "do-poprawy", label: "Do poprawy", count: doPoprawy.length, icon: AlertTriangle }
+                                        ].map((tab) => {
+                                            const Icon = tab.icon;
+                                            const isActive = activeTab === tab.id;
+                                            return (
+                                                <button
+                                                    key={tab.id}
+                                                    onClick={() => setActiveTab(tab.id)}
+                                                    className={cn(
+                                                        "flex-1 py-5 rounded-[22px] flex items-center justify-center gap-3 transition-all relative group",
+                                                        isActive ? "bg-white text-primary shadow-lg scale-[1.02]" : "text-muted-foreground hover:bg-white/40"
+                                                    )}
+                                                >
+                                                    <Icon size={18} className={cn("transition-colors", isActive ? "text-primary" : "opacity-40 group-hover:opacity-100")} />
+                                                    <span className="font-black text-[11px] uppercase tracking-wider">{tab.label}</span>
+                                                    <span className={cn(
+                                                        "px-2 py-0.5 rounded-lg text-[9px] font-black",
+                                                        isActive ? "bg-primary text-white" : "bg-white/40 text-muted-foreground"
+                                                    )}>
+                                                        {tab.count}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <div className="p-10">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                            {(activeTab === "do-zrobienia" ? doZrobienia : activeTab === "wykonane" ? wykonane : doPoprawy).map((t: any) => (
+                                                <ParticipantTaskCard
+                                                    key={t.id}
+                                                    task={t}
+                                                    userId={userId}
+                                                    onClick={() => { setSelectedTask(t); setSubmissionText(""); }}
+                                                    status={activeTab}
+                                                />
+                                            ))}
+                                            {(activeTab === "do-zrobienia" ? doZrobienia : activeTab === "wykonane" ? wykonane : doPoprawy).length === 0 && (
+                                                <div className="col-span-full py-20 text-center">
+                                                    <div className="w-16 h-16 rounded-full bg-white/40 flex items-center justify-center mx-auto mb-4 text-muted-foreground/20">
+                                                        <Layers size={32} />
+                                                    </div>
+                                                    <p className="text-muted-foreground font-medium italic opacity-60">Brak zadań w tej sekcji</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                /* --- MANAGEMENT VIEW --- */
+                                <>
+                                    {/* DO SPRAWDZENIA - Verification Section */}
+                                    <div className="space-y-6">
+                                        <div className="flex items-center justify-between px-2">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600 border border-amber-500/20">
+                                                    <Clock size={18} />
+                                                </div>
+                                                <h2 className="text-xl font-black tracking-tight text-foreground">Do sprawdzenia</h2>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                {[
+                                                    { id: "oczekujace", color: "bg-amber-500" },
+                                                    { id: "zaakceptowane", color: "bg-emerald-500" },
+                                                    { id: "doPoprawy", color: "bg-red-500" }
+                                                ].map(t => (
+                                                    <div
+                                                        key={t.id}
+                                                        className={cn(
+                                                            "w-2 h-2 rounded-full transition-all duration-500",
+                                                            verificationTab === t.id ? t.color : "bg-white/40"
+                                                        )}
+                                                    />
+                                                ))}
+                                            </div>
                                         </div>
 
-                                        <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                            {(verificationTab === "oczekujace" ? weryfikacja_oczekujace :
-                                                verificationTab === "zaakceptowane" ? weryfikacja_zaakceptowane :
-                                                    weryfikacja_doPoprawy).map((exec: any) => (
+                                        <div className="glass-panel p-2 rounded-[32px] border-white/40">
+                                            <div className="flex p-1 gap-1">
+                                                {[
+                                                    { id: "oczekujace", label: "Do sprawdzenia", count: weryfikacja_oczekujace.length, icon: Clock, color: "text-amber-500" },
+                                                    { id: "zaakceptowane", label: "Zatwierdzone", count: weryfikacja_zaakceptowane.length, icon: CheckCircle, color: "text-emerald-500" },
+                                                    { id: "doPoprawy", label: "Do poprawy", count: weryfikacja_doPoprawy.length, icon: AlertTriangle, color: "text-red-500" }
+                                                ].map((tab) => {
+                                                    const Icon = tab.icon;
+                                                    const isActive = verificationTab === tab.id;
+                                                    return (
+                                                        <button
+                                                            key={tab.id}
+                                                            onClick={() => setVerificationTab(tab.id as any)}
+                                                            className={cn(
+                                                                "flex-1 py-4 rounded-[20px] flex flex-col items-center justify-center gap-1.5 transition-all group",
+                                                                isActive ? "bg-white text-primary shadow-lg scale-[1.02]" : "text-muted-foreground hover:bg-white/40"
+                                                            )}
+                                                        >
+                                                            <Icon size={16} className={cn("transition-colors", isActive ? tab.color : "opacity-40 group-hover:opacity-100")} />
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[10px] font-black uppercase tracking-widest">{tab.label}</span>
+                                                                <span className={cn(
+                                                                    "px-1.5 py-0.5 rounded-md text-[8px] font-black",
+                                                                    isActive ? "bg-primary/10 text-primary" : "bg-white/40 text-muted-foreground"
+                                                                )}>{tab.count}</span>
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+
+                                            <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                {verificationTab === "zaakceptowane" ? (
+                                                    (() => {
+                                                        // GROUPING LOGIC
+                                                        const groupedTasks = weryfikacja_zaakceptowane.reduce((acc: any, curr: any) => {
+                                                            const key = curr.task.tytul;
+                                                            if (!acc[key]) {
+                                                                acc[key] = {
+                                                                    task: curr.task,
+                                                                    executions: []
+                                                                };
+                                                            }
+                                                            acc[key].executions.push(curr);
+                                                            return acc;
+                                                        }, {});
+
+                                                        const sortedGroups = Object.values(groupedTasks).sort((a: any, b: any) =>
+                                                            new Date(b.task.dataUtworzenia).getTime() - new Date(a.task.dataUtworzenia).getTime()
+                                                        );
+
+                                                        return sortedGroups.map((group: any) => (
+                                                            <StackedTaskTile
+                                                                key={group.task.id}
+                                                                group={group}
+                                                                onViewDetail={(ex: any) => setSelectedExecutionForDetail({ ...ex, tabType: verificationTab })}
+                                                                onArchive={(ids: number[]) => {
+                                                                    setExecutionToArchive(ids);
+                                                                    setIsArchiveModalOpen(true);
+                                                                }}
+                                                            />
+                                                        ));
+                                                    })()
+                                                ) : (
+                                                    (verificationTab === "oczekujace" ? weryfikacja_oczekujace : weryfikacja_doPoprawy).map((exec: any) => (
                                                         <CollapsibleExecutionCard
                                                             key={exec.id}
                                                             execution={exec}
                                                             onViewDetail={() => setSelectedExecutionForDetail({ ...exec, tabType: verificationTab })}
                                                             tabType={verificationTab}
                                                         />
-                                                    ))}
-                                            {(verificationTab === "oczekujace" ? weryfikacja_oczekujace :
-                                                verificationTab === "zaakceptowane" ? weryfikacja_zaakceptowane :
-                                                    weryfikacja_doPoprawy).length === 0 && (
-                                                    <div className="col-span-full py-12 text-center">
-                                                        <p className="text-muted-foreground text-xs font-medium italic opacity-60">
-                                                            Brak zgłoszeń w tej sekcji
-                                                        </p>
-                                                    </div>
+                                                    ))
                                                 )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* ZLECONE - Assigned Tasks Section */}
-                                <div className="space-y-6 pt-10">
-                                    <div className="flex justify-between items-center px-2">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
-                                                <Layers size={18} />
-                                            </div>
-                                            <h2 className="text-xl font-black tracking-tight text-foreground">
-                                                {isAdmin ? (adminTeamFilter === "ALL" ? "Wszystkie zadania" : "Zadania zespołu") : "Zlecone przez Ciebie"}
-                                            </h2>
-                                        </div>
-
-                                        <div className="relative">
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); setIsSortMenuOpen(!isSortMenuOpen); }}
-                                                className="flex items-center gap-2 px-4 py-2 bg-white/60 hover:bg-white rounded-2xl text-[10px] font-black uppercase tracking-widest text-muted-foreground transition-all shadow-sm border border-white/40"
-                                            >
-                                                <Filter size={14} className="text-primary" />
-                                                {sortConfig.field === "PRIORYTET" ? "Priorytet" : "Termin"}
-                                                <ChevronDown size={14} className={cn("transition-transform duration-300", isSortMenuOpen && "rotate-180")} />
-                                            </button>
-
-                                            <AnimatePresence>
-                                                {isSortMenuOpen && (
-                                                    <motion.div
-                                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                                        className="absolute top-full right-0 mt-3 w-56 glass-panel p-2 z-[50] shadow-2xl border-white/60"
-                                                    >
-                                                        <div className="space-y-1">
-                                                            <span className="text-[9px] font-black uppercase text-muted-foreground/60 px-3 py-2 block tracking-widest">Sortuj wg priorytetu</span>
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "PRIORYTET", direction: "DESC" }); setIsSortMenuOpen(false); }}
-                                                                className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "PRIORYTET" && sortConfig.direction === "DESC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
-                                                            >
-                                                                Najwyższy (Malejąco)
-                                                            </button>
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "PRIORYTET", direction: "ASC" }); setIsSortMenuOpen(false); }}
-                                                                className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "PRIORYTET" && sortConfig.direction === "ASC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
-                                                            >
-                                                                Najniższy (Rosnąco)
-                                                            </button>
-
-                                                            <div className="h-px bg-white/40 my-2 mx-2" />
-
-                                                            <span className="text-[9px] font-black uppercase text-muted-foreground/60 px-3 py-2 block tracking-widest">Sortuj wg terminu</span>
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "TERMIN", direction: "ASC" }); setIsSortMenuOpen(false); }}
-                                                                className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "TERMIN" && sortConfig.direction === "ASC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
-                                                            >
-                                                                Najbliższy (Rosnąco)
-                                                            </button>
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "TERMIN", direction: "DESC" }); setIsSortMenuOpen(false); }}
-                                                                className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "TERMIN" && sortConfig.direction === "DESC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
-                                                            >
-                                                                Najdalszy (Malejąco)
-                                                            </button>
+                                                {(verificationTab === "oczekujace" ? weryfikacja_oczekujace :
+                                                    verificationTab === "zaakceptowane" ? weryfikacja_zaakceptowane :
+                                                        weryfikacja_doPoprawy).length === 0 && (
+                                                        <div className="col-span-full py-12 text-center">
+                                                            <p className="text-muted-foreground text-xs font-medium italic opacity-60">
+                                                                Brak zgłoszeń w tej sekcji
+                                                            </p>
                                                         </div>
-                                                    </motion.div>
-                                                )}
-                                            </AnimatePresence>
+                                                    )}
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        {zlecone.map((t: any) => (
-                                            <AdminTaskTile
-                                                key={t.id}
-                                                task={t}
-                                                onClick={() => setSelectedTask(t)}
-                                            />
-                                        ))}
-                                        {zlecone.length === 0 && (
-                                            <div className="col-span-full glass-panel p-20 text-center border-dashed border-white/40">
-                                                <div className="w-16 h-16 rounded-full bg-white/40 flex items-center justify-center mx-auto mb-4 text-muted-foreground/20">
-                                                    <Layers size={32} />
+                                    {/* ZLECONE - Assigned Tasks Section */}
+                                    <div className="space-y-6 pt-10">
+                                        <div className="flex justify-between items-center px-2">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+                                                    <Layers size={18} />
                                                 </div>
-                                                <p className="text-muted-foreground font-medium italic opacity-60">
-                                                    Brak zadań w tej sekcji
-                                                </p>
+                                                <h2 className="text-xl font-black tracking-tight text-foreground">
+                                                    {isAdmin ? (adminTeamFilter === "ALL" ? "Wszystkie zadania" : "Zadania zespołu") : "Zlecone przez Ciebie"}
+                                                </h2>
                                             </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                </div>
-            )}
 
-            {/* --- 3. STANDARD PARTICIPANT VIEW (NON-COORD) --- */}
-            {(!isAdmin && !isCoord) && (
-                <div className="glass-panel rounded-[40px] overflow-hidden border-white/40 animate-in fade-in slide-in-from-bottom-4">
-                    <div className="flex bg-white/40 p-10 border-b border-white/40 items-center justify-between">
-                        <div className="space-y-1">
-                            <h2 className="text-2xl font-black tracking-tight text-foreground">Twoje zadania</h2>
-                            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-60">Lista zadań do zrealizowania</p>
-                        </div>
-                        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
-                            <CheckCircle size={24} />
-                        </div>
-                    </div>
+                                            <div className="relative">
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setIsSortMenuOpen(!isSortMenuOpen); }}
+                                                    className="flex items-center gap-2 px-4 py-2 bg-white/60 hover:bg-white rounded-2xl text-[10px] font-black uppercase tracking-widest text-muted-foreground transition-all shadow-sm border border-white/40"
+                                                >
+                                                    <Filter size={14} className="text-primary" />
+                                                    {sortConfig.field === "PRIORYTET" ? "Priorytet" : "Termin"}
+                                                    <ChevronDown size={14} className={cn("transition-transform duration-300", isSortMenuOpen && "rotate-180")} />
+                                                </button>
 
-                    <div className="flex bg-white/20 p-2 border-b border-white/40">
-                        {[
-                            { id: "do-zrobienia", label: "Do zrobienia", count: doZrobienia.length, icon: Clock },
-                            { id: "wykonane", label: "Wykonane", count: wykonane.length, icon: History },
-                            { id: "do-poprawy", label: "Do poprawy", count: doPoprawy.length, icon: AlertTriangle }
-                        ].map((tab) => {
-                            const Icon = tab.icon;
-                            const isActive = activeTab === tab.id;
-                            return (
-                                <div
-                                    key={tab.id}
-                                    role="button"
-                                    onClick={() => setActiveTab(tab.id)}
-                                    className={cn(
-                                        "flex-1 py-5 rounded-[22px] flex items-center justify-center gap-3 transition-all relative group cursor-pointer",
-                                        isActive ? "bg-white text-primary shadow-lg scale-[1.02]" : "text-muted-foreground hover:bg-white/40"
-                                    )}
-                                >
-                                    <Icon size={18} className={cn("transition-colors", isActive ? "text-primary" : "opacity-40 group-hover:opacity-100")} />
-                                    <span className="font-black text-[11px] uppercase tracking-wider">{tab.label}</span>
-                                    <span className={cn(
-                                        "px-2 py-0.5 rounded-lg text-[9px] font-black",
-                                        isActive ? "bg-primary text-white" : "bg-white/40 text-muted-foreground"
-                                    )}>
-                                        {tab.count}
-                                    </span>
+                                                <AnimatePresence>
+                                                    {isSortMenuOpen && (
+                                                        <motion.div
+                                                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                            className="absolute top-full right-0 mt-3 w-56 glass-panel p-2 z-[50] shadow-2xl border-white/60"
+                                                        >
+                                                            <div className="space-y-1">
+                                                                <span className="text-[9px] font-black uppercase text-muted-foreground/60 px-3 py-2 block tracking-widest">Sortuj wg priorytetu</span>
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "PRIORYTET", direction: "DESC" }); setIsSortMenuOpen(false); }}
+                                                                    className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "PRIORYTET" && sortConfig.direction === "DESC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
+                                                                >
+                                                                    Najwyższy (Malejąco)
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "PRIORYTET", direction: "ASC" }); setIsSortMenuOpen(false); }}
+                                                                    className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "PRIORYTET" && sortConfig.direction === "ASC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
+                                                                >
+                                                                    Najniższy (Rosnąco)
+                                                                </button>
 
-                                    {isActive && (
-                                        <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); setIsSortMenuOpen(!isSortMenuOpen); }}
-                                                className="p-1.5 hover:bg-primary/5 rounded-lg text-primary transition-colors"
-                                            >
-                                                <Filter size={14} />
-                                            </button>
+                                                                <div className="h-px bg-white/40 my-2 mx-2" />
 
-                                            <AnimatePresence>
-                                                {isSortMenuOpen && (
-                                                    <motion.div
-                                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                                        className="absolute top-full right-0 mt-3 w-56 glass-panel p-2 z-[50] shadow-2xl border-white/60"
-                                                    >
-                                                        <div className="space-y-1">
-                                                            <span className="text-[9px] font-black uppercase text-muted-foreground/60 px-3 py-2 block tracking-widest">Sortuj wg priorytetu</span>
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "PRIORYTET", direction: "DESC" }); setIsSortMenuOpen(false); }}
-                                                                className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "PRIORYTET" && sortConfig.direction === "DESC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
-                                                            >
-                                                                Najwyższy (Malejąco)
-                                                            </button>
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "PRIORYTET", direction: "ASC" }); setIsSortMenuOpen(false); }}
-                                                                className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "PRIORYTET" && sortConfig.direction === "ASC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
-                                                            >
-                                                                Najniższy (Rosnąco)
-                                                            </button>
-
-                                                            <div className="h-px bg-white/40 my-2 mx-2" />
-
-                                                            <span className="text-[9px] font-black uppercase text-muted-foreground/60 px-3 py-2 block tracking-widest">Sortuj wg terminu</span>
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "TERMIN", direction: "ASC" }); setIsSortMenuOpen(false); }}
-                                                                className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "TERMIN" && sortConfig.direction === "ASC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
-                                                            >
-                                                                Najbliższy (Rosnąco)
-                                                            </button>
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "TERMIN", direction: "DESC" }); setIsSortMenuOpen(false); }}
-                                                                className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "TERMIN" && sortConfig.direction === "DESC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
-                                                            >
-                                                                Najdalszy (Malejąco)
-                                                            </button>
-                                                        </div>
-                                                    </motion.div>
-                                                )}
-                                            </AnimatePresence>
+                                                                <span className="text-[9px] font-black uppercase text-muted-foreground/60 px-3 py-2 block tracking-widest">Sortuj wg terminu</span>
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "TERMIN", direction: "ASC" }); setIsSortMenuOpen(false); }}
+                                                                    className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "TERMIN" && sortConfig.direction === "ASC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
+                                                                >
+                                                                    Najbliższy (Rosnąco)
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "TERMIN", direction: "DESC" }); setIsSortMenuOpen(false); }}
+                                                                    className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "TERMIN" && sortConfig.direction === "DESC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
+                                                                >
+                                                                    Najdalszy (Malejąco)
+                                                                </button>
+                                                            </div>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+                                            </div>
                                         </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
 
-                    <div className="p-10">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                            {(activeTab === "do-zrobienia" ? doZrobienia : activeTab === "wykonane" ? wykonane : doPoprawy).map((t: any) => (
-                                <ParticipantTaskCard
-                                    key={t.id}
-                                    task={t}
-                                    userId={userId}
-                                    onClick={() => { setSelectedTask(t); setSubmissionText(""); }}
-                                    status={activeTab}
-                                />
-                            ))}
-                            {(activeTab === "do-zrobienia" ? doZrobienia : activeTab === "wykonane" ? wykonane : doPoprawy).length === 0 && (
-                                <div className="col-span-full py-20 text-center">
-                                    <div className="w-16 h-16 rounded-full bg-white/40 flex items-center justify-center mx-auto mb-4 text-muted-foreground/20">
-                                        <Layers size={32} />
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                            {zlecone.map((t: any) => (
+                                                <AdminTaskTile
+                                                    key={t.id}
+                                                    task={t}
+                                                    onClick={() => setSelectedTask(t)}
+                                                />
+                                            ))}
+                                            {zlecone.length === 0 && (
+                                                <div className="col-span-full glass-panel p-20 text-center border-dashed border-white/40">
+                                                    <div className="w-16 h-16 rounded-full bg-white/40 flex items-center justify-center mx-auto mb-4 text-muted-foreground/20">
+                                                        <Layers size={32} />
+                                                    </div>
+                                                    <p className="text-muted-foreground font-medium italic opacity-60">
+                                                        Brak zadań w tej sekcji
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                    <p className="text-muted-foreground font-medium italic opacity-60">Brak zadań w tej sekcji</p>
-                                </div>
+                                </>
                             )}
                         </div>
                     </div>
-                </div>
-            )}
+                )}
 
-            {/* MODALS */}
+                {/* --- 3. STANDARD PARTICIPANT VIEW (NON-COORD) --- */}
+                {(!isAdmin && !isCoord) && (
+                    <div className="glass-panel rounded-[40px] overflow-hidden border-white/40 animate-in fade-in slide-in-from-bottom-4">
+                        <div className="flex bg-white/40 p-10 border-b border-white/40 items-center justify-between">
+                            <div className="space-y-1">
+                                <h2 className="text-2xl font-black tracking-tight text-foreground">Twoje zadania</h2>
+                                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-60">Lista zadań do zrealizowania</p>
+                            </div>
+                            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+                                <CheckCircle size={24} />
+                            </div>
+                        </div>
 
-            {/* Submission Modal for Participant / Coordinator in Personal Mode */}
-            {
-                mounted && createPortal(
-                    <AnimatePresence>
-                        {selectedTask && (showParticipantView || (!isAdmin && !isCoord)) && activeTab !== "wykonane" && (
-                            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6">
-                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedTask(null)} className="absolute inset-0 bg-black/60 backdrop-blur-[20px]" />
-                                <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="lux-card p-10 max-w-lg w-full relative z-10 shadow-2xl">
-                                    <div className="flex justify-between items-start mb-6">
-                                        <div>
-                                            <h3 className="text-2xl font-bold">{activeTab === "do-poprawy" ? "Wyślij poprawkę" : "Oznacz jako wykonane"}</h3>
-                                            <p className="text-muted-foreground mt-1">Zadanie: <span className="font-bold text-foreground">{selectedTask.tytul}</span></p>
-                                        </div>
-                                        <div className="p-3 rounded-2xl bg-primary/5 text-primary">
-                                            <MessageSquare size={24} />
-                                        </div>
-                                    </div>
+                        <div className="flex bg-white/20 p-2 border-b border-white/40">
+                            {[
+                                { id: "do-zrobienia", label: "Do zrobienia", count: doZrobienia.length, icon: Clock },
+                                { id: "wykonane", label: "Wykonane", count: wykonane.length, icon: History },
+                                { id: "do-poprawy", label: "Do poprawy", count: doPoprawy.length, icon: AlertTriangle }
+                            ].map((tab) => {
+                                const Icon = tab.icon;
+                                const isActive = activeTab === tab.id;
+                                return (
+                                    <div
+                                        key={tab.id}
+                                        role="button"
+                                        onClick={() => setActiveTab(tab.id)}
+                                        className={cn(
+                                            "flex-1 py-5 rounded-[22px] flex items-center justify-center gap-3 transition-all relative group cursor-pointer",
+                                            isActive ? "bg-white text-primary shadow-lg scale-[1.02]" : "text-muted-foreground hover:bg-white/40"
+                                        )}
+                                    >
+                                        <Icon size={18} className={cn("transition-colors", isActive ? "text-primary" : "opacity-40 group-hover:opacity-100")} />
+                                        <span className="font-black text-[11px] uppercase tracking-wider">{tab.label}</span>
+                                        <span className={cn(
+                                            "px-2 py-0.5 rounded-lg text-[9px] font-black",
+                                            isActive ? "bg-primary text-white" : "bg-white/40 text-muted-foreground"
+                                        )}>
+                                            {tab.count}
+                                        </span>
 
-                                    <div className="space-y-6">
-                                        {activeTab === "do-poprawy" && (
-                                            <div className="bg-red-50 p-4 rounded-2xl border-l-4 border-red-500">
-                                                <p className="text-[10px] font-black uppercase text-red-600 mb-1">Poprzednie uwagi</p>
-                                                <p className="text-sm text-red-900">{selectedTask.executions.find((e: any) => e.userId === userId)?.uwagiOdrzucenia}</p>
+                                        {isActive && (
+                                            <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setIsSortMenuOpen(!isSortMenuOpen); }}
+                                                    className="p-1.5 hover:bg-primary/5 rounded-lg text-primary transition-colors"
+                                                >
+                                                    <Filter size={14} />
+                                                </button>
+
+                                                <AnimatePresence>
+                                                    {isSortMenuOpen && (
+                                                        <motion.div
+                                                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                            className="absolute top-full right-0 mt-3 w-56 glass-panel p-2 z-[50] shadow-2xl border-white/60"
+                                                        >
+                                                            <div className="space-y-1">
+                                                                <span className="text-[9px] font-black uppercase text-muted-foreground/60 px-3 py-2 block tracking-widest">Sortuj wg priorytetu</span>
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "PRIORYTET", direction: "DESC" }); setIsSortMenuOpen(false); }}
+                                                                    className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "PRIORYTET" && sortConfig.direction === "DESC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
+                                                                >
+                                                                    Najwyższy (Malejąco)
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "PRIORYTET", direction: "ASC" }); setIsSortMenuOpen(false); }}
+                                                                    className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "PRIORYTET" && sortConfig.direction === "ASC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
+                                                                >
+                                                                    Najniższy (Rosnąco)
+                                                                </button>
+
+                                                                <div className="h-px bg-white/40 my-2 mx-2" />
+
+                                                                <span className="text-[9px] font-black uppercase text-muted-foreground/60 px-3 py-2 block tracking-widest">Sortuj wg terminu</span>
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "TERMIN", direction: "ASC" }); setIsSortMenuOpen(false); }}
+                                                                    className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "TERMIN" && sortConfig.direction === "ASC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
+                                                                >
+                                                                    Najbliższy (Rosnąco)
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "TERMIN", direction: "DESC" }); setIsSortMenuOpen(false); }}
+                                                                    className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "TERMIN" && sortConfig.direction === "DESC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
+                                                                >
+                                                                    Najdalszy (Malejąco)
+                                                                </button>
+                                                            </div>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
                                             </div>
                                         )}
+                                    </div>
+                                );
+                            })}
+                        </div>
 
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Opis wykonania / Poprawki</label>
-                                            <textarea
-                                                className="lux-textarea h-40"
-                                                placeholder="Opisz co zostało zrobione..."
-                                                value={submissionText}
-                                                onChange={e => setSubmissionText(e.target.value)}
-                                            />
+                        <div className="p-10">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                {(activeTab === "do-zrobienia" ? doZrobienia : activeTab === "wykonane" ? wykonane : doPoprawy).map((t: any) => (
+                                    <ParticipantTaskCard
+                                        key={t.id}
+                                        task={t}
+                                        userId={userId}
+                                        onClick={() => { setSelectedTask(t); setSubmissionText(""); }}
+                                        status={activeTab}
+                                    />
+                                ))}
+                                {(activeTab === "do-zrobienia" ? doZrobienia : activeTab === "wykonane" ? wykonane : doPoprawy).length === 0 && (
+                                    <div className="col-span-full py-20 text-center">
+                                        <div className="w-16 h-16 rounded-full bg-white/40 flex items-center justify-center mx-auto mb-4 text-muted-foreground/20">
+                                            <Layers size={32} />
+                                        </div>
+                                        <p className="text-muted-foreground font-medium italic opacity-60">Brak zadań w tej sekcji</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* MODALS */}
+
+                {/* Submission Modal for Participant / Coordinator in Personal Mode */}
+                {
+                    mounted && createPortal(
+                        <AnimatePresence>
+                            {selectedTask && (showParticipantView || (!isAdmin && !isCoord)) && activeTab !== "wykonane" && (
+                                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6">
+                                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedTask(null)} className="absolute inset-0 bg-black/60 backdrop-blur-[20px]" />
+                                    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="lux-card p-10 max-w-lg w-full relative z-10 shadow-2xl">
+                                        <div className="flex justify-between items-start mb-6">
+                                            <div>
+                                                <h3 className="text-2xl font-bold">{activeTab === "do-poprawy" ? "Wyślij poprawkę" : "Oznacz jako wykonane"}</h3>
+                                                <p className="text-muted-foreground mt-1">Zadanie: <span className="font-bold text-foreground">{selectedTask.tytul}</span></p>
+                                            </div>
+                                            <div className="p-3 rounded-2xl bg-primary/5 text-primary">
+                                                <MessageSquare size={24} />
+                                            </div>
                                         </div>
 
-                                        {/* NEW: Attachments Section for Participants */}
-                                        <div className="bg-gray-50 border border-gray-100 rounded-[28px] p-6">
-                                            <h4 className="text-[10px] font-black uppercase text-primary/40 tracking-widest mb-4 flex items-center gap-2">
-                                                <LinkIcon size={14} /> Załączniki (linki)
-                                            </h4>
+                                        <div className="space-y-6">
+                                            {activeTab === "do-poprawy" && (
+                                                <div className="bg-red-50 p-4 rounded-2xl border-l-4 border-red-500">
+                                                    <p className="text-[10px] font-black uppercase text-red-600 mb-1">Poprzednie uwagi</p>
+                                                    <p className="text-sm text-red-900">{selectedTask.executions.find((e: any) => e.userId === userId)?.uwagiOdrzucenia}</p>
+                                                </div>
+                                            )}
 
-                                            <div className="space-y-3 mb-4">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Opis wykonania / Poprawki</label>
+                                                <textarea
+                                                    className="lux-textarea h-40"
+                                                    placeholder="Opisz co zostało zrobione..."
+                                                    value={submissionText}
+                                                    onChange={e => setSubmissionText(e.target.value)}
+                                                />
+                                            </div>
+
+                                            {/* NEW: Attachments Section for Participants */}
+                                            <div className="bg-gray-50 border border-gray-100 rounded-[28px] p-6">
+                                                <h4 className="text-[10px] font-black uppercase text-primary/40 tracking-widest mb-4 flex items-center gap-2">
+                                                    <LinkIcon size={14} /> Załączniki (linki)
+                                                </h4>
+
+                                                <div className="space-y-3 mb-4">
+                                                    {selectedTask.attachments && selectedTask.attachments.length > 0 ? (
+                                                        <div className="grid grid-cols-1 gap-2">
+                                                            {selectedTask.attachments.map((att: any) => (
+                                                                <div key={att.id} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-2xl group transition-all hover:shadow-sm">
+                                                                    <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold text-gray-700 hover:text-primary transition-colors overflow-hidden">
+                                                                        <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-primary transition-all">
+                                                                            {(att.url.startsWith('/uploads/') || att.url.includes('cloudinary.com')) ? <Paperclip size={14} /> : <LinkIcon size={14} />}
+                                                                        </div>
+                                                                        <span className="truncate">{att.nazwa}</span>
+                                                                    </a>
+                                                                    <button
+                                                                        onClick={async () => {
+                                                                            if (!confirm("Czy na pewno usunąć ten załącznik?")) return;
+                                                                            const res = await deleteTaskAttachment(att.id);
+                                                                            if (res.success) {
+                                                                                setSelectedTask({
+                                                                                    ...selectedTask,
+                                                                                    attachments: selectedTask.attachments.filter((a: any) => a.id !== att.id)
+                                                                                });
+                                                                                onRefresh();
+                                                                            }
+                                                                        }}
+                                                                        className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                                                    >
+                                                                        <Trash2 size={16} />
+                                                                    </button>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-[10px] text-muted-foreground italic text-center py-2">Brak dodanych załączników</p>
+                                                    )}
+                                                </div>
+
+                                                <div className="bg-white p-3 rounded-[22px] border border-gray-100">
+                                                    <div className="flex flex-col gap-2">
+                                                        <input
+                                                            className="lux-input py-2 text-[10px] bg-gray-50/50"
+                                                            placeholder="Nazwa linku..."
+                                                            value={newDetailAttachment.nazwa}
+                                                            onChange={e => setNewDetailAttachment(prev => ({ ...prev, nazwa: e.target.value }))}
+                                                        />
+                                                        <div className="flex gap-2">
+                                                            <input
+                                                                className="lux-input py-2 text-[10px] bg-gray-50/50 flex-1"
+                                                                placeholder="https://..."
+                                                                value={newDetailAttachment.url}
+                                                                onChange={e => setNewDetailAttachment(prev => ({ ...prev, url: e.target.value }))}
+                                                            />
+                                                            <button
+                                                                onClick={async () => {
+                                                                    if (!newDetailAttachment.nazwa || !newDetailAttachment.url) return;
+                                                                    const res = await addTaskAttachment(selectedTask.id, newDetailAttachment.nazwa, newDetailAttachment.url);
+                                                                    if (res.success && res.data) {
+                                                                        setSelectedTask({
+                                                                            ...selectedTask,
+                                                                            attachments: [...(selectedTask.attachments || []), res.data]
+                                                                        });
+                                                                        setNewDetailAttachment({ nazwa: "", url: "" });
+                                                                        onRefresh();
+                                                                    }
+                                                                }}
+                                                                className="p-2 bg-primary text-white rounded-xl shadow-md hover:translate-y-[-1px] transition-all"
+                                                            >
+                                                                <Plus size={18} />
+                                                            </button>
+                                                        </div>
+
+                                                        <div className="flex gap-2 border-t border-gray-100 pt-3 mt-1">
+                                                            <input
+                                                                type="file"
+                                                                id="file-upload-participant"
+                                                                className="hidden"
+                                                                onChange={(e) => {
+                                                                    const file = e.target.files?.[0];
+                                                                    if (file) handleFileUpload(file);
+                                                                }}
+                                                            />
+                                                            <button
+                                                                onClick={() => document.getElementById('file-upload-participant')?.click()}
+                                                                disabled={isUploading}
+                                                                className="flex-1 py-2 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-all flex items-center justify-center gap-2 shadow-sm"
+                                                            >
+                                                                {isUploading ? (
+                                                                    <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                                ) : (
+                                                                    <Paperclip size={14} />
+                                                                )}
+                                                                {isUploading ? "Wgrywanie..." : "Wgraj plik z urządzenia"}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex gap-4 mt-8">
+                                            <button onClick={() => setSelectedTask(null)} className="flex-1 py-4 font-bold text-muted-foreground hover:bg-gray-50 rounded-2xl transition-all">Anuluj</button>
+                                            <button
+                                                onClick={() => handleSubmitWork(selectedTask.id, submissionText, activeTab === "do-poprawy")}
+                                                className="flex-[2] lux-btn"
+                                                disabled={!submissionText.trim() || isSubmitting}
+                                            >
+                                                {isSubmitting ? "Wysyłanie..." : activeTab === "do-poprawy" ? "Wyślij poprawkę" : "Zgłoś wykonanie"}
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                </div>
+                            )}
+                        </AnimatePresence>,
+                        document.body
+                    )
+                }
+
+                {/* Rejection Modal for Coord/Admin */}
+                {
+                    mounted && createPortal(
+                        <AnimatePresence>
+                            {selectedTask && (isCoord || isAdmin) && rejectionNotes !== null && selectedTask.targetUserId && (
+                                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6">
+                                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { setSelectedTask(null); setRejectionNotes(""); }} className="absolute inset-0 bg-black/60 backdrop-blur-[20px]" />
+                                    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="lux-card p-10 max-w-lg w-full relative z-10 shadow-2xl">
+                                        <h3 className="text-2xl font-bold mb-2 text-red-600">Odrzuć do poprawy</h3>
+                                        <p className="text-muted-foreground mb-6">Uczestniczka: <span className="font-bold text-foreground">{selectedTask.targetUserName}</span></p>
+
+                                        <label className="text-[10px] font-black uppercase text-muted-foreground ml-1 mb-2 block">Uwagi do poprawy</label>
+                                        <textarea
+                                            className="lux-textarea h-40 mb-6 border-red-100 focus:border-red-500"
+                                            placeholder="Wypisz co dokładnie trzeba poprawić..."
+                                            value={rejectionNotes}
+                                            onChange={e => setRejectionNotes(e.target.value)}
+                                        />
+
+                                        <div className="mb-6 space-y-2">
+                                            <label className="text-[10px] font-black uppercase text-muted-foreground ml-1 block">Termin na poprawkę (opcjonalnie)</label>
+                                            <div className="flex gap-2 items-center">
+                                                <input
+                                                    type="date"
+                                                    className="lux-input flex-1"
+                                                    value={rejectionDeadline}
+                                                    onChange={(e) => setRejectionDeadline(e.target.value)}
+                                                />
+                                                {rejectionDeadline && (
+                                                    <button
+                                                        onClick={() => setRejectionDeadline("")}
+                                                        className="text-[10px] text-red-500 font-bold hover:underline"
+                                                    >
+                                                        WYCZYŚĆ
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="flex gap-4">
+                                            <button onClick={() => { setSelectedTask(null); setRejectionNotes(""); setRejectionDeadline(""); }} className="flex-1 py-4 font-bold text-muted-foreground rounded-2xl transition-all">Anuluj</button>
+                                            <button
+                                                onClick={() => handleRejectWork(selectedTask.id, selectedTask.targetUserId)}
+                                                className="flex-[2] bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 transition-all shadow-lg shadow-red-500/20"
+                                                disabled={!rejectionNotes.trim()}
+                                            >
+                                                Odrzuć i wyślij uwagi
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                </div>
+                            )}
+                        </AnimatePresence>,
+                        document.body
+                    )
+                }
+
+                {/* Execution Detail Modal */}
+                {
+                    mounted && selectedExecutionForDetail && createPortal(
+                        <ExecutionDetailModal
+                            execution={selectedExecutionForDetail}
+                            onClose={() => setSelectedExecutionForDetail(null)}
+                            onApprove={(taskId: number, userId: number) => {
+                                handleApproveWork(taskId, userId);
+                                setSelectedExecutionForDetail(null);
+                            }}
+                            onReject={(task: any, userId: number) => {
+                                setSelectedTask({ ...task, targetUserId: userId, targetUserName: selectedExecutionForDetail.user?.imieNazwisko });
+                                setSelectedExecutionForDetail(null);
+                            }}
+                            setIsAdmin={isAdmin}
+                            onArchive={() => {
+                                setExecutionToArchive(selectedExecutionForDetail.id);
+                                setIsArchiveModalOpen(true);
+                                setSelectedExecutionForDetail(null);
+                            }}
+                        />,
+                        document.body
+                    )
+                }
+
+
+                {/* NEW ADMIN TASK DETAIL MODAL */}
+                {
+                    mounted && selectedTask && (isAdmin || isCoord) && !selectedTask.targetUserId && !showParticipantView && createPortal(
+                        <AnimatePresence>
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-[10px] flex items-center justify-center p-4 overflow-y-auto"
+                                onClick={(e) => { if (e.target === e.currentTarget) setSelectedTask(null); }}
+                            >
+                                <motion.div
+                                    initial={{ scale: 0.95, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    className="bg-white rounded-[32px] w-full max-w-3xl shadow-2xl overflow-hidden relative border border-gray-100"
+                                >
+                                    {/* Modal Header */}
+                                    <div className="p-8 pb-4">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div className="flex items-center gap-4">
+                                                {isEditing ? (
+                                                    <select
+                                                        value={editForm.priorytet}
+                                                        onChange={(e) => setEditForm({ ...editForm, priorytet: e.target.value })}
+                                                        className="px-3 py-1 rounded-full text-xs font-black tracking-widest uppercase border border-gray-200 outline-none focus:border-primary"
+                                                    >
+                                                        <option value="NORMALNY">NORMALNY</option>
+                                                        <option value="WYSOKI">WYSOKI</option>
+                                                        <option value="NISKI">NISKI</option>
+                                                    </select>
+                                                ) : (
+                                                    <div className={cn(
+                                                        "px-3 py-1 rounded-full text-xs font-black tracking-widest uppercase inline-block",
+                                                        selectedTask.priorytet === "WYSOKI" ? "bg-red-50 text-red-600" :
+                                                            selectedTask.priorytet === "NORMALNY" ? "bg-blue-50 text-blue-600" :
+                                                                "bg-green-50 text-green-600"
+                                                    )}>
+                                                        {selectedTask.priorytet}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="flex gap-2">
+                                                {isEditing ? (
+                                                    <>
+                                                        <button
+                                                            onClick={handleSaveEdit}
+                                                            className="p-2 bg-primary text-white hover:bg-primary/90 rounded-full transition-colors shadow-lg shadow-primary/30"
+                                                            title="Zapisz zmiany"
+                                                        >
+                                                            <Save size={20} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setIsEditing(false)}
+                                                            className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors"
+                                                            title="Anuluj edycję"
+                                                        >
+                                                            <XCircle size={20} />
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => setIsEditing(true)}
+                                                        className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-primary transition-colors"
+                                                        title="Edytuj zadanie"
+                                                    >
+                                                        <Edit2 size={20} />
+                                                    </button>
+                                                )}
+
+                                                {!isEditing && (
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (!confirm("Czy na pewno chcesz usunąć to zadanie dla WSZYSTKICH?")) return;
+                                                            await deleteTask(selectedTask.id);
+                                                            setSelectedTask(null);
+                                                            onRefresh();
+                                                        }}
+                                                        className="p-2 hover:bg-red-50 rounded-full text-gray-400 hover:text-red-500 transition-colors"
+                                                        title="Usuń zadanie dla wszystkich"
+                                                    >
+                                                        <Trash2 size={20} />
+                                                    </button>
+                                                )}
+
+                                                <button
+                                                    onClick={() => setSelectedTask(null)}
+                                                    className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors"
+                                                >
+                                                    <X size={24} />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {isEditing ? (
+                                            <div className="space-y-4 mb-4">
+                                                <input
+                                                    type="text"
+                                                    value={editForm.tytul}
+                                                    onChange={(e) => setEditForm({ ...editForm, tytul: e.target.value })}
+                                                    className="text-3xl font-bold text-gray-900 w-full border-b border-gray-200 focus:border-primary outline-none py-2 bg-transparent placeholder:text-gray-300"
+                                                    placeholder="Tytuł zadania"
+                                                />
+                                                <div className="flex items-center gap-2 text-sm font-bold text-gray-500">
+                                                    <Calendar size={16} />
+                                                    <input
+                                                        type="date"
+                                                        value={editForm.termin}
+                                                        onChange={(e) => setEditForm({ ...editForm, termin: e.target.value })}
+                                                        className="border border-gray-200 rounded-lg px-2 py-1 outline-none focus:border-primary"
+                                                    />
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <h2 className="text-3xl font-bold text-gray-900 mb-2">{selectedTask.tytul}</h2>
+                                                {selectedTask.termin && (
+                                                    <div className="flex items-center gap-2 text-sm font-bold text-gray-500">
+                                                        <Calendar size={16} />
+                                                        <span>Termin: {new Date(selectedTask.termin).toLocaleDateString('pl-PL')}</span>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+
+                                    {/* Scrollable Content */}
+                                    <div className="px-8 pb-8 max-h-[60vh] overflow-y-auto custom-scrollbar space-y-8">
+                                        {/* Description */}
+                                        <div className={cn("rounded-2xl text-gray-700 leading-relaxed whitespace-pre-wrap", isEditing ? "" : "bg-gray-50 p-6")}>
+                                            <h4 className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-2">Opis zadania</h4>
+                                            {isEditing ? (
+                                                <textarea
+                                                    value={editForm.opis}
+                                                    onChange={(e) => setEditForm({ ...editForm, opis: e.target.value })}
+                                                    className="w-full h-40 p-4 bg-gray-50 rounded-xl border border-gray-200 focus:border-primary outline-none transition-all"
+                                                    placeholder="Opis zadania..."
+                                                />
+                                            ) : (
+                                                selectedTask.opis || "Brak szczegółowego opisu."
+                                            )}
+                                        </div>
+
+                                        {/* NEW: Attachments Section for Admins/Coordinators */}
+                                        <div className="bg-white border-2 border-primary/5 rounded-[28px] p-6 shadow-sm">
+                                            <h4 className="text-[10px] font-black uppercase text-primary/40 tracking-widest mb-4 flex items-center gap-2">
+                                                <LinkIcon size={14} /> Załączniki do zadania
+                                            </h4>
+                                            <div className="space-y-3 mb-6">
                                                 {selectedTask.attachments && selectedTask.attachments.length > 0 ? (
-                                                    <div className="grid grid-cols-1 gap-2">
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                         {selectedTask.attachments.map((att: any) => (
-                                                            <div key={att.id} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-2xl group transition-all hover:shadow-sm">
+                                                            <div key={att.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-2xl group transition-all hover:bg-white hover:shadow-sm">
                                                                 <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold text-gray-700 hover:text-primary transition-colors overflow-hidden">
-                                                                    <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-primary transition-all">
+                                                                    <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-primary shadow-sm group-hover:bg-primary group-hover:text-white transition-all">
                                                                         {(att.url.startsWith('/uploads/') || att.url.includes('cloudinary.com')) ? <Paperclip size={14} /> : <LinkIcon size={14} />}
                                                                     </div>
                                                                     <span className="truncate">{att.nazwa}</span>
@@ -1565,7 +1959,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                                             onRefresh();
                                                                         }
                                                                     }}
-                                                                    className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                                                    className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl opacity-0 group-hover:opacity-100 transition-all"
                                                                 >
                                                                     <Trash2 size={16} />
                                                                 </button>
@@ -1573,21 +1967,24 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                         ))}
                                                     </div>
                                                 ) : (
-                                                    <p className="text-[10px] text-muted-foreground italic text-center py-2">Brak dodanych załączników</p>
+                                                    <div className="py-4 text-center border-2 border-dashed border-gray-100 rounded-[20px]">
+                                                        <p className="text-xs text-muted-foreground italic">Brak dodanych załączników</p>
+                                                    </div>
                                                 )}
                                             </div>
 
-                                            <div className="bg-white p-3 rounded-[22px] border border-gray-100">
-                                                <div className="flex flex-col gap-2">
+                                            <div className="bg-gray-50 p-4 rounded-[22px] border border-gray-100">
+                                                <span className="text-[9px] font-black uppercase text-gray-400 block mb-3 ml-1">Dodaj nowy link lub plik</span>
+                                                <div className="flex flex-col sm:flex-row gap-3">
                                                     <input
-                                                        className="lux-input py-2 text-[10px] bg-gray-50/50"
-                                                        placeholder="Nazwa linku..."
+                                                        className="lux-input py-2 text-xs bg-white flex-[2]"
+                                                        placeholder="Nazwa np. Prezentacja"
                                                         value={newDetailAttachment.nazwa}
                                                         onChange={e => setNewDetailAttachment(prev => ({ ...prev, nazwa: e.target.value }))}
                                                     />
-                                                    <div className="flex gap-2">
+                                                    <div className="flex flex-1 gap-2">
                                                         <input
-                                                            className="lux-input py-2 text-[10px] bg-gray-50/50 flex-1"
+                                                            className="lux-input py-2 text-xs bg-white flex-1"
                                                             placeholder="https://..."
                                                             value={newDetailAttachment.url}
                                                             onChange={e => setNewDetailAttachment(prev => ({ ...prev, url: e.target.value }))}
@@ -1605,457 +2002,242 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                                     onRefresh();
                                                                 }
                                                             }}
-                                                            className="p-2 bg-primary text-white rounded-xl shadow-md hover:translate-y-[-1px] transition-all"
+                                                            className="p-2 bg-primary text-white rounded-xl shadow-md hover:translate-y-[-2px] transition-all"
                                                         >
-                                                            <Plus size={18} />
-                                                        </button>
-                                                    </div>
-
-                                                    <div className="flex gap-2 border-t border-gray-100 pt-3 mt-1">
-                                                        <input
-                                                            type="file"
-                                                            id="file-upload-participant"
-                                                            className="hidden"
-                                                            onChange={(e) => {
-                                                                const file = e.target.files?.[0];
-                                                                if (file) handleFileUpload(file);
-                                                            }}
-                                                        />
-                                                        <button
-                                                            onClick={() => document.getElementById('file-upload-participant')?.click()}
-                                                            disabled={isUploading}
-                                                            className="flex-1 py-2 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-all flex items-center justify-center gap-2 shadow-sm"
-                                                        >
-                                                            {isUploading ? (
-                                                                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                                            ) : (
-                                                                <Paperclip size={14} />
-                                                            )}
-                                                            {isUploading ? "Wgrywanie..." : "Wgraj plik z urządzenia"}
+                                                            <Plus size={20} />
                                                         </button>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </div>
-                                    </div>
 
-                                    <div className="flex gap-4 mt-8">
-                                        <button onClick={() => setSelectedTask(null)} className="flex-1 py-4 font-bold text-muted-foreground hover:bg-gray-50 rounded-2xl transition-all">Anuluj</button>
-                                        <button
-                                            onClick={() => handleSubmitWork(selectedTask.id, submissionText, activeTab === "do-poprawy")}
-                                            className="flex-[2] lux-btn"
-                                            disabled={!submissionText.trim() || isSubmitting}
-                                        >
-                                            {isSubmitting ? "Wysyłanie..." : activeTab === "do-poprawy" ? "Wyślij poprawkę" : "Zgłoś wykonanie"}
-                                        </button>
-                                    </div>
-                                </motion.div>
-                            </div>
-                        )}
-                    </AnimatePresence>,
-                    document.body
-                )
-            }
-
-            {/* Rejection Modal for Coord/Admin */}
-            {
-                mounted && createPortal(
-                    <AnimatePresence>
-                        {selectedTask && (isCoord || isAdmin) && rejectionNotes !== null && selectedTask.targetUserId && (
-                            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6">
-                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { setSelectedTask(null); setRejectionNotes(""); }} className="absolute inset-0 bg-black/60 backdrop-blur-[20px]" />
-                                <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="lux-card p-10 max-w-lg w-full relative z-10 shadow-2xl">
-                                    <h3 className="text-2xl font-bold mb-2 text-red-600">Odrzuć do poprawy</h3>
-                                    <p className="text-muted-foreground mb-6">Uczestniczka: <span className="font-bold text-foreground">{selectedTask.targetUserName}</span></p>
-
-                                    <label className="text-[10px] font-black uppercase text-muted-foreground ml-1 mb-2 block">Uwagi do poprawy</label>
-                                    <textarea
-                                        className="lux-textarea h-40 mb-6 border-red-100 focus:border-red-500"
-                                        placeholder="Wypisz co dokładnie trzeba poprawić..."
-                                        value={rejectionNotes}
-                                        onChange={e => setRejectionNotes(e.target.value)}
-                                    />
-
-                                    <div className="mb-6 space-y-2">
-                                        <label className="text-[10px] font-black uppercase text-muted-foreground ml-1 block">Termin na poprawkę (opcjonalnie)</label>
-                                        <div className="flex gap-2 items-center">
-                                            <input
-                                                type="date"
-                                                className="lux-input flex-1"
-                                                value={rejectionDeadline}
-                                                onChange={(e) => setRejectionDeadline(e.target.value)}
-                                            />
-                                            {rejectionDeadline && (
-                                                <button
-                                                    onClick={() => setRejectionDeadline("")}
-                                                    className="text-[10px] text-red-500 font-bold hover:underline"
-                                                >
-                                                    WYCZYŚĆ
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className="flex gap-4">
-                                        <button onClick={() => { setSelectedTask(null); setRejectionNotes(""); setRejectionDeadline(""); }} className="flex-1 py-4 font-bold text-muted-foreground rounded-2xl transition-all">Anuluj</button>
-                                        <button
-                                            onClick={() => handleRejectWork(selectedTask.id, selectedTask.targetUserId)}
-                                            className="flex-[2] bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 transition-all shadow-lg shadow-red-500/20"
-                                            disabled={!rejectionNotes.trim()}
-                                        >
-                                            Odrzuć i wyślij uwagi
-                                        </button>
-                                    </div>
-                                </motion.div>
-                            </div>
-                        )}
-                    </AnimatePresence>,
-                    document.body
-                )
-            }
-
-            {/* Execution Detail Modal */}
-            {
-                mounted && selectedExecutionForDetail && createPortal(
-                    <ExecutionDetailModal
-                        execution={selectedExecutionForDetail}
-                        onClose={() => setSelectedExecutionForDetail(null)}
-                        onApprove={(taskId: number, userId: number) => {
-                            handleApproveWork(taskId, userId);
-                            setSelectedExecutionForDetail(null);
-                        }}
-                        onReject={(task: any, userId: number) => {
-                            setSelectedTask({ ...task, targetUserId: userId, targetUserName: selectedExecutionForDetail.user?.imieNazwisko });
-                            setSelectedExecutionForDetail(null);
-                        }}
-                        isAdmin={isAdmin}
-                    />,
-                    document.body
-                )
-            }
-
-
-            {/* NEW ADMIN TASK DETAIL MODAL */}
-            {
-                mounted && selectedTask && (isAdmin || isCoord) && !selectedTask.targetUserId && !showParticipantView && createPortal(
-                    <AnimatePresence>
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-[10px] flex items-center justify-center p-4 overflow-y-auto"
-                            onClick={(e) => { if (e.target === e.currentTarget) setSelectedTask(null); }}
-                        >
-                            <motion.div
-                                initial={{ scale: 0.95, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                className="bg-white rounded-[32px] w-full max-w-3xl shadow-2xl overflow-hidden relative border border-gray-100"
-                            >
-                                {/* Modal Header */}
-                                <div className="p-8 pb-4">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className="flex items-center gap-4">
-                                            {isEditing ? (
-                                                <select
-                                                    value={editForm.priorytet}
-                                                    onChange={(e) => setEditForm({ ...editForm, priorytet: e.target.value })}
-                                                    className="px-3 py-1 rounded-full text-xs font-black tracking-widest uppercase border border-gray-200 outline-none focus:border-primary"
-                                                >
-                                                    <option value="NORMALNY">NORMALNY</option>
-                                                    <option value="WYSOKI">WYSOKI</option>
-                                                    <option value="NISKI">NISKI</option>
-                                                </select>
-                                            ) : (
-                                                <div className={cn(
-                                                    "px-3 py-1 rounded-full text-xs font-black tracking-widest uppercase inline-block",
-                                                    selectedTask.priorytet === "WYSOKI" ? "bg-red-50 text-red-600" :
-                                                        selectedTask.priorytet === "NORMALNY" ? "bg-blue-50 text-blue-600" :
-                                                            "bg-green-50 text-green-600"
-                                                )}>
-                                                    {selectedTask.priorytet}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="flex gap-2">
-                                            {isEditing ? (
-                                                <>
-                                                    <button
-                                                        onClick={handleSaveEdit}
-                                                        className="p-2 bg-primary text-white hover:bg-primary/90 rounded-full transition-colors shadow-lg shadow-primary/30"
-                                                        title="Zapisz zmiany"
-                                                    >
-                                                        <Save size={20} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setIsEditing(false)}
-                                                        className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors"
-                                                        title="Anuluj edycję"
-                                                    >
-                                                        <XCircle size={20} />
-                                                    </button>
-                                                </>
-                                            ) : (
-                                                <button
-                                                    onClick={() => setIsEditing(true)}
-                                                    className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-primary transition-colors"
-                                                    title="Edytuj zadanie"
-                                                >
-                                                    <Edit2 size={20} />
-                                                </button>
-                                            )}
-
-                                            {!isEditing && (
-                                                <button
-                                                    onClick={async () => {
-                                                        if (!confirm("Czy na pewno chcesz usunąć to zadanie dla WSZYSTKICH?")) return;
-                                                        await deleteTask(selectedTask.id);
-                                                        setSelectedTask(null);
-                                                        onRefresh();
-                                                    }}
-                                                    className="p-2 hover:bg-red-50 rounded-full text-gray-400 hover:text-red-500 transition-colors"
-                                                    title="Usuń zadanie dla wszystkich"
-                                                >
-                                                    <Trash2 size={20} />
-                                                </button>
-                                            )}
-
-                                            <button
-                                                onClick={() => setSelectedTask(null)}
-                                                className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors"
-                                            >
-                                                <X size={24} />
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {isEditing ? (
-                                        <div className="space-y-4 mb-4">
-                                            <input
-                                                type="text"
-                                                value={editForm.tytul}
-                                                onChange={(e) => setEditForm({ ...editForm, tytul: e.target.value })}
-                                                className="text-3xl font-bold text-gray-900 w-full border-b border-gray-200 focus:border-primary outline-none py-2 bg-transparent placeholder:text-gray-300"
-                                                placeholder="Tytuł zadania"
-                                            />
-                                            <div className="flex items-center gap-2 text-sm font-bold text-gray-500">
-                                                <Calendar size={16} />
-                                                <input
-                                                    type="date"
-                                                    value={editForm.termin}
-                                                    onChange={(e) => setEditForm({ ...editForm, termin: e.target.value })}
-                                                    className="border border-gray-200 rounded-lg px-2 py-1 outline-none focus:border-primary"
-                                                />
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <h2 className="text-3xl font-bold text-gray-900 mb-2">{selectedTask.tytul}</h2>
-                                            {selectedTask.termin && (
-                                                <div className="flex items-center gap-2 text-sm font-bold text-gray-500">
-                                                    <Calendar size={16} />
-                                                    <span>Termin: {new Date(selectedTask.termin).toLocaleDateString('pl-PL')}</span>
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
-                                </div>
-
-                                {/* Scrollable Content */}
-                                <div className="px-8 pb-8 max-h-[60vh] overflow-y-auto custom-scrollbar space-y-8">
-                                    {/* Description */}
-                                    <div className={cn("rounded-2xl text-gray-700 leading-relaxed whitespace-pre-wrap", isEditing ? "" : "bg-gray-50 p-6")}>
-                                        <h4 className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-2">Opis zadania</h4>
-                                        {isEditing ? (
-                                            <textarea
-                                                value={editForm.opis}
-                                                onChange={(e) => setEditForm({ ...editForm, opis: e.target.value })}
-                                                className="w-full h-40 p-4 bg-gray-50 rounded-xl border border-gray-200 focus:border-primary outline-none transition-all"
-                                                placeholder="Opis zadania..."
-                                            />
-                                        ) : (
-                                            selectedTask.opis || "Brak szczegółowego opisu."
-                                        )}
-                                    </div>
-
-                                    {/* NEW: Attachments Section for Admins/Coordinators */}
-                                    <div className="bg-white border-2 border-primary/5 rounded-[28px] p-6 shadow-sm">
-                                        <h4 className="text-[10px] font-black uppercase text-primary/40 tracking-widest mb-4 flex items-center gap-2">
-                                            <LinkIcon size={14} /> Załączniki do zadania
-                                        </h4>
-                                        <div className="space-y-3 mb-6">
-                                            {selectedTask.attachments && selectedTask.attachments.length > 0 ? (
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                    {selectedTask.attachments.map((att: any) => (
-                                                        <div key={att.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-2xl group transition-all hover:bg-white hover:shadow-sm">
-                                                            <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold text-gray-700 hover:text-primary transition-colors overflow-hidden">
-                                                                <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-primary shadow-sm group-hover:bg-primary group-hover:text-white transition-all">
-                                                                    {(att.url.startsWith('/uploads/') || att.url.includes('cloudinary.com')) ? <Paperclip size={14} /> : <LinkIcon size={14} />}
-                                                                </div>
-                                                                <span className="truncate">{att.nazwa}</span>
-                                                            </a>
-                                                            <button
-                                                                onClick={async () => {
-                                                                    if (!confirm("Czy na pewno usunąć ten załącznik?")) return;
-                                                                    const res = await deleteTaskAttachment(att.id);
-                                                                    if (res.success) {
-                                                                        setSelectedTask({
-                                                                            ...selectedTask,
-                                                                            attachments: selectedTask.attachments.filter((a: any) => a.id !== att.id)
-                                                                        });
-                                                                        onRefresh();
-                                                                    }
-                                                                }}
-                                                                className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl opacity-0 group-hover:opacity-100 transition-all"
-                                                            >
-                                                                <Trash2 size={16} />
-                                                            </button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                <div className="py-4 text-center border-2 border-dashed border-gray-100 rounded-[20px]">
-                                                    <p className="text-xs text-muted-foreground italic">Brak dodanych załączników</p>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="bg-gray-50 p-4 rounded-[22px] border border-gray-100">
-                                            <span className="text-[9px] font-black uppercase text-gray-400 block mb-3 ml-1">Dodaj nowy link lub plik</span>
-                                            <div className="flex flex-col sm:flex-row gap-3">
-                                                <input
-                                                    className="lux-input py-2 text-xs bg-white flex-[2]"
-                                                    placeholder="Nazwa np. Prezentacja"
-                                                    value={newDetailAttachment.nazwa}
-                                                    onChange={e => setNewDetailAttachment(prev => ({ ...prev, nazwa: e.target.value }))}
-                                                />
-                                                <div className="flex flex-1 gap-2">
+                                                <div className="mt-3 pt-3 border-t border-gray-200/50 flex gap-2">
                                                     <input
-                                                        className="lux-input py-2 text-xs bg-white flex-1"
-                                                        placeholder="https://..."
-                                                        value={newDetailAttachment.url}
-                                                        onChange={e => setNewDetailAttachment(prev => ({ ...prev, url: e.target.value }))}
+                                                        type="file"
+                                                        id="file-upload-admin"
+                                                        className="hidden"
+                                                        onChange={(e) => {
+                                                            const file = e.target.files?.[0];
+                                                            if (file) handleFileUpload(file);
+                                                        }}
                                                     />
                                                     <button
-                                                        onClick={async () => {
-                                                            if (!newDetailAttachment.nazwa || !newDetailAttachment.url) return;
-                                                            const res = await addTaskAttachment(selectedTask.id, newDetailAttachment.nazwa, newDetailAttachment.url);
-                                                            if (res.success && res.data) {
-                                                                setSelectedTask({
-                                                                    ...selectedTask,
-                                                                    attachments: [...(selectedTask.attachments || []), res.data]
-                                                                });
-                                                                setNewDetailAttachment({ nazwa: "", url: "" });
-                                                                onRefresh();
-                                                            }
-                                                        }}
-                                                        className="p-2 bg-primary text-white rounded-xl shadow-md hover:translate-y-[-2px] transition-all"
+                                                        onClick={() => document.getElementById('file-upload-admin')?.click()}
+                                                        disabled={isUploading}
+                                                        className="flex-1 py-3 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-all flex items-center justify-center gap-2 shadow-sm"
                                                     >
-                                                        <Plus size={20} />
+                                                        {isUploading ? (
+                                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                        ) : (
+                                                            <Paperclip size={16} />
+                                                        )}
+                                                        {isUploading ? "Wgrywanie..." : "Dodaj plik z urządzenia"}
                                                     </button>
                                                 </div>
                                             </div>
+                                        </div>
 
-                                            <div className="mt-3 pt-3 border-t border-gray-200/50 flex gap-2">
-                                                <input
-                                                    type="file"
-                                                    id="file-upload-admin"
-                                                    className="hidden"
-                                                    onChange={(e) => {
-                                                        const file = e.target.files?.[0];
-                                                        if (file) handleFileUpload(file);
-                                                    }}
+                                        {/* Execution Status / Table */}
+                                        <div>
+                                            <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4">Postęp Realizacji</h3>
+
+                                            {/* Global Progress Bar */}
+                                            <div className="mb-6 bg-gray-100 rounded-full h-4 overflow-hidden relative">
+                                                <div
+                                                    className="h-full bg-gradient-to-r from-primary to-purple-600 rounded-full transition-all duration-1000"
+                                                    style={{ width: `${(selectedTask.executions?.filter((e: any) => e.status === "ZAAKCEPTOWANE").length / (selectedTask.executions?.length || 1)) * 100}%` }}
                                                 />
-                                                <button
-                                                    onClick={() => document.getElementById('file-upload-admin')?.click()}
-                                                    disabled={isUploading}
-                                                    className="flex-1 py-3 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-all flex items-center justify-center gap-2 shadow-sm"
-                                                >
-                                                    {isUploading ? (
-                                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                                    ) : (
-                                                        <Paperclip size={16} />
-                                                    )}
-                                                    {isUploading ? "Wgrywanie..." : "Dodaj plik z urządzenia"}
-                                                </button>
                                             </div>
-                                        </div>
-                                    </div>
 
-                                    {/* Execution Status / Table */}
-                                    <div>
-                                        <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4">Postęp Realizacji</h3>
-
-                                        {/* Global Progress Bar */}
-                                        <div className="mb-6 bg-gray-100 rounded-full h-4 overflow-hidden relative">
-                                            <div
-                                                className="h-full bg-gradient-to-r from-primary to-purple-600 rounded-full transition-all duration-1000"
-                                                style={{ width: `${(selectedTask.executions?.filter((e: any) => e.status === "ZAAKCEPTOWANE").length / (selectedTask.executions?.length || 1)) * 100}%` }}
-                                            />
-                                        </div>
-
-                                        {/* Executors List */}
-                                        <div className="space-y-2">
-                                            {selectedTask.executions?.map((ex: any) => (
-                                                <div key={ex.id} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl hover:shadow-sm transition-all">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className={cn(
-                                                            "w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold",
-                                                            ex.status === "ZAAKCEPTOWANE" ? "bg-green-100 text-green-600" :
-                                                                ex.status === "ODRZUCONE" ? "bg-red-100 text-red-600" :
-                                                                    ex.status === "OCZEKUJACE" ? "bg-amber-100 text-amber-600" :
-                                                                        "bg-gray-100 text-gray-400"
-                                                        )}>
-                                                            {ex.user?.imieNazwisko?.[0]}
-                                                        </div>
-                                                        <div>
-                                                            <div className="text-sm font-bold text-gray-800">{ex.imieNazwisko} <span className="text-[10px] text-gray-400 font-normal ml-1">#{ex.userId}</span></div>
+                                            {/* Executors List */}
+                                            <div className="space-y-2">
+                                                {selectedTask.executions?.map((ex: any) => (
+                                                    <div key={ex.id} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl hover:shadow-sm transition-all">
+                                                        <div className="flex items-center gap-3">
                                                             <div className={cn(
-                                                                "text-[10px] font-bold uppercase",
-                                                                ex.status === "ZAAKCEPTOWANE" ? "text-green-600" :
-                                                                    ex.status === "ODRZUCONE" ? "text-red-600" :
-                                                                        ex.status === "OCZEKUJACE" ? "text-amber-500" :
-                                                                            "text-gray-400"
+                                                                "w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold",
+                                                                ex.status === "ZAAKCEPTOWANE" ? "bg-green-100 text-green-600" :
+                                                                    ex.status === "ODRZUCONE" ? "bg-red-100 text-red-600" :
+                                                                        ex.status === "OCZEKUJACE" ? "bg-amber-100 text-amber-600" :
+                                                                            "bg-gray-100 text-gray-400"
                                                             )}>
-                                                                {ex.status === "OCZEKUJACE" ? "Czeka na weryfikację" : ex.status}
+                                                                {ex.user?.imieNazwisko?.[0]}
+                                                            </div>
+                                                            <div>
+                                                                <div className="text-sm font-bold text-gray-800">{ex.imieNazwisko} <span className="text-[10px] text-gray-400 font-normal ml-1">#{ex.userId}</span></div>
+                                                                <div className={cn(
+                                                                    "text-[10px] font-bold uppercase",
+                                                                    ex.status === "ZAAKCEPTOWANE" ? "text-green-600" :
+                                                                        ex.status === "ODRZUCONE" ? "text-red-600" :
+                                                                            ex.status === "OCZEKUJACE" ? "text-amber-500" :
+                                                                                "text-gray-400"
+                                                                )}>
+                                                                    {ex.status === "OCZEKUJACE" ? "Czeka na weryfikację" : ex.status}
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                    </div>
 
-                                                    <button
-                                                        onClick={async () => {
-                                                            if (!confirm(`Czy usunąć wykonawcę ${ex.imieNazwisko} z tego zadania?`)) return;
-                                                            await deleteTaskExecution(selectedTask.id, ex.userId);
-                                                            setSelectedTask((prev: any) => ({
-                                                                ...prev,
-                                                                executions: prev.executions.filter((e: any) => e.userId !== ex.userId)
-                                                            }));
-                                                            onRefresh();
-                                                        }}
-                                                        className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                                        title="Usuń wykonawcę"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                            {(!selectedTask.executions || selectedTask.executions.length === 0) && (
-                                                <div className="text-center text-sm text-gray-400 italic py-4">Brak przypisanych wykonawców</div>
-                                            )}
+                                                        <button
+                                                            onClick={async () => {
+                                                                if (!confirm(`Czy usunąć wykonawcę ${ex.imieNazwisko} z tego zadania?`)) return;
+                                                                await deleteTaskExecution(selectedTask.id, ex.userId);
+                                                                setSelectedTask((prev: any) => ({
+                                                                    ...prev,
+                                                                    executions: prev.executions.filter((e: any) => e.userId !== ex.userId)
+                                                                }));
+                                                                onRefresh();
+                                                            }}
+                                                            className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                            title="Usuń wykonawcę"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                {(!selectedTask.executions || selectedTask.executions.length === 0) && (
+                                                    <div className="text-center text-sm text-gray-400 italic py-4">Brak przypisanych wykonawców</div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                </motion.div>
                             </motion.div>
-                        </motion.div>
-                    </AnimatePresence>,
-                    document.body
-                )
-            }
-        </DashboardLayout>
+                        </AnimatePresence>,
+                        document.body
+                    )
+                }
+            </div>
+
+
+
+
+
+            <ArchiveSelectFolderModal
+                isOpen={isArchiveModalOpen}
+                onClose={() => setIsArchiveModalOpen(false)}
+                userId={userId}
+                role={activeRole}
+                onSelect={async (folderId: number) => {
+                    if (!executionToArchive) return;
+                    const ids = Array.isArray(executionToArchive) ? executionToArchive : [executionToArchive];
+                    await moveExecutionToArchive(ids, folderId);
+                    setIsArchiveModalOpen(false);
+                    setExecutionToArchive(null);
+                    onRefresh();
+                }}
+            />
+        </DashboardLayout >
     );
 }
 
-// --- SUB-COMPONENTS ---
+// NEW: Stacked Task Tile for Approved Tasks
+function StackedTaskTile({ group, onViewDetail, onArchive }: any) {
+    const [isExpanded, setIsExpanded] = useState(false);
+    const task = group.task;
+    const executions = group.executions;
+
+    // Sort executions by date
+    const sortedExecutions = [...executions].sort((a: any, b: any) =>
+        new Date(b.dataOznaczenia).getTime() - new Date(a.dataOznaczenia).getTime()
+    );
+
+    return (
+        <div className="space-y-2">
+            <motion.div
+                layout
+                onClick={() => setIsExpanded(!isExpanded)}
+                className={cn(
+                    "rounded-[24px] p-5 cursor-pointer border-2 transition-all shadow-sm hover:shadow-md relative overflow-hidden group/stack",
+                    isExpanded ? "bg-emerald-50/50 border-emerald-200" : "bg-white border-emerald-100/50 hover:border-emerald-200"
+                )}
+            >
+                {/* Stack Effect Visuals */}
+                {!isExpanded && executions.length > 1 && (
+                    <>
+                        <div className="absolute top-0.5 left-4 right-4 h-1 bg-emerald-100/50 rounded-t-xl mx-2 border-t border-x border-emerald-200/20" />
+                        <div className="absolute top-1.5 left-2 right-2 h-1 bg-emerald-100/80 rounded-t-xl mx-1 border-t border-x border-emerald-200/40" />
+                    </>
+                )}
+
+                <div className="flex items-center justify-between gap-4 relative z-10 w-full">
+                    <div className="flex items-center gap-4 min-w-0 flex-1">
+                        <div className={cn(
+                            "w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 text-white shadow-sm transition-colors",
+                            isExpanded ? "bg-emerald-600" : "bg-emerald-500"
+                        )}>
+                            {executions.length > 1 ? (
+                                <Layers size={22} />
+                            ) : (
+                                <CheckCircle size={22} />
+                            )}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                            <h4 className="font-bold text-gray-900 truncate text-base mb-1">{task.tytul}</h4>
+                            <div className="flex items-center gap-2">
+                                <span className="bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full">
+                                    {executions.length} {executions.length === 1 ? "osoba" : "osoby"}
+                                </span>
+                                {!isExpanded && (
+                                    <div className="flex -space-x-1.5">
+                                        {sortedExecutions.slice(0, 3).map((ex: any, i: number) => (
+                                            <div key={i} className="w-5 h-5 rounded-full bg-white border border-emerald-100 flex items-center justify-center text-[8px] font-bold text-emerald-600 shadow-sm" title={ex.user?.imieNazwisko}>
+                                                {ex.user?.imieNazwisko?.[0]}
+                                            </div>
+                                        ))}
+                                        {sortedExecutions.length > 3 && (
+                                            <div className="w-5 h-5 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-[8px] font-bold text-emerald-600">
+                                                +{sortedExecutions.length - 3}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (onArchive) onArchive(executions.map((e: any) => e.id));
+                            }}
+                            className="p-2 hover:bg-emerald-100 rounded-xl text-gray-400 hover:text-emerald-700 transition-colors z-20 relative"
+                            title="Archiwizuj grupę"
+                        >
+                            <Archive size={18} />
+                        </button>
+                        <div className={cn(
+                            "p-2 rounded-xl transition-transform duration-300 transform",
+                            isExpanded ? "rotate-180 bg-emerald-100 text-emerald-600" : "text-gray-300 group-hover/stack:text-emerald-400"
+                        )}>
+                            <ChevronDown size={20} />
+                        </div>
+                    </div>
+                </div>
+            </motion.div>
+
+            {/* Expanded List */}
+            <AnimatePresence>
+                {isExpanded && (
+                    <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="pl-4 space-y-2 border-l-2 border-emerald-100/50 ml-6"
+                    >
+                        {sortedExecutions.map((ex: any) => (
+                            <CollapsibleExecutionCard
+                                key={ex.userId}
+                                execution={ex}
+                                onViewDetail={() => onViewDetail(ex)}
+                                tabType="zaakceptowane" // Force style for expanded items
+                            />
+                        ))}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
 
 function ParticipantTaskCard({ task, userId, onClick, status }: any) {
     const ex = task.executions.find((e: any) => e.userId === userId);
@@ -2218,7 +2400,7 @@ function CollapsibleExecutionCard({ execution, onViewDetail, tabType }: any) {
 }
 
 // Full Screen Detail Modal for Verification
-function ExecutionDetailModal({ execution, onClose, onApprove, onReject, isAdmin }: any) {
+function ExecutionDetailModal({ execution, onClose, onApprove, onReject, isAdmin, onArchive }: any) {
     if (!execution) return null;
     const task = execution.task;
     const tabType = execution.tabType || execution.status.toLowerCase();
@@ -2435,7 +2617,7 @@ function ExecutionDetailModal({ execution, onClose, onApprove, onReject, isAdmin
                                     </div>
                                 </div>
 
-                                {tabType === "zaakceptowane" && (
+                                {tabType === "zaakceptowane" && (<>
                                     <button
                                         onClick={async () => {
                                             if (confirm("Czy na pewno chcesz trwale usunąć to zgłoszenie? Tej operacji nie można cofnąć.")) {
@@ -2447,7 +2629,15 @@ function ExecutionDetailModal({ execution, onClose, onApprove, onReject, isAdmin
                                     >
                                         <Trash2 size={20} /> Usuń trwale
                                     </button>
-                                )}
+                                    {isAdmin && (
+                                        <button
+                                            onClick={onArchive}
+                                            className="px-6 py-4 bg-gray-900 text-white font-bold rounded-2xl transition-all flex items-center gap-2 hover:bg-gray-800"
+                                        >
+                                            <Archive size={20} /> Archiwizuj
+                                        </button>
+                                    )}
+                                </>)}
                             </div>
                         )}
                     </div>

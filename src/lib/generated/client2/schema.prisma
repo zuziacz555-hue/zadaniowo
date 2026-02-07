@@ -1,0 +1,298 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+  output        = "../src/lib/generated/client2"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                      Int                      @id @default(autoincrement())
+  imieNazwisko            String                   @unique @map("imie_nazwisko")
+  haslo                   String
+  rola                    String                   @default("UCZESTNICZKA")
+  zespoly                 UserTeam[]
+  tasksCreated            Task[]                   @relation("CreatedTasks")
+  taskSubmissions         TaskSubmission[]
+  taskExecutions          TaskExecution[]
+  taskAssignments         TaskAssignment[]
+  registrations           EventRegistration[]
+  attendance              Attendance[]
+  announcementAssignments AnnouncementAssignment[]
+  notifications           Notification[]
+  sharedArchiveFolders    UserArchiveFolder[]
+
+  @@map("users")
+}
+
+model Team {
+  id                Int              @id @default(autoincrement())
+  nazwa             String
+  kolor             String           @default("#5400FF")
+  opis              String?          @map("opis")
+  allowApplications Boolean          @default(false) @map("allow_applications")
+  users             UserTeam[]
+  announcements     Announcement[]
+  meetings          Meeting[]
+  tasks             Task[]
+  taskAssignments   TaskAssignment[]
+  notifications     Notification[]
+
+  @@map("zespoly")
+}
+
+model UserTeam {
+  id     Int    @id @default(autoincrement())
+  userId Int    @map("user_id")
+  teamId Int    @map("zespol_id")
+  rola   String @default("uczestniczka")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([teamId])
+  @@map("user_zespoly")
+}
+
+model Announcement {
+  id             Int                      @id @default(autoincrement())
+  teamId         Int                      @map("zespol_id")
+  typPrzypisania String                   @default("WSZYSCY") @map("typ_przypisania")
+  tytul          String
+  tresc          String
+  utworzonePrzez String                   @map("utworzone_przez")
+  dataUtworzenia DateTime                 @default(now()) @map("data_utworzenia")
+  expiresAt      DateTime?                @map("data_wygasniecia")
+  team           Team                     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  assignments    AnnouncementAssignment[]
+
+  @@index([teamId])
+  @@map("ogloszenia")
+}
+
+model AnnouncementAssignment {
+  id             Int          @id @default(autoincrement())
+  announcementId Int          @map("ogloszenie_id")
+  userId         Int          @map("user_id")
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([announcementId])
+  @@index([userId])
+  @@map("ogloszenia_przypisania")
+}
+
+model Meeting {
+  id             Int          @id @default(autoincrement())
+  teamId         Int          @map("zespol_id")
+  data           DateTime
+  godzina        DateTime
+  opis           String
+  opisDodatkowy  String?      @map("opis_dodatkowy")
+  signupDeadline DateTime?    @map("termin_zapisow")
+  team           Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  attendance     Attendance[]
+  report         Report?
+
+  @@index([teamId])
+  @@map("spotkania")
+}
+
+model Report {
+  id             Int      @id @default(autoincrement())
+  meetingId      Int      @unique @map("spotkanie_id")
+  tytul          String?
+  tresc          String
+  utworzonePrzez String   @map("utworzone_przez")
+  dataUtworzenia DateTime @default(now()) @map("data_utworzenia")
+  meeting        Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@map("raporty")
+}
+
+model Attendance {
+  id           Int     @id @default(autoincrement())
+  meetingId    Int     @map("spotkanie_id")
+  imieNazwisko String  @map("imie_nazwisko")
+  userId       Int?    @map("user_id")
+  confirmed    Boolean @default(false)
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([meetingId])
+  @@map("obecnosci")
+}
+
+model Event {
+  id             Int                 @id @default(autoincrement())
+  nazwa          String
+  data           DateTime?
+  limitOsob      Int?                @map("limit_osob")
+  signupDeadline DateTime?           @map("termin_zapisow")
+  participants   EventRegistration[]
+
+  @@map("wydarzenia")
+}
+
+model EventRegistration {
+  id           Int    @id @default(autoincrement())
+  eventId      Int    @map("wydarzenie_id")
+  imieNazwisko String @map("imie_nazwisko")
+  userId       Int?   @map("user_id")
+  event        Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user         User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([eventId])
+  @@map("zapisy")
+}
+
+model Task {
+  id               Int       @id @default(autoincrement())
+  teamId           Int?      @map("zespol_id")
+  typPrzypisania   String    @default("CALY_ZESPOL") @map("typ_przypisania")
+  tytul            String
+  opis             String?
+  termin           DateTime?
+  priorytet        String    @default("NORMALNY")
+  utworzonePrzezId Int?      @map("utworzone_przez_id")
+  utworzonePrzez   String    @map("utworzone_przez")
+  dataUtworzenia   DateTime  @default(now()) @map("data_utworzenia")
+  status           String    @default("AKTYWNE")
+  uwagiOdrzucenia  String?   @map("uwagi_odrzucenia")
+  poprawione       Boolean   @default(false)
+
+  team        Team?            @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  creator     User?            @relation("CreatedTasks", fields: [utworzonePrzezId], references: [id], onDelete: SetNull)
+  submissions TaskSubmission[]
+  assignments TaskAssignment[]
+  executions  TaskExecution[]
+  attachments TaskAttachment[]
+
+  @@index([teamId])
+  @@index([termin])
+  @@map("zadania")
+}
+
+model TaskAttachment {
+  id     Int    @id @default(autoincrement())
+  taskId Int    @map("zadanie_id")
+  nazwa  String
+  url    String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("zadania_zalaczniki")
+}
+
+model TaskSubmission {
+  id           Int      @id @default(autoincrement())
+  taskId       Int      @map("zadanie_id")
+  userId       Int      @map("user_id")
+  imieNazwisko String   @map("imie_nazwisko")
+  opis         String
+  dataDodania  DateTime @default(now()) @map("data_dodania")
+  task         Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([userId])
+  @@map("zadania_opisy")
+}
+
+model TaskAssignment {
+  id              Int      @id @default(autoincrement())
+  taskId          Int      @map("zadanie_id")
+  userId          Int?     @map("user_id")
+  teamId          Int?     @map("zespol_id")
+  dataPrzypisania DateTime @default(now()) @map("data_przypisania")
+  task            Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  team            Team?    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user            User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([userId])
+  @@index([teamId])
+  @@map("zadania_przypisania")
+}
+
+model TaskExecution {
+  id              Int       @id @default(autoincrement())
+  taskId          Int       @map("zadanie_id")
+  userId          Int       @map("user_id")
+  imieNazwisko    String    @map("imie_nazwisko")
+  wykonane        Boolean   @default(false)
+  status          String    @default("OCZEKUJACE") // OCZEKUJACE, ZAAKCEPTOWANE, ODRZUCONE
+  uwagiOdrzucenia String?   @map("uwagi_odrzucenia")
+  poprawione      Boolean   @default(false)
+  terminPoprawki  DateTime? @map("termin_poprawki")
+  dataOznaczenia  DateTime  @updatedAt @map("data_oznaczenia")
+
+  isArchived      Boolean        @default(false) @map("zarchiwizowane")
+  archiveFolderId Int?           @map("archiwum_folder_id")
+  archiveFolder   ArchiveFolder? @relation(fields: [archiveFolderId], references: [id], onDelete: SetNull)
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
+  @@index([taskId])
+  @@index([userId])
+  @@map("zadania_wykonania")
+}
+
+model SystemSettings {
+  id                           Int     @id @default(autoincrement())
+  alertsTerminy                Boolean @default(true) @map("alerts_terminy")
+  alertsPoprawki               Boolean @default(true) @map("alerts_poprawki")
+  alertsRaporty                Boolean @default(true) @map("alerts_raporty")
+  coordinatorTasks             Boolean @default(false) @map("coordinator_tasks")
+  coordinatorTeamEditing       Boolean @default(false) @map("coordinator_team_editing")
+  coordinatorResignationAlerts Boolean @default(true) @map("coordinator_resignation_alerts")
+
+  @@map("ustawienia_systemu")
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  type      String // 'RESIGNATION'
+  status    String   @default("PENDING") // 'PENDING', 'WAITING_FOR_CONFIRMATION', 'ACCEPTED', 'COMPLETED'
+  teamId    Int      @map("zespol_id")
+  userId    Int?     @map("user_id") // Target user for appointment or resigning user
+  data      Json? // { resignedUserName: string, targetUserName: string, multiCoord: boolean }
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  team Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("powiadomienia")
+}
+
+model ArchiveFolder {
+  id              Int                 @id @default(autoincrement())
+  nazwa           String
+  dataUtworzenia  DateTime            @default(now()) @map("data_utworzenia")
+  executions      TaskExecution[]
+  sharedWithUsers UserArchiveFolder[]
+
+  @@map("archiwum_foldery")
+}
+
+model UserArchiveFolder {
+  id       Int           @id @default(autoincrement())
+  userId   Int           @map("user_id")
+  folderId Int           @map("folder_id")
+  status   String        @default("ACCEPTED") // PENDING, ACCEPTED
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folder   ArchiveFolder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, folderId])
+  @@map("user_archiwum_foldery")
+}

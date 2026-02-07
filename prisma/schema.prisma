@@ -4,6 +4,7 @@
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native", "rhel-openssl-3.0.x"]
+  output        = "../src/lib/generated/client2"
 }
 
 datasource db {
@@ -34,6 +35,10 @@ model User {
   attendance      Attendance[]
   announcementAssignments AnnouncementAssignment[]
   notifications           Notification[]
+  sharedArchiveFolders    UserArchiveFolder[]
+  
+  sentMessages      ChatMessage[] @relation("SentMessages")
+  receivedMessages  ChatMessage[] @relation("ReceivedMessages")
   
   @@map("users")
 }
@@ -239,6 +244,11 @@ model TaskExecution {
   poprawione     Boolean  @default(false)
   terminPoprawki DateTime? @map("termin_poprawki")
   dataOznaczenia DateTime @updatedAt @map("data_oznaczenia")
+  
+  isArchived      Boolean        @default(false) @map("zarchiwizowane")
+  archiveFolderId Int?           @map("archiwum_folder_id")
+  archiveFolder   ArchiveFolder? @relation(fields: [archiveFolderId], references: [id], onDelete: SetNull)
+
   task           Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -274,4 +284,43 @@ model Notification {
   user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("powiadomienia")
+}
+
+model ArchiveFolder {
+  id             Int                 @id @default(autoincrement())
+  nazwa          String
+  dataUtworzenia DateTime            @default(now()) @map("data_utworzenia")
+  executions     TaskExecution[]
+  sharedWithUsers UserArchiveFolder[]
+
+  @@map("archiwum_foldery")
+}
+
+model UserArchiveFolder {
+  id       Int           @id @default(autoincrement())
+  userId   Int           @map("user_id")
+  folderId Int           @map("folder_id")
+  status   String        @default("ACCEPTED") // PENDING, ACCEPTED
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folder   ArchiveFolder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, folderId])
+  @@map("user_archiwum_foldery")
+}
+
+model ChatMessage {
+  id         Int      @id @default(autoincrement())
+  senderId   Int      @map("sender_id")
+  receiverId Int      @map("receiver_id")
+  content    String
+  isRead     Boolean  @default(false) @map("is_read")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  sender     User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([createdAt])
+  @@map("chat_wiadomosci")
 }

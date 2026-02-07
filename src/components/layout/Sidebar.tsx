@@ -17,13 +17,16 @@ import {
     Sparkles,
     UserCog,
     Menu,
-    X
+    X,
+    Archive
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
 const sidebarItems = [
     { title: "Pulpit", href: "/dashboard", icon: LayoutDashboard },
     { title: "Zadania", href: "/tasks", icon: ClipboardList },
+    { title: "Archiwum", href: "/archive", icon: Archive },
+    { title: "Czat", href: "/chat", icon: MessageSquareText },
     { title: "Wydarzenia", href: "/events", icon: Calendar },
     { title: "Spotkania", href: "/meetings", icon: Users },
     { title: "Ogłoszenia", href: "/announcements", icon: Megaphone },
@@ -70,14 +73,14 @@ export default function Sidebar({ userName, userRole, activeTeamName }: SidebarP
                 const parsed = JSON.parse(storedUser);
                 setDisplayUser(parsed.imieNazwisko || parsed.name || "");
 
-                const role = (parsed.role || storedRole || "").toUpperCase();
+                const role = (storedRole || parsed.role || parsed.rola || "").toUpperCase();
                 const team = storedTeam || "";
 
                 setDisplayRole(role);
                 setDisplayTeam(team);
 
                 setIsAdmin(role === "ADMINISTRATOR" || role === "ADMIN");
-                setIsCoord(role === "KOORDYNATORKA");
+                setIsCoord(role === "KOORDYNATORKA" || role === "KOORDYNATOR");
             }
         };
 
@@ -142,6 +145,9 @@ export default function Sidebar({ userName, userRole, activeTeamName }: SidebarP
                         <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-4 mb-2">Menu</h3>
                         {sidebarItems.map((item) => {
                             const isActive = pathname === item.href;
+                            // Filter Archive for non-coord/admin
+                            if (item.href === "/archive" && !isAdmin && !isCoord) return null;
+
                             return (
                                 <Link
                                     key={item.href}
