@@ -23,18 +23,51 @@ import {
 } from "lucide-react";
 
 const menuItems = [
-    { title: "Zadania", description: "Zarządzaj swoimi obowiązkami", icon: ClipboardList, tone: "lux-gradient", href: "/tasks" },
-    { title: "Wydarzenia", description: "Przeglądaj i zapisuj się na wydarzenia", icon: Calendar, tone: "lux-gradient", href: "/events" },
-    { title: "Ogłoszenia", description: "Tablica ogłoszeń zespołu", icon: Megaphone, tone: "lux-gradient", href: "/announcements" },
-    { title: "Spotkania", description: "Kalendarz i plan spotkań", icon: Users, tone: "lux-gradient", href: "/meetings" },
+    {
+        title: "Twoje Zadania",
+        description: "Centrum dowodzenia. Zarządzaj, wykonuj i śledź postępy swoich obowiązków.",
+        icon: ClipboardList,
+        tone: "from-violet-500 to-purple-600",
+        href: "/tasks",
+        span: "md:col-span-2 lg:col-span-2",
+        bgImage: "/dashboard/tasks-bg.svg" // Placeholder or CSS pattern
+    },
+    {
+        title: "Kalendarz Spotkań",
+        description: "Nadchodzące spotkania i wydarzenia zespołu.",
+        icon: Users,
+        tone: "from-blue-500 to-cyan-500",
+        href: "/meetings",
+        span: "md:col-span-1"
+    },
+    {
+        title: "Wydarzenia",
+        description: "Imprezy i akcje specjalne.",
+        icon: Calendar,
+        tone: "from-pink-500 to-rose-500",
+        href: "/events",
+        span: "md:col-span-1"
+    },
+    {
+        title: "Ogłoszenia",
+        description: "Tablica ogłoszeń i ważne komunikaty.",
+        icon: Megaphone,
+        tone: "from-amber-400 to-orange-500",
+        href: "/announcements",
+        span: "md:col-span-1" // Make it full width on md?
+    },
 
-    { title: "Zespół", description: "Członkowie Twojego zespołu", icon: Users, tone: "lux-gradient", href: "/admin-teams", coordOnly: true, excludeAdmin: true },
-    { title: "Sprawozdania", description: "Uzupełnij raport ze spotkania", icon: MessageSquareText, tone: "lux-gradient", href: "/reports", coordOnly: true },
+    // Coordinator Specific
+    { title: "Mój Zespół", description: "Zarządzaj członkami i zadaniami", icon: Users, tone: "from-indigo-500 to-blue-600", href: "/admin-teams", coordOnly: true, excludeAdmin: true, span: "md:col-span-1" },
+    { title: "Sprawozdania", description: "Raporty ze spotkań", icon: MessageSquareText, tone: "from-emerald-500 to-teal-500", href: "/reports", coordOnly: true, span: "md:col-span-1" },
+    { title: "Aplikacje", description: "Zgłoszenia do zespołu", icon: Sparkles, tone: "from-fuchsia-500 to-pink-600", href: "/applications", coordOnly: true, requiresApplications: true, span: "md:col-span-2" },
 
-    { title: "Zespoły", description: "Zarządzaj wszystkimi zespołami", icon: Crown, tone: "lux-gradient", href: "/admin-teams", adminOnly: true, special: true },
-    { title: "Użytkownicy", description: "Zarządzaj użytkownikami systemu", icon: UserCog, tone: "lux-gradient", href: "/admin-users", adminOnly: true, special: true },
-    { title: "Ustawienia", description: "Konfiguracja alertów i powiadomień", icon: Settings, tone: "lux-gradient", href: "/admin-settings", coordOnly: true, special: true },
-    { title: "Aplikacje", description: "Zarządzaj zgłoszeniami do zespołu", icon: Sparkles, tone: "lux-gradient", href: "/applications", coordOnly: true, requiresApplications: true },
+    // Admin Specific
+    { title: "Zespoły", description: "Zarządzanie strukturą", icon: Crown, tone: "from-gray-700 to-gray-900", href: "/admin-teams", adminOnly: true, span: "md:col-span-1" },
+    { title: "Użytkownicy", description: "Baza użytkowników", icon: UserCog, tone: "from-slate-600 to-slate-800", href: "/admin-users", adminOnly: true, span: "md:col-span-1" },
+
+    // Shared Settings
+    { title: "Ustawienia", description: "Konfiguracja systemu", icon: Settings, tone: "from-gray-400 to-gray-600", href: "/admin-settings", coordOnly: true, special: true, span: "md:col-span-1" },
 ];
 
 import { getUserTeams, getTeamById, removeUserFromTeam, getTeams } from "@/lib/actions/teams";
@@ -669,44 +702,63 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
                     </motion.section>
                 )}
 
-                <motion.section variants={slideUp}>
-                    <div className="flex flex-col items-start mb-10">
-                        <h2 className="lux-kicker mb-2">Szybki dostęp</h2>
-                        <div className="h-1 w-12 bg-primary/20 rounded-full" />
-                    </div>
-                    <motion.div
-                        variants={staggerContainer}
-                        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10"
-                    >
-                        {filteredMenu.map((item) => (
-                            <motion.div
-                                key={item.title}
-                                variants={popIn}
-                                whileHover={{ y: -5 }}
-                                initial="initial"
-                            >
-                                <Link
-                                    href={item.href || '#'}
-                                    className={cn(
-                                        "flex flex-col items-center text-center p-10 rounded-[32px] border border-white/60 relative overflow-hidden h-full group transition-all bg-white shadow-sm hover:shadow-md",
-                                        item.special && "ring-1 ring-primary/10 bg-white shadow-float"
-                                    )}
-                                >
-                                    <div className="flex flex-col items-center w-full h-full">
+                <motion.div
+                    variants={staggerContainer}
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-[200px]"
+                >
+                    {filteredMenu.map((item, index) => (
+                        <motion.div
+                            key={item.title}
+                            variants={popIn}
+                            initial="initial"
+                            className={cn(
+                                "relative group overflow-hidden rounded-[32px] transition-all duration-300",
+                                (item as any).span || "col-span-1",
+                                item.href === "/tasks" ? "row-span-2" : "row-span-1"
+                            )}
+                            whileHover={{ scale: 1.02, y: -5 }}
+                        >
+                            <Link href={item.href || '#'} className="block h-full w-full">
+                                <div className={cn(
+                                    "absolute inset-0 bg-gradient-to-br opacity-10 group-hover:opacity-20 transition-opacity",
+                                    item.tone
+                                )} />
+
+                                <div className="absolute inset-0 bg-white/40 backdrop-blur-xl border border-white/50 shadow-card transition-all group-hover:bg-white/60 group-hover:border-white/80" />
+
+                                <div className="relative z-10 h-full p-8 flex flex-col justify-between">
+                                    <div className="flex justify-between items-start">
                                         <div className={cn(
-                                            "w-24 h-24 mb-6 rounded-3xl flex items-center justify-center shadow-inner relative overflow-hidden",
+                                            "w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg bg-gradient-to-br",
                                             item.tone
                                         )}>
-                                            <item.icon className="text-white relative z-10" size={40} />
+                                            <item.icon size={24} />
                                         </div>
-                                        <h3 className="text-xl font-bold mb-3 text-foreground transition-colors group-hover:text-primary">{item.title}</h3>
-                                        <p className="text-sm text-muted-foreground font-medium leading-relaxed">{item.description}</p>
+                                        {item.href === "/tasks" && (
+                                            <div className="bg-white/50 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest text-foreground/70">
+                                                Priorytet
+                                            </div>
+                                        )}
                                     </div>
-                                </Link>
-                            </motion.div>
-                        ))}
-                    </motion.div>
-                </motion.section>
+
+                                    <div>
+                                        <h3 className="text-2xl font-bold text-foreground mb-2 group-hover:text-primary transition-colors">{item.title}</h3>
+                                        <p className="text-sm font-medium text-muted-foreground line-clamp-2 md:line-clamp-none opacity-80 group-hover:opacity-100 transition-opacity">
+                                            {item.description}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Decorative Blob */}
+                                <div className={cn(
+                                    "absolute -bottom-10 -right-10 w-32 h-32 rounded-full blur-3xl opacity-40 transition-transform duration-700 group-hover:scale-150",
+                                    item.tone ? item.tone.replace('from-', 'bg-').split(' ')[0] : 'bg-primary'
+                                )} />
+                            </Link>
+                        </motion.div>
+                    ))}
+                </motion.div>
+
 
                 {/* Nomination Modal for Admin */}
                 {selectedNomination && (

@@ -115,6 +115,14 @@
     background-image: linear-gradient(to bottom right, var(--color-primary), hsl(var(--primary-h), var(--primary-s), 60%), hsl(var(--primary-h), var(--primary-s), 70%));
   }
 
+  .glass-panel {
+    @apply backdrop-blur-2xl bg-white/60 border border-white/40 shadow-card;
+  }
+
+  .glass-sidebar {
+    @apply backdrop-blur-3xl bg-white/80 border-r border-white/40 shadow-2xl;
+  }
+
   .lux-gradient-soft {
     background-image: linear-gradient(to bottom right, hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.8), hsla(var(--primary-h), var(--primary-s), 70%, 0.8));
   }

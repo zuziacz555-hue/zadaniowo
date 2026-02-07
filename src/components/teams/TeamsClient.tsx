@@ -73,7 +73,7 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
         const teamId = editTeamData.id || currentTeam?.id;
         if (!teamId) return;
 
-        console.log("Saving team changes:", { id: teamId, ...editTeamData, currentUserId });
+        console.log("Saving team changes:", { effectiveId: teamId, ...editTeamData, currentUserId });
 
         try {
             const res = await updateTeam(teamId, editTeamData.nazwa, editTeamData.kolor, editTeamData.opis, currentUserId);

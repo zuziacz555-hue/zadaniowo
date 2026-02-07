@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Navbar from "./Navbar";
+import Sidebar from "./Sidebar";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import { usePathname } from "next/navigation";
@@ -109,27 +109,26 @@ export default function DashboardLayout({
     const userName = user?.name || "Gość";
 
     return (
-        <div className="min-h-screen flex flex-col">
-            <Navbar
+        <div className="min-h-screen flex bg-background">
+            <Sidebar
                 userName={userName}
                 activeTeamName={activeTeam}
-                activeRole={activeRole}
-                isAdmin={activeRole === "ADMINISTRATOR"}
+                userRole={activeRole}
             />
 
-            <main className="flex-1 w-full max-w-[1200px] mx-auto px-6 py-10">
+            <main className="flex-1 w-full max-w-[1600px] mx-auto p-6 lg:p-10 overflow-x-hidden">
                 {!isDashboard && (
                     <motion.div
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
-                        className="mb-6"
+                        className="mb-8"
                     >
                         <Link
                             href="/dashboard"
-                            className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-primary transition-colors group"
+                            className="inline-flex items-center gap-3 px-4 py-2 rounded-xl bg-white/50 hover:bg-white border border-transparent hover:border-gray-200 text-sm font-bold text-muted-foreground hover:text-primary transition-all shadow-sm"
                         >
-                            <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
-                                <ArrowLeft size={16} />
+                            <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center shadow-sm">
+                                <ArrowLeft size={14} />
                             </div>
                             Wróć do pulpitu
                         </Link>
