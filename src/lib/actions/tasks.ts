@@ -490,38 +490,47 @@ export async function deleteTaskAttachment(attachmentId: number) {
     }
 }
 
+import { v2 as cloudinary } from 'cloudinary'
+
+// Cloudinary Configuration
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
 export async function uploadTaskFile(formData: FormData) {
     try {
         const file = formData.get('file') as File;
         if (!file) {
-            return { success: false, error: 'No file uploaded' };
+            return { success: false, error: 'Nie przesłano pliku' };
         }
 
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
 
-        // Path to public/uploads
-        const pathPublic = path.join(process.cwd(), 'public');
-        const pathUploads = path.join(pathPublic, 'uploads');
-
-        // Create dir if not exists
-        if (!fs.existsSync(pathUploads)) {
-            await mkdir(pathUploads, { recursive: true });
-        }
-
-        // Unique filename
-        const filename = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
-        const filePath = path.join(pathUploads, filename);
-
-        await writeFile(filePath, buffer);
+        // Upload to Cloudinary using promise
+        const uploadResult = await new Promise((resolve, reject) => {
+            cloudinary.uploader.upload_stream(
+                {
+                    folder: 'unionki-tasks',
+                    resource_type: 'auto',
+                    public_id: `${Date.now()}-${file.name.replace(/\.[^/.]+$/, "").replace(/\s+/g, '_')}`
+                },
+                (error, result) => {
+                    if (error) reject(error);
+                    else resolve(result);
+                }
+            ).end(buffer);
+        }) as any;
 
         return {
             success: true,
-            url: `/uploads/${filename}`,
+            url: uploadResult.secure_url,
             name: file.name
         };
     } catch (error) {
-        console.error('Error uploading file:', error);
-        return { success: false, error: 'Failed to upload file' };
+        console.error('Error uploading file to Cloudinary:', error);
+        return { success: false, error: 'Błąd podczas przesyłania pliku do chmury' };
     }
 }

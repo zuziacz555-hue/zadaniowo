@@ -27,7 +27,8 @@ import {
     Save,
     Link as LinkIcon,
     Paperclip,
-    ExternalLink
+    ExternalLink,
+    Layers
 } from "lucide-react";
 import {
     createTask,
@@ -56,89 +57,98 @@ interface TasksClientProps {
 }
 
 const AdminTaskTile = ({ task, onClick }: { task: any, onClick: () => void }) => {
-    // Calculate global progress based on executions
-    // Note: assignments is array of {userId, ...} from TaskAssignment. executions is TaskExecution.
-    // If CALY_ZESPOL, assignments might be empty but executions populated.
-    // We rely on executions for progress tracking regardless of assignment type.
     const totalExecutors = task.executions?.length || 0;
     const completedCount = task.executions?.filter((e: any) => e.status === "ZAAKCEPTOWANE").length || 0;
+    const teamColor = task.team?.kolor || "#f97316"; // Default orange if no team color
 
-    // For avatars, we prefer assignments if available (show who is supposed to do it), 
-    // fall back to executions (who is actually doing it)
     const assignees = task.assignments?.length > 0 ? task.assignments.map((a: any) => a.user) : task.executions?.map((e: any) => e.user);
     const uniqueAssignees = Array.from(new Map(assignees?.map((u: any) => [u?.id, u])).values()).filter(Boolean);
 
     return (
-        <div
+        <motion.div
+            layout
+            whileHover={{ y: -8 }}
             onClick={onClick}
-            className="group bg-white p-6 rounded-[24px] shadow-sm hover:shadow-xl transition-all duration-300 border border-transparent hover:border-gray-100 cursor-pointer relative overflow-hidden"
+            className="glass-panel p-8 rounded-[40px] shadow-sm hover:shadow-2xl transition-all duration-500 cursor-pointer relative overflow-hidden group border-white/40"
         >
-            <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-100 transition-opacity">
-                <div className="bg-gray-50 p-2 rounded-full text-gray-400 hover:text-primary hover:bg-white hover:shadow-sm">
-                    <ChevronRight size={20} />
-                </div>
-            </div>
+            {/* Background Accent */}
+            <div
+                className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-[40px] opacity-10 transition-all duration-500 group-hover:scale-150"
+                style={{ backgroundColor: teamColor }}
+            />
 
-            <div className="flex flex-col h-full justify-between gap-4">
-                <div>
-                    <div className="flex items-start justify-between mb-3">
-                        <div className={cn(
-                            "px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase",
-                            task.priorytet === "WYSOKI" ? "bg-red-50 text-red-600" :
-                                task.priorytet === "NORMALNY" ? "bg-blue-50 text-blue-600" :
-                                    "bg-green-50 text-green-600"
-                        )}>
-                            {task.priorytet}
-                        </div>
-                        {task.termin && (
-                            <div className="flex items-center gap-1.5 text-xs font-bold text-gray-400">
-                                <Calendar size={14} />
-                                <span>{new Date(task.termin).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })}</span>
-                            </div>
-                        )}
+            <div className="relative z-10 flex flex-col h-full gap-5">
+                <div className="flex items-start justify-between">
+                    <div className={cn(
+                        "px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase border backdrop-blur-md",
+                        task.priorytet === "WYSOKI" ? "bg-red-500/10 text-red-600 border-red-500/20" :
+                            task.priorytet === "NORMALNY" ? "bg-blue-500/10 text-blue-600 border-blue-500/20" :
+                                "bg-green-500/10 text-green-600 border-green-500/20"
+                    )}>
+                        {task.priorytet}
                     </div>
-
-                    <h3 className="text-xl font-bold text-gray-800 leading-snug group-hover:text-primary transition-colors line-clamp-2 mb-2">
-                        {task.tytul}
-                    </h3>
-
-                    {task.team && (
-                        <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">
-                            {task.team.nazwa}
+                    {task.termin && (
+                        <div className="flex items-center gap-1.5 text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-60">
+                            <Calendar size={14} className="text-primary/60" />
+                            <span>{new Date(task.termin).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })}</span>
                         </div>
                     )}
                 </div>
 
-                <div className="flex items-center justify-between pt-4 border-t border-gray-50">
+                <div>
+                    <h3 className="text-2xl font-black tracking-tight text-foreground group-hover:text-primary transition-colors line-clamp-2 leading-tight mb-2">
+                        {task.tytul}
+                    </h3>
+
+                    {task.team && (
+                        <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: teamColor }} />
+                            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-60">
+                                {task.team.nazwa}
+                            </span>
+                        </div>
+                    )}
+                </div>
+
+                <div className="flex items-center justify-between pt-5 border-t border-white/40 mt-auto">
                     <div className="flex -space-x-3">
                         {uniqueAssignees.slice(0, 4).map((u: any, i: number) => (
-                            <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500 shadow-sm" title={u.imieNazwisko}>
+                            <div
+                                key={i}
+                                className="w-9 h-9 rounded-2xl border-2 border-white bg-white/60 flex items-center justify-center text-[10px] font-black text-foreground shadow-sm backdrop-blur-sm"
+                                title={u.imieNazwisko}
+                            >
                                 {u.imieNazwisko?.[0]}
                             </div>
                         ))}
                         {uniqueAssignees.length > 4 && (
-                            <div className="w-8 h-8 rounded-full border-2 border-white bg-gray-50 flex items-center justify-center text-[10px] font-bold text-gray-400 shadow-sm">
+                            <div className="w-9 h-9 rounded-2xl border-2 border-white bg-orange-50/80 flex items-center justify-center text-[10px] font-black text-orange-600 shadow-sm backdrop-blur-sm">
                                 +{uniqueAssignees.length - 4}
                             </div>
                         )}
                     </div>
 
-                    {/* Mini Progress */}
-                    <div className="flex flex-col items-end">
-                        <span className="text-[10px] font-bold text-gray-400 mb-1">REALIZACJA</span>
-                        <div className="flex items-center gap-1.5">
-                            <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full"
-                                    style={{ width: `${totalExecutors > 0 ? (completedCount / totalExecutors) * 100 : 0}%` }}
+                    <div className="flex flex-col items-end gap-2">
+                        <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest opacity-60">Realizacja</span>
+                        <div className="flex items-center gap-3">
+                            <div className="w-20 h-2 bg-white/40 rounded-full overflow-hidden border border-white/20">
+                                <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${totalExecutors > 0 ? (completedCount / totalExecutors) * 100 : 0}%` }}
+                                    className="h-full bg-gradient-to-r from-emerald-400 to-green-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.3)]"
                                 />
                             </div>
-                            <span className="text-[10px] font-bold text-gray-600">{completedCount}/{totalExecutors}</span>
+                            <span className="text-[10px] font-black text-foreground">{completedCount}/{totalExecutors}</span>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+
+            {/* Hover Icon */}
+            <div className="absolute top-8 right-8 p-2 bg-white/40 rounded-xl border border-white/60 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0">
+                <ChevronRight size={18} className="text-primary" />
+            </div>
+        </motion.div>
     );
 };
 
@@ -551,28 +561,39 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
 
     return (
         <DashboardLayout>
-            <div className="space-y-8 animate-slide-in">
-                {/* Header */}
-                <div className="flex flex-wrap justify-between items-end pb-4 border-b border-gray-100 gap-4">
-                    <div>
-                        <h1 className="text-4xl font-bold tracking-tight text-foreground">Zadania</h1>
-                        <p className="text-muted-foreground font-medium mt-1">
-                            {isAdmin ? "Pełna kontrola nad wszystkimi zespołami" :
-                                isCoord ? "Zarządzaj zespołem i weryfikuj zgłoszenia" :
-                                    "Przeglądaj i wykonuj swoje zadania"}
+            <div className="space-y-10 animate-slide-in pb-10">
+                {/* Header Section */}
+                <div className="glass-panel p-10 rounded-[32px] flex flex-wrap justify-between items-center gap-8 relative overflow-hidden">
+                    {/* Background Glow */}
+                    <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/10 rounded-full blur-[80px]" />
+
+                    <div className="relative z-10 space-y-2">
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                                <CheckCircle size={24} />
+                            </div>
+                            <h1 className="text-4xl font-black tracking-tight text-foreground">Zadania</h1>
+                        </div>
+                        <p className="text-muted-foreground font-medium">
+                            {isAdmin ? "Pełna kontrola nad wszystkimi zespołami i procesami" :
+                                isCoord ? "Zarządzaj zespołem i weryfikuj zgłoszenia uczestników" :
+                                    "Przeglądaj i wykonuj przypisane Ci zadania"}
                         </p>
                     </div>
 
-                    {(isAdmin || (isCoord && coordViewMode === "MANAGEMENT")) && (
-                        <button
-                            onClick={() => setShowAddForm(!showAddForm)}
-                            className="lux-btn flex items-center gap-2"
-                        >
-                            <Plus size={20} /> Nowe zadanie
-                        </button>
-                    )}
-
-
+                    <div className="relative z-10 flex flex-wrap gap-4 items-center">
+                        {(isAdmin || (isCoord && coordViewMode === "MANAGEMENT")) && (
+                            <button
+                                onClick={() => setShowAddForm(true)}
+                                className="lux-btn flex items-center gap-2 group bg-primary hover:bg-primary/90 shadow-primary/20"
+                            >
+                                <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center group-hover:rotate-90 transition-transform">
+                                    <Plus size={14} />
+                                </div>
+                                Nowe zadanie
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -909,129 +930,145 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
 
             {/* --- UNIFIED ADMIN/COORDINATOR VIEW --- */}
 
-            {
-                (isAdmin || isCoord) && (
-                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                        {/* LEFT COLUMN: NAVIGATION (ADMIN TEAMS / COORD MODES) */}
-                        {(isAdmin || (isCoord && settings?.coordinatorTasks)) && (
-                            <div className="lg:col-span-1 space-y-4">
-                                <h2 className="text-xl font-bold text-foreground/80 mb-4 flex items-center gap-2 px-2">
-                                    <Folder size={20} className="text-primary" />
+            {(isAdmin || isCoord) && (
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                    {/* LEFT COLUMN: NAVIGATION (ADMIN TEAMS / COORD MODES) */}
+                    {(isAdmin || (isCoord && settings?.coordinatorTasks)) && (
+                        <div className="lg:col-span-1 space-y-6">
+                            <div className="flex items-center gap-3 px-2 mb-2">
+                                <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                    <Folder size={18} />
+                                </div>
+                                <h2 className="text-xl font-black tracking-tight text-foreground">
                                     {isAdmin ? "Zespoły" : "Moje widoki"}
                                 </h2>
+                            </div>
 
+                            <div className="space-y-3">
                                 {isAdmin ? (
                                     <>
                                         {/* All Teams Option */}
                                         <button
                                             onClick={() => setAdminTeamFilter("ALL")}
                                             className={cn(
-                                                "w-full text-left p-6 rounded-[28px] transition-all flex items-center justify-between border-2",
-                                                adminTeamFilter === "ALL" ? "bg-white shadow-xl border-primary/20" : "bg-white border-transparent hover:border-gray-100 shadow-sm"
+                                                "w-full text-left p-5 rounded-[28px] transition-all flex items-center justify-between group",
+                                                adminTeamFilter === "ALL"
+                                                    ? "glass-panel bg-white/60 border-primary/20 shadow-lg scale-[1.02]"
+                                                    : "hover:bg-white/40 border border-transparent"
                                             )}
                                         >
                                             <div className="flex items-center gap-4">
-                                                <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg", adminTeamFilter === "ALL" ? "lux-gradient" : "bg-gray-100 text-gray-400")}>
+                                                <div className={cn(
+                                                    "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-sm",
+                                                    adminTeamFilter === "ALL" ? "bg-primary text-white scale-110 shadow-primary/20" : "bg-white/60 text-muted-foreground group-hover:bg-white group-hover:text-primary"
+                                                )}>
                                                     <Users size={22} />
                                                 </div>
                                                 <div>
-                                                    <span className="font-bold text-gray-800 block">Wszystkie zespoły</span>
-                                                    <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">
-                                                        {initialTasks.length} zadań łącznie
+                                                    <span className={cn("font-bold block transition-colors", adminTeamFilter === "ALL" ? "text-primary" : "text-foreground")}>Wszystkie</span>
+                                                    <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest opacity-60">
+                                                        Suma: {initialTasks.length}
                                                     </span>
                                                 </div>
                                             </div>
                                         </button>
+
                                         {allTeams.map((team: any) => {
                                             const teamTaskCount = initialTasks.filter(t => t.teamId === team.id).length;
+                                            const isActive = adminTeamFilter === team.id;
                                             return (
                                                 <button
                                                     key={team.id}
                                                     onClick={() => setAdminTeamFilter(team.id)}
                                                     className={cn(
-                                                        "w-full text-left p-6 rounded-[28px] transition-all flex items-center justify-between border-2",
-                                                        adminTeamFilter === team.id ? "bg-white shadow-xl border-primary/20" : "bg-white border-transparent hover:border-gray-100 shadow-sm"
+                                                        "w-full text-left p-5 rounded-[28px] transition-all flex items-center justify-between group",
+                                                        isActive
+                                                            ? "glass-panel bg-white/60 border-primary/20 shadow-lg scale-[1.02]"
+                                                            : "hover:bg-white/40 border border-transparent"
                                                     )}
                                                 >
                                                     <div className="flex items-center gap-4">
                                                         <div
-                                                            className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg transition-all duration-300", adminTeamFilter === team.id ? "scale-105" : "bg-gray-100 text-gray-400")}
-                                                            style={adminTeamFilter === team.id ? { backgroundColor: team.kolor || '#5400FF', background: `linear-gradient(135deg, ${team.kolor || '#5400FF'} 0%, ${team.kolor ? team.kolor + 'dd' : '#704df5'} 100%)` } : {}}
+                                                            className={cn(
+                                                                "w-12 h-12 rounded-2xl flex items-center justify-center text-white transition-all duration-500 shadow-sm",
+                                                                isActive ? "scale-110" : "bg-white/60 text-muted-foreground group-hover:bg-white"
+                                                            )}
+                                                            style={isActive ? {
+                                                                backgroundColor: team.kolor || '#5400FF',
+                                                                boxShadow: `0 10px 20px -5px ${team.kolor || '#5400FF'}40`
+                                                            } : {}}
                                                         >
-                                                            <Folder size={22} style={adminTeamFilter !== team.id ? { color: team.kolor || '#9ca3af' } : {}} />
+                                                            <Folder size={22} style={!isActive ? { color: team.kolor || '#9ca3af' } : {}} />
                                                         </div>
                                                         <div>
-                                                            <span className="font-bold text-gray-800 block">{team.nazwa}</span>
-                                                            <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">
+                                                            <span className={cn("font-bold block transition-colors", isActive ? "text-foreground" : "text-foreground/80")}>{team.nazwa}</span>
+                                                            <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest opacity-60">
                                                                 {teamTaskCount} zadań
                                                             </span>
                                                         </div>
                                                     </div>
                                                     {teamTaskCount > 0 && (
-                                                        <div className="w-8 h-8 flex items-center justify-center rounded-full font-bold text-xs transition-colors"
-                                                            style={{
-                                                                backgroundColor: adminTeamFilter === team.id ? 'rgba(255,255,255,0.2)' : (team.kolor ? team.kolor + '20' : '#f3f4f6'),
-                                                                color: adminTeamFilter === team.id ? 'white' : (team.kolor || '#5400FF')
-                                                            }}
-                                                        >
+                                                        <div className={cn(
+                                                            "w-7 h-7 flex items-center justify-center rounded-xl font-black text-[10px] transition-all duration-500",
+                                                            isActive ? "bg-white/60 text-foreground" : "bg-white/40 text-muted-foreground group-hover:bg-white"
+                                                        )}>
                                                             {teamTaskCount}
                                                         </div>
                                                     )}
                                                 </button>
                                             );
                                         })}
-                                        {/* New Admin Folder for Coordinator Tasks */}
+
+                                        <div className="h-px bg-white/40 mx-4 my-2" />
+
+                                        {/* Folder for Coordinator Tasks */}
                                         {settings?.coordinatorTasks && (
                                             <button
-                                                onClick={() => setAdminTeamFilter(-1)} // Use -1 to denote "Coordinator Tasks" folder
+                                                onClick={() => setAdminTeamFilter(-1)}
                                                 className={cn(
-                                                    "w-full text-left p-6 rounded-[28px] transition-all flex items-center justify-between border-2",
-                                                    adminTeamFilter === -1 ? "bg-white shadow-xl border-primary/20" : "bg-white border-transparent hover:border-gray-100 shadow-sm"
+                                                    "w-full text-left p-5 rounded-[28px] transition-all flex items-center justify-between group",
+                                                    adminTeamFilter === -1
+                                                        ? "glass-panel bg-white/60 border-primary/20 shadow-lg scale-[1.02]"
+                                                        : "hover:bg-white/40 border border-transparent"
                                                 )}
                                             >
                                                 <div className="flex items-center gap-4">
-                                                    <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg", adminTeamFilter === -1 ? "lux-gradient" : "bg-gray-100 text-gray-400")}>
+                                                    <div className={cn(
+                                                        "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-sm",
+                                                        adminTeamFilter === -1 ? "bg-purple-600 text-white scale-110 shadow-purple-500/20" : "bg-white/60 text-muted-foreground group-hover:bg-white group-hover:text-purple-600"
+                                                    )}>
                                                         <Users size={22} />
                                                     </div>
                                                     <div>
-                                                        <span className="font-bold text-gray-800 block">Zadania koordynatorek</span>
-                                                        <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">
-                                                            {initialTasks.filter(t => t.executions.some((e: any) => {
-                                                                const userTeamRole = t.teamId
-                                                                    ? e.user?.zespoly?.find((ut: any) => ut.teamId === t.teamId)?.rola
-                                                                    : e.user?.rola;
-                                                                return userTeamRole?.toUpperCase() === "KOORDYNATORKA";
-                                                            })).length} zadań
+                                                        <span className={cn("font-bold block transition-colors", adminTeamFilter === -1 ? "text-purple-700" : "text-foreground")}>Koordynatorki</span>
+                                                        <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest opacity-60">
+                                                            Specjalne
                                                         </span>
                                                     </div>
                                                 </div>
                                             </button>
                                         )}
-                                        {/* New Admin Folder for Mixed Tasks */}
+
                                         <button
-                                            onClick={() => setAdminTeamFilter(-2)} // -2 for Mixed Tasks
+                                            onClick={() => setAdminTeamFilter(-2)}
                                             className={cn(
-                                                "w-full text-left p-6 rounded-[28px] transition-all flex items-center justify-between border-2",
-                                                adminTeamFilter === -2 ? "bg-white shadow-xl border-primary/20" : "bg-white border-transparent hover:border-gray-100 shadow-sm"
+                                                "w-full text-left p-5 rounded-[28px] transition-all flex items-center justify-between group",
+                                                adminTeamFilter === -2
+                                                    ? "glass-panel bg-white/60 border-primary/20 shadow-lg scale-[1.02]"
+                                                    : "hover:bg-white/40 border border-transparent"
                                             )}
                                         >
                                             <div className="flex items-center gap-4">
-                                                <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg", adminTeamFilter === -2 ? "lux-gradient" : "bg-gray-100 text-gray-400")}>
+                                                <div className={cn(
+                                                    "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-sm",
+                                                    adminTeamFilter === -2 ? "bg-indigo-600 text-white scale-110 shadow-indigo-500/20" : "bg-white/60 text-muted-foreground group-hover:bg-white group-hover:text-indigo-600"
+                                                )}>
                                                     <Users size={22} />
                                                 </div>
                                                 <div>
-                                                    <span className="font-bold text-gray-800 block">Zadania mieszane</span>
-                                                    <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">
-                                                        {initialTasks.filter(t => {
-                                                            const isSelectedPeople = t.typPrzypisania === 'OSOBY' || (t.assignments && t.assignments.length > 0);
-                                                            if (!isSelectedPeople) return false;
-                                                            return t.executions.some((e: any) => {
-                                                                const userTeamRole = t.teamId
-                                                                    ? e.user?.zespoly?.find((ut: any) => ut.teamId === t.teamId)?.rola
-                                                                    : e.user?.rola;
-                                                                return userTeamRole?.toUpperCase() === "UCZESTNICZKA";
-                                                            });
-                                                        }).length} zadań
+                                                    <span className={cn("font-bold block transition-colors", adminTeamFilter === -2 ? "text-indigo-700" : "text-foreground")}>Mieszane</span>
+                                                    <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest opacity-60">
+                                                        Wybrane osoby
                                                     </span>
                                                 </div>
                                             </div>
@@ -1039,21 +1076,26 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                     </>
                                 ) : (
                                     <>
-                                        {/* Coordinator Sidebar (Management vs Personal) */}
+                                        {/* Coordinator Sidebar */}
                                         <button
                                             onClick={() => setCoordViewMode("MANAGEMENT")}
                                             className={cn(
-                                                "w-full text-left p-6 rounded-[28px] transition-all border-2",
-                                                coordViewMode === "MANAGEMENT" ? "bg-white shadow-xl border-primary/20" : "bg-white border-transparent hover:border-gray-100 shadow-sm"
+                                                "w-full text-left p-5 rounded-[28px] transition-all flex items-center group",
+                                                coordViewMode === "MANAGEMENT"
+                                                    ? "glass-panel bg-white/60 border-primary/20 shadow-lg scale-[1.02]"
+                                                    : "hover:bg-white/40 border border-transparent"
                                             )}
                                         >
                                             <div className="flex items-center gap-4">
-                                                <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg", coordViewMode === "MANAGEMENT" ? "lux-gradient" : "bg-gray-100 text-gray-400")}>
+                                                <div className={cn(
+                                                    "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-sm",
+                                                    coordViewMode === "MANAGEMENT" ? "bg-primary text-white scale-110 shadow-primary/20" : "bg-white/60 text-muted-foreground group-hover:bg-white group-hover:text-primary"
+                                                )}>
                                                     <Users size={22} />
                                                 </div>
                                                 <div>
-                                                    <span className="font-bold text-gray-800 block">Zarządzanie</span>
-                                                    <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">
+                                                    <span className={cn("font-bold block transition-colors", coordViewMode === "MANAGEMENT" ? "text-primary" : "text-foreground")}>Zarządzanie</span>
+                                                    <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest opacity-60">
                                                         Weryfikacja zespołu
                                                     </span>
                                                 </div>
@@ -1063,18 +1105,23 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                         <button
                                             onClick={() => setCoordViewMode("PERSONAL")}
                                             className={cn(
-                                                "w-full text-left p-6 rounded-[28px] transition-all border-2",
-                                                coordViewMode === "PERSONAL" ? "bg-white shadow-xl border-primary/20" : "bg-white border-transparent hover:border-gray-100 shadow-sm"
+                                                "w-full text-left p-5 rounded-[28px] transition-all flex items-center group",
+                                                coordViewMode === "PERSONAL"
+                                                    ? "glass-panel bg-white/60 border-primary/20 shadow-lg scale-[1.02]"
+                                                    : "hover:bg-white/40 border border-transparent"
                                             )}
                                         >
                                             <div className="flex items-center gap-4">
-                                                <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg", coordViewMode === "PERSONAL" ? "lux-gradient" : "bg-gray-100 text-gray-400")}>
+                                                <div className={cn(
+                                                    "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-sm",
+                                                    coordViewMode === "PERSONAL" ? "bg-orange-600 text-white scale-110 shadow-orange-500/20" : "bg-white/60 text-muted-foreground group-hover:bg-white group-hover:text-orange-600"
+                                                )}>
                                                     <CheckCircle size={22} />
                                                 </div>
                                                 <div>
-                                                    <span className="font-bold text-gray-800 block">Moje zadania</span>
-                                                    <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">
-                                                        {doZrobienia.length} do zrobienia
+                                                    <span className={cn("font-bold block transition-colors", coordViewMode === "PERSONAL" ? "text-orange-700" : "text-foreground")}>Moje zadania</span>
+                                                    <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest opacity-60">
+                                                        {doZrobienia.length} aktywnych
                                                     </span>
                                                 </div>
                                             </div>
@@ -1082,137 +1129,137 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                     </>
                                 )}
                             </div>
-                        )}
+                        </div>
+                    )}
 
-                        {/* RIGHT COLUMN: TASKS CONTENT */}
-                        <div className={cn("space-y-6", (isAdmin || (isCoord && settings?.coordinatorTasks)) ? "lg:col-span-3" : "lg:col-span-4")}>
-                            {showParticipantView ? (
-                                /* --- PARTICIPANT VIEW FOR COORDINATOR --- */
-                                <div className="bg-white rounded-[32px] shadow-[0_10px_30px_rgba(0,0,0,0.03)] border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-right-4">
-                                    <div className="flex bg-gray-50/50 p-6 border-b border-gray-100">
-                                        <div className="flex flex-col items-start">
-                                            <h2 className="lux-kicker mb-1">Moje zadania osobiste</h2>
-                                            <div className="h-1 w-8 bg-primary/20 rounded-full" />
-                                        </div>
+                    {/* RIGHT COLUMN: TASKS CONTENT */}
+                    <div className={cn("space-y-6", (isAdmin || (isCoord && settings?.coordinatorTasks)) ? "lg:col-span-3" : "lg:col-span-4")}>
+                        {showParticipantView ? (
+                            /* --- PARTICIPANT VIEW FOR COORDINATOR --- */
+                            <div className="glass-panel rounded-[40px] overflow-hidden border-white/40 animate-in fade-in slide-in-from-right-4">
+                                <div className="flex bg-white/40 p-10 border-b border-white/40 items-center justify-between">
+                                    <div className="space-y-1">
+                                        <h2 className="text-2xl font-black tracking-tight text-foreground">Moje zadania osobiste</h2>
+                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-60">Prywatna lista do wykonania</p>
                                     </div>
-                                    <div className="flex bg-gray-50/50 p-2 border-b border-gray-100">
-                                        {[
-                                            { id: "do-zrobienia", label: "Do zrobienia", count: doZrobienia.length },
-                                            { id: "wykonane", label: "Wykonane", count: wykonane.length },
-                                            { id: "do-poprawy", label: "Do poprawy", count: doPoprawy.length }
-                                        ].map((tab) => (
+                                    <div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center text-orange-600 border border-orange-500/20">
+                                        <Clock size={24} />
+                                    </div>
+                                </div>
+
+                                <div className="flex bg-white/20 p-2 border-b border-white/40">
+                                    {[
+                                        { id: "do-zrobienia", label: "Do zrobienia", count: doZrobienia.length, icon: Clock },
+                                        { id: "wykonane", label: "Wykonane", count: wykonane.length, icon: History },
+                                        { id: "do-poprawy", label: "Do poprawy", count: doPoprawy.length, icon: AlertTriangle }
+                                    ].map((tab) => {
+                                        const Icon = tab.icon;
+                                        const isActive = activeTab === tab.id;
+                                        return (
                                             <button
                                                 key={tab.id}
                                                 onClick={() => setActiveTab(tab.id)}
                                                 className={cn(
-                                                    "flex-1 py-4 font-bold transition-all rounded-2xl flex items-center justify-center gap-3 relative",
-                                                    activeTab === tab.id ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:bg-white/50"
+                                                    "flex-1 py-5 rounded-[22px] flex items-center justify-center gap-3 transition-all relative group",
+                                                    isActive ? "bg-white text-primary shadow-lg scale-[1.02]" : "text-muted-foreground hover:bg-white/40"
                                                 )}
                                             >
-                                                {tab.label}
-                                                <span className={cn("px-2.5 py-0.5 rounded-full text-[10px]", activeTab === tab.id ? "bg-primary text-white" : "bg-gray-200 text-gray-600")}>{tab.count}</span>
-
-                                                {/* Sort Icon for Active Tab */}
-                                                {activeTab === tab.id && (
-                                                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); setIsSortMenuOpen(!isSortMenuOpen); }}
-                                                            className="p-1.5 hover:bg-gray-100 rounded-lg text-primary transition-colors"
-                                                        >
-                                                            <Filter size={14} />
-                                                        </button>
-
-                                                        {isSortMenuOpen && (
-                                                            <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-xl z-[50] p-2 flex flex-col gap-1 text-left animate-slide-in">
-                                                                <span className="text-[9px] font-black uppercase text-muted-foreground px-2 py-1">Priorytet</span>
-                                                                <button onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "PRIORYTET", direction: "DESC" }); setIsSortMenuOpen(false); }} className={cn("px-2 py-1.5 text-xs font-bold rounded-lg text-left hover:bg-primary/5 hover:text-primary", sortConfig.field === "PRIORYTET" && sortConfig.direction === "DESC" && "bg-primary/10 text-primary")}>
-                                                                    Najwyższy (Malejąco)
-                                                                </button>
-                                                                <button onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "PRIORYTET", direction: "ASC" }); setIsSortMenuOpen(false); }} className={cn("px-2 py-1.5 text-xs font-bold rounded-lg text-left hover:bg-primary/5 hover:text-primary", sortConfig.field === "PRIORYTET" && sortConfig.direction === "ASC" && "bg-primary/10 text-primary")}>
-                                                                    Najniższy (Rosnąco)
-                                                                </button>
-
-                                                                <div className="h-px bg-gray-100 my-1" />
-
-                                                                <span className="text-[9px] font-black uppercase text-muted-foreground px-2 py-1">Termin</span>
-                                                                <button onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "TERMIN", direction: "ASC" }); setIsSortMenuOpen(false); }} className={cn("px-2 py-1.5 text-xs font-bold rounded-lg text-left hover:bg-primary/5 hover:text-primary", sortConfig.field === "TERMIN" && sortConfig.direction === "ASC" && "bg-primary/10 text-primary")}>
-                                                                    Najbliższy (Rosnąco)
-                                                                </button>
-                                                                <button onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "TERMIN", direction: "DESC" }); setIsSortMenuOpen(false); }} className={cn("px-2 py-1.5 text-xs font-bold rounded-lg text-left hover:bg-primary/5 hover:text-primary", sortConfig.field === "TERMIN" && sortConfig.direction === "DESC" && "bg-primary/10 text-primary")}>
-                                                                    Najdalszy (Malejąco)
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
+                                                <Icon size={18} className={cn("transition-colors", isActive ? "text-primary" : "opacity-40 group-hover:opacity-100")} />
+                                                <span className="font-black text-[11px] uppercase tracking-wider">{tab.label}</span>
+                                                <span className={cn(
+                                                    "px-2 py-0.5 rounded-lg text-[9px] font-black",
+                                                    isActive ? "bg-primary text-white" : "bg-white/40 text-muted-foreground"
+                                                )}>
+                                                    {tab.count}
+                                                </span>
                                             </button>
+                                        );
+                                    })}
+                                </div>
+
+                                <div className="p-10">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        {(activeTab === "do-zrobienia" ? doZrobienia : activeTab === "wykonane" ? wykonane : doPoprawy).map((t: any) => (
+                                            <ParticipantTaskCard
+                                                key={t.id}
+                                                task={t}
+                                                userId={userId}
+                                                onClick={() => { setSelectedTask(t); setSubmissionText(""); }}
+                                                status={activeTab}
+                                            />
                                         ))}
-                                    </div>
-                                    <div className="p-8">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
-                                            {(activeTab === "do-zrobienia" ? doZrobienia : activeTab === "wykonane" ? wykonane : doPoprawy).map((t: any) => (
-                                                <ParticipantTaskCard
-                                                    key={t.id}
-                                                    task={t}
-                                                    userId={userId}
-                                                    onClick={() => { setSelectedTask(t); setSubmissionText(""); }}
-                                                    status={activeTab}
-                                                />
-                                            ))}
-                                            {(activeTab === "do-zrobienia" ? doZrobienia : activeTab === "wykonane" ? wykonane : doPoprawy).length === 0 && (
-                                                <div className="col-span-full py-12 text-center text-muted-foreground font-medium italic opacity-50">Brak zadań w tej sekcji</div>
-                                            )}
-                                        </div>
+                                        {(activeTab === "do-zrobienia" ? doZrobienia : activeTab === "wykonane" ? wykonane : doPoprawy).length === 0 && (
+                                            <div className="col-span-full py-20 text-center">
+                                                <div className="w-16 h-16 rounded-full bg-white/40 flex items-center justify-center mx-auto mb-4 text-muted-foreground/20">
+                                                    <Layers size={32} />
+                                                </div>
+                                                <p className="text-muted-foreground font-medium italic opacity-60">Brak zadań w tej sekcji</p>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                            ) : (
-                                /* --- MANAGEMENT VIEW --- */
-                                <>
-                                    {/* DO SPRAWDZENIA - Verification Section with Tabs */}
-                                    <div className="mb-8">
-                                        <div className="flex flex-col items-start mb-4">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center">
-                                                    <Clock size={16} className="text-white" />
-                                                </div>
-                                                <h2 className="lux-kicker">Do sprawdzenia</h2>
+                            </div>
+                        ) : (
+                            /* --- MANAGEMENT VIEW --- */
+                            <>
+                                {/* DO SPRAWDZENIA - Verification Section */}
+                                <div className="space-y-6">
+                                    <div className="flex items-center justify-between px-2">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600 border border-amber-500/20">
+                                                <Clock size={18} />
                                             </div>
-                                            <div className="h-1 w-12 bg-amber-200 rounded-full" />
+                                            <h2 className="text-xl font-black tracking-tight text-foreground">Do sprawdzenia</h2>
                                         </div>
-
-                                        {/* Tab Buttons */}
-                                        <div className="flex bg-gray-100/80 rounded-2xl p-1.5 mb-6">
+                                        <div className="flex gap-2">
                                             {[
-                                                { id: "oczekujace", label: "Oczekujące", count: weryfikacja_oczekujace.length, color: "amber" },
-                                                { id: "zaakceptowane", label: "Zaakceptowane", count: weryfikacja_zaakceptowane.length, color: "emerald" },
-                                                { id: "doPoprawy", label: "Do poprawy", count: weryfikacja_doPoprawy.length, color: "red" }
-                                            ].map((tab) => (
+                                                { id: "oczekujace", color: "bg-amber-500" },
+                                                { id: "zaakceptowane", color: "bg-emerald-500" },
+                                                { id: "doPoprawy", color: "bg-red-500" }
+                                            ].map(t => (
                                                 <div
-                                                    key={tab.id}
-                                                    role="button"
-                                                    tabIndex={0}
-                                                    onClick={() => setVerificationTab(tab.id as any)}
-                                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setVerificationTab(tab.id as any); }}
+                                                    key={t.id}
                                                     className={cn(
-                                                        "flex-1 py-3 px-4 font-bold transition-all rounded-xl flex items-center justify-center gap-2 cursor-pointer text-sm",
-                                                        verificationTab === tab.id ? "bg-white text-gray-900 shadow-sm" : "text-muted-foreground hover:bg-white/50"
+                                                        "w-2 h-2 rounded-full transition-all duration-500",
+                                                        verificationTab === t.id ? t.color : "bg-white/40"
                                                     )}
-                                                >
-                                                    {tab.label}
-                                                    <span className={cn(
-                                                        "px-2 py-0.5 rounded-full text-[10px] font-black",
-                                                        verificationTab === tab.id
-                                                            ? tab.color === "amber" ? "bg-amber-500 text-white" :
-                                                                tab.color === "emerald" ? "bg-emerald-500 text-white" :
-                                                                    "bg-red-500 text-white"
-                                                            : "bg-gray-200 text-gray-600"
-                                                    )}>{tab.count}</span>
-                                                </div>
+                                                />
                                             ))}
                                         </div>
+                                    </div>
 
-                                        {/* Content based on selected tab */}
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
+                                    <div className="glass-panel p-2 rounded-[32px] border-white/40">
+                                        <div className="flex p-1 gap-1">
+                                            {[
+                                                { id: "oczekujace", label: "Do sprawdzenia", count: weryfikacja_oczekujace.length, icon: Clock, color: "text-amber-500" },
+                                                { id: "zaakceptowane", label: "Zatwierdzone", count: weryfikacja_zaakceptowane.length, icon: CheckCircle, color: "text-emerald-500" },
+                                                { id: "doPoprawy", label: "Do poprawy", count: weryfikacja_doPoprawy.length, icon: AlertTriangle, color: "text-red-500" }
+                                            ].map((tab) => {
+                                                const Icon = tab.icon;
+                                                const isActive = verificationTab === tab.id;
+                                                return (
+                                                    <button
+                                                        key={tab.id}
+                                                        onClick={() => setVerificationTab(tab.id as any)}
+                                                        className={cn(
+                                                            "flex-1 py-4 rounded-[20px] flex flex-col items-center justify-center gap-1.5 transition-all group",
+                                                            isActive ? "bg-white text-primary shadow-lg scale-[1.02]" : "text-muted-foreground hover:bg-white/40"
+                                                        )}
+                                                    >
+                                                        <Icon size={16} className={cn("transition-colors", isActive ? tab.color : "opacity-40 group-hover:opacity-100")} />
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] font-black uppercase tracking-widest">{tab.label}</span>
+                                                            <span className={cn(
+                                                                "px-1.5 py-0.5 rounded-md text-[8px] font-black",
+                                                                isActive ? "bg-primary/10 text-primary" : "bg-white/40 text-muted-foreground"
+                                                            )}>{tab.count}</span>
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+
+                                        <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                             {(verificationTab === "oczekujace" ? weryfikacja_oczekujace :
                                                 verificationTab === "zaakceptowane" ? weryfikacja_zaakceptowane :
                                                     weryfikacja_doPoprawy).map((exec: any) => (
@@ -1226,62 +1273,84 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                             {(verificationTab === "oczekujace" ? weryfikacja_oczekujace :
                                                 verificationTab === "zaakceptowane" ? weryfikacja_zaakceptowane :
                                                     weryfikacja_doPoprawy).length === 0 && (
-                                                    <div className="col-span-full py-12 text-center text-muted-foreground font-medium italic opacity-50">
-                                                        {verificationTab === "oczekujace" ? "Brak oczekujących zgłoszeń" :
-                                                            verificationTab === "zaakceptowane" ? "Brak zaakceptowanych zgłoszeń" :
-                                                                "Brak zgłoszeń do poprawy"}
+                                                    <div className="col-span-full py-12 text-center">
+                                                        <p className="text-muted-foreground text-xs font-medium italic opacity-60">
+                                                            Brak zgłoszeń w tej sekcji
+                                                        </p>
                                                     </div>
                                                 )}
                                         </div>
                                     </div>
+                                </div>
 
-
-                                    {/* ZLECONE - Assigned Tasks Section */}
-                                    <div className="flex justify-between items-end mb-6">
-                                        <div className="flex flex-col items-start">
-                                            <h2 className="lux-kicker mb-2">
-                                                {isAdmin ? (adminTeamFilter === "ALL" ? "Wszystkie zlecone zadania" : "Zadania wybranego zespołu") : "Zlecone zadania zespołu"}
+                                {/* ZLECONE - Assigned Tasks Section */}
+                                <div className="space-y-6 pt-10">
+                                    <div className="flex justify-between items-center px-2">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+                                                <Layers size={18} />
+                                            </div>
+                                            <h2 className="text-xl font-black tracking-tight text-foreground">
+                                                {isAdmin ? (adminTeamFilter === "ALL" ? "Wszystkie zadania" : "Zadania zespołu") : "Zlecone przez Ciebie"}
                                             </h2>
-                                            <div className="h-1 w-12 bg-primary/20 rounded-full" />
                                         </div>
 
-                                        {/* Sort Menu */}
                                         <div className="relative">
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); setIsSortMenuOpen(!isSortMenuOpen); }}
-                                                className="p-2 hover:bg-gray-100 rounded-lg text-primary transition-colors flex items-center gap-2 text-xs font-bold"
+                                                className="flex items-center gap-2 px-4 py-2 bg-white/60 hover:bg-white rounded-2xl text-[10px] font-black uppercase tracking-widest text-muted-foreground transition-all shadow-sm border border-white/40"
                                             >
-                                                <Filter size={16} />
+                                                <Filter size={14} className="text-primary" />
                                                 {sortConfig.field === "PRIORYTET" ? "Priorytet" : "Termin"}
-                                                {sortConfig.direction === "DESC" ? " ↓" : " ↑"}
+                                                <ChevronDown size={14} className={cn("transition-transform duration-300", isSortMenuOpen && "rotate-180")} />
                                             </button>
 
-                                            {isSortMenuOpen && (
-                                                <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-xl z-[50] p-2 flex flex-col gap-1 text-left animate-slide-in">
-                                                    <span className="text-[9px] font-black uppercase text-muted-foreground px-2 py-1">Priorytet</span>
-                                                    <button onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "PRIORYTET", direction: "DESC" }); setIsSortMenuOpen(false); }} className={cn("px-2 py-1.5 text-xs font-bold rounded-lg text-left hover:bg-primary/5 hover:text-primary", sortConfig.field === "PRIORYTET" && sortConfig.direction === "DESC" && "bg-primary/10 text-primary")}>
-                                                        Najwyższy (Malejąco)
-                                                    </button>
-                                                    <button onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "PRIORYTET", direction: "ASC" }); setIsSortMenuOpen(false); }} className={cn("px-2 py-1.5 text-xs font-bold rounded-lg text-left hover:bg-primary/5 hover:text-primary", sortConfig.field === "PRIORYTET" && sortConfig.direction === "ASC" && "bg-primary/10 text-primary")}>
-                                                        Najniższy (Rosnąco)
-                                                    </button>
+                                            <AnimatePresence>
+                                                {isSortMenuOpen && (
+                                                    <motion.div
+                                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                        className="absolute top-full right-0 mt-3 w-56 glass-panel p-2 z-[50] shadow-2xl border-white/60"
+                                                    >
+                                                        <div className="space-y-1">
+                                                            <span className="text-[9px] font-black uppercase text-muted-foreground/60 px-3 py-2 block tracking-widest">Sortuj wg priorytetu</span>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "PRIORYTET", direction: "DESC" }); setIsSortMenuOpen(false); }}
+                                                                className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "PRIORYTET" && sortConfig.direction === "DESC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
+                                                            >
+                                                                Najwyższy (Malejąco)
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "PRIORYTET", direction: "ASC" }); setIsSortMenuOpen(false); }}
+                                                                className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "PRIORYTET" && sortConfig.direction === "ASC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
+                                                            >
+                                                                Najniższy (Rosnąco)
+                                                            </button>
 
-                                                    <div className="h-px bg-gray-100 my-1" />
+                                                            <div className="h-px bg-white/40 my-2 mx-2" />
 
-                                                    <span className="text-[9px] font-black uppercase text-muted-foreground px-2 py-1">Termin</span>
-                                                    <button onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "TERMIN", direction: "ASC" }); setIsSortMenuOpen(false); }} className={cn("px-2 py-1.5 text-xs font-bold rounded-lg text-left hover:bg-primary/5 hover:text-primary", sortConfig.field === "TERMIN" && sortConfig.direction === "ASC" && "bg-primary/10 text-primary")}>
-                                                        Najbliższy (Rosnąco)
-                                                    </button>
-                                                    <button onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "TERMIN", direction: "DESC" }); setIsSortMenuOpen(false); }} className={cn("px-2 py-1.5 text-xs font-bold rounded-lg text-left hover:bg-primary/5 hover:text-primary", sortConfig.field === "TERMIN" && sortConfig.direction === "DESC" && "bg-primary/10 text-primary")}>
-                                                        Najdalszy (Malejąco)
-                                                    </button>
-                                                </div>
-                                            )}
+                                                            <span className="text-[9px] font-black uppercase text-muted-foreground/60 px-3 py-2 block tracking-widest">Sortuj wg terminu</span>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "TERMIN", direction: "ASC" }); setIsSortMenuOpen(false); }}
+                                                                className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "TERMIN" && sortConfig.direction === "ASC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
+                                                            >
+                                                                Najbliższy (Rosnąco)
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "TERMIN", direction: "DESC" }); setIsSortMenuOpen(false); }}
+                                                                className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "TERMIN" && sortConfig.direction === "DESC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
+                                                            >
+                                                                Najdalszy (Malejąco)
+                                                            </button>
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
                                         </div>
                                     </div>
 
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                         {zlecone.map((t: any) => (
                                             <AdminTaskTile
                                                 key={t.id}
@@ -1290,97 +1359,144 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                             />
                                         ))}
                                         {zlecone.length === 0 && (
-                                            <div className="col-span-full lux-card p-12 text-center text-muted-foreground font-medium italic border-dashed">
-                                                {isAdmin && adminTeamFilter !== "ALL" ? "Brak zadań w tym folderze" : "Brak zleconych zadań"}
+                                            <div className="col-span-full glass-panel p-20 text-center border-dashed border-white/40">
+                                                <div className="w-16 h-16 rounded-full bg-white/40 flex items-center justify-center mx-auto mb-4 text-muted-foreground/20">
+                                                    <Layers size={32} />
+                                                </div>
+                                                <p className="text-muted-foreground font-medium italic opacity-60">
+                                                    Brak zadań w tej sekcji
+                                                </p>
                                             </div>
                                         )}
                                     </div>
-                                </>
-                            )}
-                        </div>
+                                </div>
+                            </>
+                        )}
                     </div>
-                )
-            }
+                </div>
+            )}
 
             {/* --- 3. STANDARD PARTICIPANT VIEW (NON-COORD) --- */}
-            {
-                (!isAdmin && !isCoord) && (
-                    <div className="bg-white rounded-[32px] shadow-[0_10px_30px_rgba(0,0,0,0.03)] border border-gray-100 overflow-hidden">
-                        <div className="flex bg-gray-50/50 p-2 border-b border-gray-100">
-                            {[
-                                { id: "do-zrobienia", label: "Do zrobienia", count: doZrobienia.length },
-                                { id: "wykonane", label: "Wykonane", count: wykonane.length },
-                                { id: "do-poprawy", label: "Do poprawy", count: doPoprawy.length }
-                            ].map((tab) => (
+            {(!isAdmin && !isCoord) && (
+                <div className="glass-panel rounded-[40px] overflow-hidden border-white/40 animate-in fade-in slide-in-from-bottom-4">
+                    <div className="flex bg-white/40 p-10 border-b border-white/40 items-center justify-between">
+                        <div className="space-y-1">
+                            <h2 className="text-2xl font-black tracking-tight text-foreground">Twoje zadania</h2>
+                            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-60">Lista zadań do zrealizowania</p>
+                        </div>
+                        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+                            <CheckCircle size={24} />
+                        </div>
+                    </div>
+
+                    <div className="flex bg-white/20 p-2 border-b border-white/40">
+                        {[
+                            { id: "do-zrobienia", label: "Do zrobienia", count: doZrobienia.length, icon: Clock },
+                            { id: "wykonane", label: "Wykonane", count: wykonane.length, icon: History },
+                            { id: "do-poprawy", label: "Do poprawy", count: doPoprawy.length, icon: AlertTriangle }
+                        ].map((tab) => {
+                            const Icon = tab.icon;
+                            const isActive = activeTab === tab.id;
+                            return (
                                 <div
                                     key={tab.id}
                                     role="button"
-                                    tabIndex={0}
                                     onClick={() => setActiveTab(tab.id)}
-                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setActiveTab(tab.id); }}
                                     className={cn(
-                                        "flex-1 py-4 font-bold transition-all rounded-2xl flex items-center justify-center gap-3 relative cursor-pointer",
-                                        activeTab === tab.id ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:bg-white/50"
+                                        "flex-1 py-5 rounded-[22px] flex items-center justify-center gap-3 transition-all relative group cursor-pointer",
+                                        isActive ? "bg-white text-primary shadow-lg scale-[1.02]" : "text-muted-foreground hover:bg-white/40"
                                     )}
                                 >
-                                    {tab.label}
-                                    <span className={cn("px-2.5 py-0.5 rounded-full text-[10px]", activeTab === tab.id ? "bg-primary text-white" : "bg-gray-200 text-gray-600")}>{tab.count}</span>
+                                    <Icon size={18} className={cn("transition-colors", isActive ? "text-primary" : "opacity-40 group-hover:opacity-100")} />
+                                    <span className="font-black text-[11px] uppercase tracking-wider">{tab.label}</span>
+                                    <span className={cn(
+                                        "px-2 py-0.5 rounded-lg text-[9px] font-black",
+                                        isActive ? "bg-primary text-white" : "bg-white/40 text-muted-foreground"
+                                    )}>
+                                        {tab.count}
+                                    </span>
 
-                                    {/* Sort Icon for Active Tab */}
-                                    {activeTab === tab.id && (
+                                    {isActive && (
                                         <div className="absolute right-4 top-1/2 -translate-y-1/2">
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); setIsSortMenuOpen(!isSortMenuOpen); }}
-                                                className="p-1.5 hover:bg-gray-100 rounded-lg text-primary transition-colors"
+                                                className="p-1.5 hover:bg-primary/5 rounded-lg text-primary transition-colors"
                                             >
                                                 <Filter size={14} />
                                             </button>
 
-                                            {isSortMenuOpen && (
-                                                <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-xl z-[50] p-2 flex flex-col gap-1 text-left animate-slide-in">
-                                                    <span className="text-[9px] font-black uppercase text-muted-foreground px-2 py-1">Priorytet</span>
-                                                    <button onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "PRIORYTET", direction: "DESC" }); setIsSortMenuOpen(false); }} className={cn("px-2 py-1.5 text-xs font-bold rounded-lg text-left hover:bg-primary/5 hover:text-primary", sortConfig.field === "PRIORYTET" && sortConfig.direction === "DESC" && "bg-primary/10 text-primary")}>
-                                                        Najwyższy (Malejąco)
-                                                    </button>
-                                                    <button onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "PRIORYTET", direction: "ASC" }); setIsSortMenuOpen(false); }} className={cn("px-2 py-1.5 text-xs font-bold rounded-lg text-left hover:bg-primary/5 hover:text-primary", sortConfig.field === "PRIORYTET" && sortConfig.direction === "ASC" && "bg-primary/10 text-primary")}>
-                                                        Najniższy (Rosnąco)
-                                                    </button>
+                                            <AnimatePresence>
+                                                {isSortMenuOpen && (
+                                                    <motion.div
+                                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                        className="absolute top-full right-0 mt-3 w-56 glass-panel p-2 z-[50] shadow-2xl border-white/60"
+                                                    >
+                                                        <div className="space-y-1">
+                                                            <span className="text-[9px] font-black uppercase text-muted-foreground/60 px-3 py-2 block tracking-widest">Sortuj wg priorytetu</span>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "PRIORYTET", direction: "DESC" }); setIsSortMenuOpen(false); }}
+                                                                className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "PRIORYTET" && sortConfig.direction === "DESC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
+                                                            >
+                                                                Najwyższy (Malejąco)
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "PRIORYTET", direction: "ASC" }); setIsSortMenuOpen(false); }}
+                                                                className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "PRIORYTET" && sortConfig.direction === "ASC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
+                                                            >
+                                                                Najniższy (Rosnąco)
+                                                            </button>
 
-                                                    <div className="h-px bg-gray-100 my-1" />
+                                                            <div className="h-px bg-white/40 my-2 mx-2" />
 
-                                                    <span className="text-[9px] font-black uppercase text-muted-foreground px-2 py-1">Termin</span>
-                                                    <button onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "TERMIN", direction: "ASC" }); setIsSortMenuOpen(false); }} className={cn("px-2 py-1.5 text-xs font-bold rounded-lg text-left hover:bg-primary/5 hover:text-primary", sortConfig.field === "TERMIN" && sortConfig.direction === "ASC" && "bg-primary/10 text-primary")}>
-                                                        Najbliższy (Rosnąco)
-                                                    </button>
-                                                    <button onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "TERMIN", direction: "DESC" }); setIsSortMenuOpen(false); }} className={cn("px-2 py-1.5 text-xs font-bold rounded-lg text-left hover:bg-primary/5 hover:text-primary", sortConfig.field === "TERMIN" && sortConfig.direction === "DESC" && "bg-primary/10 text-primary")}>
-                                                        Najdalszy (Malejąco)
-                                                    </button>
-                                                </div>
-                                            )}
+                                                            <span className="text-[9px] font-black uppercase text-muted-foreground/60 px-3 py-2 block tracking-widest">Sortuj wg terminu</span>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "TERMIN", direction: "ASC" }); setIsSortMenuOpen(false); }}
+                                                                className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "TERMIN" && sortConfig.direction === "ASC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
+                                                            >
+                                                                Najbliższy (Rosnąco)
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "TERMIN", direction: "DESC" }); setIsSortMenuOpen(false); }}
+                                                                className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "TERMIN" && sortConfig.direction === "DESC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
+                                                            >
+                                                                Najdalszy (Malejąco)
+                                                            </button>
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
                                         </div>
                                     )}
                                 </div>
+                            );
+                        })}
+                    </div>
+
+                    <div className="p-10">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {(activeTab === "do-zrobienia" ? doZrobienia : activeTab === "wykonane" ? wykonane : doPoprawy).map((t: any) => (
+                                <ParticipantTaskCard
+                                    key={t.id}
+                                    task={t}
+                                    userId={userId}
+                                    onClick={() => { setSelectedTask(t); setSubmissionText(""); }}
+                                    status={activeTab}
+                                />
                             ))}
-                        </div>
-                        <div className="p-8">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                {(activeTab === "do-zrobienia" ? doZrobienia : activeTab === "wykonane" ? wykonane : doPoprawy).map((t: any) => (
-                                    <ParticipantTaskCard
-                                        key={t.id}
-                                        task={t}
-                                        userId={userId}
-                                        onClick={() => { setSelectedTask(t); setSubmissionText(""); }}
-                                        status={activeTab}
-                                    />
-                                ))}
-                                {(activeTab === "do-zrobienia" ? doZrobienia : activeTab === "wykonane" ? wykonane : doPoprawy).length === 0 && (
-                                    <div className="col-span-full py-12 text-center text-muted-foreground font-medium italic opacity-50">Brak zadań w tej sekcji</div>
-                                )}
-                            </div>
+                            {(activeTab === "do-zrobienia" ? doZrobienia : activeTab === "wykonane" ? wykonane : doPoprawy).length === 0 && (
+                                <div className="col-span-full py-20 text-center">
+                                    <div className="w-16 h-16 rounded-full bg-white/40 flex items-center justify-center mx-auto mb-4 text-muted-foreground/20">
+                                        <Layers size={32} />
+                                    </div>
+                                    <p className="text-muted-foreground font-medium italic opacity-60">Brak zadań w tej sekcji</p>
+                                </div>
+                            )}
                         </div>
                     </div>
-                )
-            }
+                </div>
+            )}
 
             {/* MODALS */}
 
@@ -1433,7 +1549,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                             <div key={att.id} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-2xl group transition-all hover:shadow-sm">
                                                                 <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold text-gray-700 hover:text-primary transition-colors overflow-hidden">
                                                                     <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-primary transition-all">
-                                                                        {att.url.startsWith('/uploads/') ? <Paperclip size={14} /> : <LinkIcon size={14} />}
+                                                                        {(att.url.startsWith('/uploads/') || att.url.includes('cloudinary.com')) ? <Paperclip size={14} /> : <LinkIcon size={14} />}
                                                                     </div>
                                                                     <span className="truncate">{att.nazwa}</span>
                                                                 </a>
@@ -1774,7 +1890,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                         <div key={att.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-2xl group transition-all hover:bg-white hover:shadow-sm">
                                                             <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold text-gray-700 hover:text-primary transition-colors overflow-hidden">
                                                                 <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-primary shadow-sm group-hover:bg-primary group-hover:text-white transition-all">
-                                                                    {att.url.startsWith('/uploads/') ? <Paperclip size={14} /> : <LinkIcon size={14} />}
+                                                                    {(att.url.startsWith('/uploads/') || att.url.includes('cloudinary.com')) ? <Paperclip size={14} /> : <LinkIcon size={14} />}
                                                                 </div>
                                                                 <span className="truncate">{att.nazwa}</span>
                                                             </a>
@@ -1935,8 +2051,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                     document.body
                 )
             }
-        </DashboardLayout >
-
+        </DashboardLayout>
     );
 }
 

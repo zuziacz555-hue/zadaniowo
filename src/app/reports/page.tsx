@@ -75,7 +75,7 @@ export default function MeetingReportsPage() {
             teams={teams}
             isAdmin={isAdmin}
             isCoord={isCoord}
-            currentUser={user.name}
+            user={user}
             onRefresh={handleRefresh}
         />
     );

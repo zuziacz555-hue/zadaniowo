@@ -39,6 +39,7 @@ const coordItems = [
 const adminItems = [
     { title: "Wszystkie Zespoły", href: "/admin-teams", icon: Crown },
     { title: "Użytkownicy", href: "/admin-users", icon: UserCog },
+    { title: "Sprawozdania", href: "/reports", icon: MessageSquareText },
     { title: "Ustawienia", href: "/admin-settings", icon: Settings },
 ];
 

@@ -207,3 +207,22 @@ export async function checkMissingReports(teamId: number) {
         return { success: false, error: 'Failed to check missing reports' }
     }
 }
+
+export async function deleteReport(id: number) {
+    try {
+        await prisma.report.delete({
+            where: { id }
+        });
+
+        revalidatePath('/reports')
+        revalidatePath('/meetings')
+        revalidatePath('/dashboard')
+
+        return { success: true }
+    } catch (error) {
+        console.error('Error deleting report:', error)
+        return { success: false, error: 'Failed to delete report' }
+    }
+}
+
+
