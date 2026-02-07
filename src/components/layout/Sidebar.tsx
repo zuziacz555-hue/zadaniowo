@@ -130,7 +130,7 @@ export default function Sidebar({ userName, userRole, activeTeamName }: SidebarP
                 <div className="p-8 flex items-center justify-between">
                     <Link href="/dashboard" className="flex items-center gap-3 group">
                         <img src="/app-logo.jpg" alt="Logo" className="w-10 h-10 rounded-xl shadow-md group-hover:rotate-3 transition-transform" />
-                        <span className="text-xl font-bold tracking-tight text-foreground">Zadaniowo</span>
+                        <span className="text-xl font-bold tracking-tight text-foreground">Zadaniowo (Wersja 2.0)</span>
                     </Link>
                     <button onClick={() => setIsMobileOpen(false)} className="lg:hidden p-1 opacity-50 hover:opacity-100">
                         <X size={20} />
