@@ -195,12 +195,14 @@ export default function Sidebar({ userName, userRole, activeTeamName }: SidebarP
 
                 {/* Footer / User Profile */}
                 <div className="p-6 border-t border-white/40 bg-white/30 backdrop-blur-md">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-purple-400 flex items-center justify-center text-white font-bold shadow-sm">
+                    <Link href="/profile" className="flex items-center gap-3 mb-4 group cursor-pointer">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-purple-400 flex items-center justify-center text-white font-bold shadow-sm group-hover:scale-105 transition-transform overflow-hidden relative">
+                            {/* Hover Shine */}
+                            <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
                             {displayUser.charAt(0)}
                         </div>
                         <div className="overflow-hidden">
-                            <p className="text-sm font-bold truncate text-foreground">{displayUser}</p>
+                            <p className="text-sm font-bold truncate text-foreground group-hover:text-primary transition-colors">{displayUser}</p>
                             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider truncate">
                                 {isAdmin ? "Administrator" : displayRole}
                             </p>
@@ -208,7 +210,8 @@ export default function Sidebar({ userName, userRole, activeTeamName }: SidebarP
                                 <p className="text-[10px] font-medium text-primary truncate">{displayTeam}</p>
                             )}
                         </div>
-                    </div>
+                        <Settings size={14} className="ml-auto text-gray-400 opacity-0 group-hover:opacity-100 transition-all" />
+                    </Link>
                     <button
                         onClick={handleLogout}
                         className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-white border border-gray-200 text-xs font-bold uppercase tracking-widest text-gray-500 hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-all"

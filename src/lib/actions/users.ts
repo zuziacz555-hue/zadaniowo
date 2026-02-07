@@ -102,9 +102,11 @@ export async function updateUser(id: number, data: Partial<{
         const caller = await prisma.user.findUnique({ where: { id: callerId } });
         if (!caller) return { success: false, error: 'Błąd autoryzacji.' };
 
-        // If changing name or password, caller MUST be system
-        if ((data.imieNazwisko || data.haslo) && caller.imieNazwisko !== "system") {
-            return { success: false, error: 'Tylko system może zmieniać nazwy i hasła użytkowników.' };
+        // If changing name or password, caller MUST be system OR the user themselves
+        if ((data.imieNazwisko || data.haslo)) {
+            if (caller.imieNazwisko !== "system" && caller.id !== id) {
+                return { success: false, error: 'Nie masz uprawnień do zmiany tych danych.' };
+            }
         }
 
         const user = await prisma.user.update({
