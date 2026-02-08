@@ -1423,11 +1423,11 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                     const Icon = tab.icon;
                                     const isActive = activeTab === tab.id;
                                     return (
-                                        <button
+                                        <div
                                             key={tab.id}
                                             onClick={() => setActiveTab(tab.id)}
                                             className={cn(
-                                                "flex-1 py-4 rounded-[22px] flex items-center justify-center gap-2.5 transition-all group relative",
+                                                "flex-1 py-4 rounded-[22px] flex items-center justify-center gap-2.5 transition-all group relative cursor-pointer",
                                                 isActive ? "bg-white text-primary shadow-lg" : "text-muted-foreground/60 hover:bg-white/40"
                                             )}
                                         >
@@ -1493,7 +1493,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                     </AnimatePresence>
                                                 </div>
                                             )}
-                                        </button>
+                                        </div>
                                     );
                                 })}
                             </div>

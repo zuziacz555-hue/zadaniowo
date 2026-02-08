@@ -164,6 +164,29 @@ export async function getChatContacts(userId: number, role: string) {
                     },
                     select: { id: true, imieNazwisko: true, rola: true }
                 });
+            } else if (uppercaseRole === 'DYREKTOR' || uppercaseRole === 'DYREKTORKA') {
+                // Dyrektor widzi:
+                // 1. Wszystkich Adminów
+                // 2. Wszystkie Koordynatorki
+                // 3. Uczestniczki ze swoich zespołów
+                baseContacts = await localPrisma.user.findMany({
+                    where: {
+                        OR: [
+                            { rola: { in: ['ADMIN', 'ADMINISTRATOR', 'KOORDYNATOR', 'KOORDYNATORKA'] } },
+                            {
+                                zespoly: {
+                                    some: {
+                                        teamId: { in: teamIds },
+                                        rola: { notIn: ['DYREKTOR', 'DYREKTORKA'] } // Exclude other directors to avoid double counting if they fall here, though not strictly necessary
+                                    }
+                                }
+                            },
+                            { id: { in: interactionIds } }
+                        ],
+                        id: { not: userId }
+                    },
+                    select: { id: true, imieNazwisko: true, rola: true }
+                });
             } else {
                 // Uczestniczka
                 baseContacts = await localPrisma.user.findMany({
@@ -173,7 +196,7 @@ export async function getChatContacts(userId: number, role: string) {
                                 zespoly: {
                                     some: {
                                         teamId: { in: teamIds },
-                                        rola: { in: ['KOORDYNATORKA', 'KOORDYNATOR', 'koordynatorka', 'koordynator'] }
+                                        rola: { in: ['KOORDYNATORKA', 'KOORDYNATOR', 'koordynatorka', 'koordynator', 'DYREKTOR', 'DYREKTORKA', 'dyrektor', 'dyrektorka'] }
                                     }
                                 }
                             },
