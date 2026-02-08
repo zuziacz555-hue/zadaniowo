@@ -1,7 +1,7 @@
 "use client";
 
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { cn, getContrastColor } from "@/lib/utils";
 import { staggerContainer, popIn, slideUp, scaleIn } from "@/lib/animations";
@@ -20,8 +20,62 @@ import {
     Trash2,
     Settings,
     XCircle,
-    Archive
+    Archive,
+    HelpCircle
 } from "lucide-react";
+
+const dashboardInstructions: Record<string, { admin?: string; coord?: string; user?: string }> = {
+    "Twoje Zadania": {
+        admin: "1. Nadzór: Widzisz każde zadanie w każdym zespole. | 2. Zarządzanie: Możesz edytować treść, zmieniać priorytety lub usuwać błędnie utworzone zadania. | 3. Raporty: Sprawdzaj historie wykonań wszystkich projektów i monitoruj ogólną efektywność.",
+        coord: "1. Zlecanie: Kliknij 'Nowe zadanie', wybierz zespół lub konkretne osoby. | 2. Sprawdzanie: Wejdź w zakładkę 'Weryfikacja' -> 'Oczekujące'. Kliknij kafel zadania, sprawdź treść i kliknij 'Zaakceptuj' lub 'Odrzuć'. | 3. Poprawki: Przy odrzucaniu zawsze wpisz co jest źle i wyznacz nowy termin. Monitoruj zakładkę 'Do Poprawy', aby widzieć, kto naprawia swoje błędy.",
+        user: "1. Nowe zadania: Znajdziesz je w 'Do zrobienia'. Kliknij 'Wyślij Rozwiązanie', wpisz treść i zatwierdź. | 2. Oczekiwanie: Po wysłaniu zadanie trafia do 'Wykonane' (czeka na sprawdzenie). | 3. Poprawki: Jeśli zadanie wróci do 'Do Poprawy' (będzie czerwone), kliknij je, przeczytaj uwagi od koordynatorki, popraw co trzeba i użyj przycisku 'Wyślij Poprawkę'. | 4. Koniec: Zaakceptowane zadania znikają z listy bieżącej."
+    },
+    "Kalendarz Spotkań": {
+        admin: "Przeglądaj harmonogramy wszystkich zespołów. Masz dostęp do linków online i frekwencji z każdego spotkania w systemie.",
+        coord: "1. Planowanie: Dodaj termin spotkania (data, godzina, miejsce/link). | 2. Pamiętaj: Po każdym spotkaniu masz 24h na uzupełnienie raportu w module 'Sprawozdania'.",
+        user: "Sprawdź datę i godzinę kolejnego spotkania Twojego zespołu. Jeśli spotkanie jest online, znajdziesz tu bezpośredni link do pokoju rozmów."
+    },
+    "Wydarzenia": {
+        admin: "Twórz duże projekty ogólnosystemowe (np. wspólne wyjazdy, szkolenia), na które mogą zapisywać się wszyscy użytkownicy.",
+        coord: "Organizuj lokalne wydarzenia dla swoich członków lub promuj inicjatywy, które wymagają specjalnego statusu i odrębnego planowania.",
+        user: "Lista nadchodzących atrakcji, akcji specjalnych i projektów, w których możesz wziąć udział razem ze swoim zespołem."
+    },
+    "Ogłoszenia": {
+        admin: "Wysyłaj 'newsy' do wszystkich osób w systemie. Idealne miejsce na zmiany w regulaminach lub ogólnodostępne informacje.",
+        coord: "Ważne komunikaty tylko dla Twojej grupy. Ogłoszenia pojawią się na głównej stronie każdego członka zespołu.",
+        user: "Bądź na bieżąco! Tu lądują najważniejsze informacje od Twojej koordynatorki oraz administracji."
+    },
+    "Czat": {
+        admin: "Rozpoczynaj rozmowy z kimkolwiek potrzebujesz. Możesz też odpowiadać na wiadomości od uczestniczek (masz 24h na odpowiedź od ich ostatniej wiadomości).",
+        coord: "Szybki kontakt z Twoim zespołem lub innymi koordynatorkami. Historię rozmów masz zawsze pod ręką.",
+        user: "Rozmawiaj z zespołem lub bezpośrednio z administracją. Pamiętaj o kulturze wypowiedzi – archiwa są przechowywane w systemie."
+    },
+    "Mój Zespół": {
+        coord: "Centrum zarządzania ludźmi. Tu dodajesz nowych członków, sprawdzasz kto jest najbardziej aktywny i mianujesz swoje zastępczynie.",
+        admin: "Zarządzaj zespołami. Zmieniaj nazwy, przypisuj kolory (motywy) i mianuj/zmieniaj koordynatorki w dowolnej chwili."
+    },
+    "Sprawozdania": {
+        coord: "BARDZO WAŻNE: Po każdym spotkaniu z kalendarza wejdź tutaj, wybierz spotkanie i opisz krótko co ustaliliście. Jeśli tego nie zrobisz, system będzie wysyłał Ci upomnienia!",
+        admin: "Archiwum wiedzy. Przeglądaj co działo się na spotkaniach poszczególnych zespołów i śledź postępy pracy u podstaw."
+    },
+    "Aplikacje": {
+        coord: "Tu widzisz kto chce dołączyć do Twojej grupy. Przeczytaj jego motywację i kliknij ikonę 'Zatwierdź' lub 'Odrzuć'. Decyzja naleźy do Ciebie!"
+    },
+    "Zespoły": {
+        admin: "Architektura systemu. Twórz nowe zespoły, ustalaj ich barwy i decyduj, czy dany zespół jest otwarty na rekrutację (Aplikacje)."
+    },
+    "Użytkownicy": {
+        admin: "Wszystkie konta w jednym miejscu. Twórz profile, nadawaj role (Admin/Uczestnik), resetuj zapomniane hasła i usuwaj nieaktywne konta."
+    },
+    "Archiwum": {
+        coord: "Przechchowuj tu stare zadania. Gdy projekt jest skończony, przenieś go tutaj, aby nie zaśmiecał listy 'Weryfikacja'.",
+        admin: "Wgląd w historyczne dane wszystkich zespołów. Nic w systemie nie ginie – tutaj odnajdziesz raporty i wyniki sprzed miesięcy."
+    },
+    "Ustawienia": {
+        coord: "Konfiguracja alertów dla Twojej grupy oraz decydowanie o specjalnych uprawnieniach (np. czy koordynatorzy też mają dostawać zadania).",
+        admin: "Rdzeń systemu. Ustawiaj limity czasowe, widoczność modułów i globalne parametry bezpieczeństwa dla całej platformy."
+    }
+};
 
 const menuItems = [
     {
@@ -108,6 +162,7 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
     const [applyingToTeam, setApplyingToTeam] = useState<any>(null);
     const [motivationText, setMotivationText] = useState("");
     const [unreadChatCount, setUnreadChatCount] = useState(0);
+    const [activeInstruction, setActiveInstruction] = useState<string | null>(null);
 
     const refreshSession = () => {
         const storedUser = localStorage.getItem("user");
@@ -775,11 +830,24 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
                                         )}>
                                             <item.icon size={24} />
                                         </div>
-                                        {item.href === "/tasks" && (
-                                            <div className="bg-white/50 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest text-foreground/70">
-                                                Priorytet
-                                            </div>
-                                        )}
+                                        <div className="flex items-center gap-2">
+                                            {item.href === "/tasks" && (
+                                                <div className="bg-white/50 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest text-foreground/70">
+                                                    Priorytet
+                                                </div>
+                                            )}
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    setActiveInstruction(item.title);
+                                                }}
+                                                className="w-8 h-8 rounded-full bg-white/40 hover:bg-white/60 flex items-center justify-center text-foreground/60 transition-all border border-white/40 hover:scale-110 active:scale-95"
+                                                title="Instrukcja obsługi"
+                                            >
+                                                <HelpCircle size={16} />
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <div>
@@ -974,6 +1042,57 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
                         </motion.div>
                     </div>
                 )}
+                {/* Instruction Modal */}
+                <AnimatePresence>
+                    {activeInstruction && (
+                        <div className="fixed inset-0 z-[10001] flex items-center justify-center p-6 bg-black/40 backdrop-blur-md">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                                className="lux-card-strong p-0 w-full max-w-lg overflow-hidden relative shadow-2xl"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <div className="p-8 border-b border-white/20 flex justify-between items-center bg-white/40">
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-3 bg-primary/10 rounded-2xl text-primary">
+                                            <HelpCircle size={24} />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-2xl font-black gradient-text tracking-tight uppercase">Instrukcja</h2>
+                                            <p className="text-sm font-bold text-muted-foreground opacity-60 uppercase tracking-widest">{activeInstruction}</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setActiveInstruction(null)}
+                                        className="p-2 hover:bg-white/60 rounded-full transition-all text-muted-foreground hover:text-foreground"
+                                    >
+                                        <XCircle size={24} />
+                                    </button>
+                                </div>
+                                <div className="p-10 space-y-6">
+                                    <div className="p-8 bg-white/60 rounded-[32px] border border-white shadow-inner relative overflow-hidden">
+                                        <div className="absolute top-0 left-0 w-2 h-full bg-primary/20" />
+                                        <p className="text-lg font-medium text-gray-800 leading-relaxed italic">
+                                            {isSystemAdmin
+                                                ? (dashboardInstructions[activeInstruction]?.admin || dashboardInstructions[activeInstruction]?.user || "Brak instrukcji dla administratora.")
+                                                : isTeamCoord
+                                                    ? (dashboardInstructions[activeInstruction]?.coord || dashboardInstructions[activeInstruction]?.user || "Brak instrukcji dla koordynatora.")
+                                                    : (dashboardInstructions[activeInstruction]?.user || "Brak instrukcji dla Twojej roli.")}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => setActiveInstruction(null)}
+                                        className="w-full lux-btn py-4 font-black uppercase tracking-widest shadow-lg shadow-primary/20"
+                                    >
+                                        Rozumiem
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>
+
             </motion.div>
         </DashboardLayout >
     );
