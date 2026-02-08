@@ -46,6 +46,13 @@ const adminItems = [
     { title: "Ustawienia", href: "/admin-settings", icon: Settings },
 ];
 
+const directorItems = [
+    { title: "Moje Zespoły", href: "/admin-teams", icon: Users }, // Used to be "Mój Zespół" but for Director it might be multiple
+    { title: "Użytkownicy", href: "/admin-users", icon: UserCog },
+    { title: "Sprawozdania", href: "/reports", icon: MessageSquareText },
+    // No Settings for now
+];
+
 interface SidebarProps {
     userName?: string;
     userRole?: string;
@@ -61,6 +68,21 @@ export default function Sidebar({ userName, userRole, activeTeamName }: SidebarP
     const [displayTeam, setDisplayTeam] = useState(activeTeamName || "");
     const [isAdmin, setIsAdmin] = useState(false);
     const [isCoord, setIsCoord] = useState(false);
+    const [isDirector, setIsDirector] = useState(false);
+    const [settings, setSettings] = useState<any>(null);
+
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const { getSystemSettings } = await import("@/lib/actions/settings");
+                const res = await getSystemSettings();
+                if (res.success) setSettings(res.data);
+            } catch (e) {
+                console.error("Failed to fetch settings", e);
+            }
+        };
+        fetchSettings();
+    }, []);
 
     // Sync state effects similar to Navbar
     useEffect(() => {
@@ -79,8 +101,14 @@ export default function Sidebar({ userName, userRole, activeTeamName }: SidebarP
                 setDisplayRole(role);
                 setDisplayTeam(team);
 
-                setIsAdmin(role === "ADMINISTRATOR" || role === "ADMIN");
+                setIsAdmin(role === "ADMINISTRATOR" || role === "ADMIN" || role === "SYSTEM");
                 setIsCoord(role === "KOORDYNATORKA" || role === "KOORDYNATOR");
+                // Check for Director role (either activeRole or user.role if system role)
+                const isDirectorRole = role === "DYREKTORKA" || role === "DYREKTOR";
+                // Also could be system role if activeRole is not set?
+                // The logic below sets isAdmin/isCoord based on `role` which comes from `activeRole` OR `user.role`.
+                // So `isDirector` should be similar.
+                setIsDirector(isDirectorRole);
             }
         };
 
@@ -168,16 +196,16 @@ export default function Sidebar({ userName, userRole, activeTeamName }: SidebarP
                     </div>
 
                     {/* Role Specific Menu */}
-                    {(isCoord || isAdmin) && (
+                    {(isCoord || isAdmin || isDirector) && (
                         <div className="space-y-2">
                             <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-4 mb-2">
                                 {isAdmin ? "Administracja" : "Zarządzanie"}
                             </h3>
-                            {(isAdmin ? adminItems : coordItems).map((item) => {
+                            {(isAdmin ? adminItems : (isDirector ? directorItems : coordItems)).map((item) => {
                                 const isActive = pathname === item.href;
                                 if ((item as any).excludeAdmin && isAdmin) return null;
-                                // Note: skipping detailed 'requiresApplications' check for simplicity in sidebar, 
-                                // dashboard handles logical access control.
+                                // Check if applications are enabled
+                                if ((item as any).requiresApplications && settings && !settings.enableCoordinatorApplications) return null;
 
                                 return (
                                     <Link
@@ -211,7 +239,7 @@ export default function Sidebar({ userName, userRole, activeTeamName }: SidebarP
                         <div className="overflow-hidden">
                             <p className="text-sm font-bold truncate text-foreground group-hover:text-primary transition-colors">{displayUser}</p>
                             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider truncate">
-                                {isAdmin ? "Administrator" : displayRole}
+                                {isAdmin ? "Administrator" : (isDirector ? "Dyrektorka" : displayRole)}
                             </p>
                             {!isAdmin && displayTeam && (
                                 <p className="text-[10px] font-medium text-primary truncate">{displayTeam}</p>

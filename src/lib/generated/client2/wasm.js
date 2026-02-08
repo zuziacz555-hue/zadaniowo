@@ -216,7 +216,8 @@ exports.Prisma.TaskScalarFieldEnum = {
   dataUtworzenia: 'dataUtworzenia',
   status: 'status',
   uwagiOdrzucenia: 'uwagiOdrzucenia',
-  poprawione: 'poprawione'
+  poprawione: 'poprawione',
+  isVisibleToAdmin: 'isVisibleToAdmin'
 };
 
 exports.Prisma.TaskAttachmentScalarFieldEnum = {
@@ -265,7 +266,9 @@ exports.Prisma.SystemSettingsScalarFieldEnum = {
   alertsRaporty: 'alertsRaporty',
   coordinatorTasks: 'coordinatorTasks',
   coordinatorTeamEditing: 'coordinatorTeamEditing',
-  coordinatorResignationAlerts: 'coordinatorResignationAlerts'
+  coordinatorResignationAlerts: 'coordinatorResignationAlerts',
+  enableDirectorRole: 'enableDirectorRole',
+  enableCoordinatorApplications: 'enableCoordinatorApplications'
 };
 
 exports.Prisma.NotificationScalarFieldEnum = {

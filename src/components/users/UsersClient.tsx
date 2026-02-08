@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -18,7 +18,7 @@ import { createUser, deleteUser, updateUser } from "@/lib/actions/users";
 import { addUserToTeam, removeUserFromTeam } from "@/lib/actions/teams";
 import { useRouter } from "next/navigation";
 
-export default function UsersClient({ initialUsers, initialTeams }: { initialUsers: any[], initialTeams: any[] }) {
+export default function UsersClient({ initialUsers, initialTeams, settings }: { initialUsers: any[], initialTeams: any[], settings: any }) {
     const router = useRouter();
     const [showAddForm, setShowAddForm] = useState(false);
     const [newUser, setNewUser] = useState({ name: "", password: "", role: "UCZESTNICZKA", teamId: "", teamRole: "uczestniczka" });
@@ -37,17 +37,34 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
         return matchesSearch && matchesRole && matchesTeam;
     });
 
-    // Get current user info from localStorage
-    const storedUser = typeof window !== 'undefined' ? localStorage.getItem("user") : null;
-    const currentUser = storedUser ? JSON.parse(storedUser) : null;
-    const currentUserId = currentUser?.id;
-    const isMainAdmin = currentUser?.name === "system";
+    // State for user info to prevent hydration mismatch
+    const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [isSystemUser, setIsSystemUser] = useState(false);
+
+    useEffect(() => {
+        const storedUser = localStorage.getItem("user");
+        const currentUser = storedUser ? JSON.parse(storedUser) : null;
+
+        if (currentUser) {
+            const cId = currentUser.id;
+            setCurrentUserId(cId);
+
+            const isSys = (currentUser.name || "").toLowerCase() === "system" || (currentUser.imieNazwisko || "").toLowerCase() === "system";
+            setIsSystemUser(isSys);
+
+            const currentUserData = initialUsers.find(u => u.id === cId);
+            const admin = isSys || currentUserData?.rola === "ADMINISTRATOR" || currentUserData?.rola === "ADMIN";
+            setIsAdmin(admin);
+        }
+    }, [initialUsers]);
 
     const getRoleBadgeClass = (rola: string) => {
         switch (rola.toUpperCase()) {
             case "ADMINISTRATOR": return "lux-badge lux-badge-danger";
             case "KOORDYNATORKA":
             case "KOORDYNATOR": return "lux-badge lux-badge-primary";
+            case "DYREKTORKA": return "lux-badge bg-purple-100 text-purple-700 border-purple-200";
             default: return "lux-badge";
         }
     };
@@ -56,6 +73,11 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
 
     const handleSaveUser = async () => {
         if (!newUser.name.trim() || !newUser.password.trim()) return;
+
+        if (!currentUserId) {
+            alert("Błąd autoryzacji. Spróbuj zalogować się ponownie.");
+            return;
+        }
 
         if (editingUserId) {
             // Update existing user
@@ -168,7 +190,7 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                         </div>
                         <p className="text-muted-foreground font-medium text-lg ml-1 opacity-70">Uporządkowane role i precyzyjna kontrola uprawnień w całym systemie.</p>
                     </div>
-                    {isMainAdmin && (
+                    {isAdmin && (
                         <button
                             onClick={() => {
                                 if (showAddForm) handleCancelEdit();
@@ -186,7 +208,7 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
 
                 {/* Add User Form */}
                 <AnimatePresence>
-                    {showAddForm && isMainAdmin && (
+                    {showAddForm && isAdmin && (
                         <motion.div
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: "auto", opacity: 1 }}
@@ -230,6 +252,7 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                                         >
                                             <option value="UCZESTNICZKA">uczestniczka</option>
                                             <option value="ADMINISTRATOR">administrator</option>
+                                            {settings?.enableDirectorRole && <option value="DYREKTORKA">dyrektorka</option>}
                                         </select>
                                     </div>
                                     {!editingUserId && newUser.role !== "ADMINISTRATOR" && (
@@ -254,6 +277,7 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                                                 >
                                                     <option value="uczestniczka">uczestniczka</option>
                                                     <option value="koordynatorka">koordynatorka</option>
+                                                    {settings?.enableDirectorRole && <option value="dyrektorka">dyrektorka</option>}
                                                 </select>
                                             </div>
                                         </>
@@ -298,6 +322,7 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                             <option value="">Wszystkie role</option>
                             <option value="UCZESTNICZKA">Uczestniczka</option>
                             <option value="ADMINISTRATOR">Administrator</option>
+                            {settings?.enableDirectorRole && <option value="DYREKTORKA">Dyrektorka</option>}
                         </select>
                     </div>
                     <div className="w-full md:w-72 space-y-3">
@@ -335,7 +360,7 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                             <thead>
                                 <tr className="lux-gradient-strong text-white">
                                     <th className="px-8 py-6 text-left text-[10px] font-black uppercase tracking-[0.2em] rounded-tl-[24px]">Użytkownik</th>
-                                    {isMainAdmin && <th className="px-8 py-6 text-left text-[10px] font-black uppercase tracking-[0.2em]">Hasło</th>}
+                                    {isSystemUser && <th className="px-8 py-6 text-left text-[10px] font-black uppercase tracking-[0.2em]">Hasło</th>}
                                     <th className="px-8 py-6 text-left text-[10px] font-black uppercase tracking-[0.2em]">Zespoły i role</th>
                                     <th className="px-8 py-6 text-left text-[10px] font-black uppercase tracking-[0.2em] rounded-tr-[24px]">Zarządzanie</th>
                                 </tr>
@@ -360,9 +385,9 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                                                     </div>
                                                 </div>
 
-                                                {((user.rola?.toUpperCase() !== "ADMINISTRATOR" || isMainAdmin) && user.imieNazwisko !== "system") ? (
+                                                {((user.rola?.toUpperCase() !== "ADMINISTRATOR" || isAdmin) && user.imieNazwisko !== "system") ? (
                                                     <div className="flex gap-2">
-                                                        {isMainAdmin && (
+                                                        {isAdmin && (
                                                             <button
                                                                 className="flex-1 py-3 px-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all bg-white border border-white/60 hover:border-primary/40 hover:text-primary shadow-sm"
                                                                 onClick={() => handleStartEdit(user)}
@@ -370,12 +395,15 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                                                                 Edytuj
                                                             </button>
                                                         )}
-                                                        <button
-                                                            className="flex-1 py-3 px-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all bg-red-50 text-red-500 border border-red-100 hover:bg-red-500 hover:text-white shadow-sm"
-                                                            onClick={() => handleDeleteUser(user.id)}
-                                                        >
-                                                            Usuń
-                                                        </button>
+                                                        {/* Only System can delete Admins. Admins can delete regular users. NEVER delete System. */}
+                                                        {((user.rola !== "ADMINISTRATOR" || isSystemUser) && (user.imieNazwisko || "").toLowerCase() !== "system" && (user.name || "").toLowerCase() !== "system") && (
+                                                            <button
+                                                                className="flex-1 py-3 px-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all bg-red-50 text-red-500 border border-red-100 hover:bg-red-500 hover:text-white shadow-sm"
+                                                                onClick={() => handleDeleteUser(user.id)}
+                                                            >
+                                                                Usuń
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 ) : (
                                                     <div className="w-full py-3 rounded-xl font-black text-[10px] uppercase tracking-widest bg-gray-100/30 text-gray-400 border border-gray-100 flex items-center justify-center cursor-not-allowed italic">
@@ -385,10 +413,11 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                                             </div>
                                         </td>
 
-                                        {isMainAdmin && (
+                                        {isSystemUser && (
                                             <td className="px-8 py-10 align-top">
                                                 <div className="font-bold text-sm bg-white/60 backdrop-blur-md px-4 py-3 rounded-xl border border-white shadow-inner text-primary/60 font-mono">
-                                                    {user.id === currentUserId ? "—" : user.haslo}
+                                                    {/* System sees ALL passwords. Admins see NONE. */}
+                                                    {user.haslo}
                                                 </div>
                                             </td>
                                         )}
@@ -419,7 +448,7 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                                         </td>
 
                                         <td className="px-8 py-10 align-top min-w-[340px]">
-                                            {user.rola?.toUpperCase() !== "ADMINISTRATOR" && (
+                                            {(user.rola?.toUpperCase() !== "ADMINISTRATOR" && (user.imieNazwisko || "").toLowerCase() !== "system") && (
                                                 <div className="bg-white/40 backdrop-blur-md p-8 rounded-[32px] border border-white/60 space-y-6 shadow-xl shadow-primary/5">
                                                     <div className="grid grid-cols-2 gap-4">
                                                         <div className="space-y-2">
@@ -448,6 +477,7 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                                                             >
                                                                 <option value="uczestniczka">uczestnik</option>
                                                                 <option value="koordynatorka">koordynator</option>
+                                                                {settings?.enableDirectorRole && <option value="dyrektorka">dyrektorka</option>}
                                                             </select>
                                                         </div>
                                                     </div>

@@ -58,22 +58,88 @@ export async function getTasks(filters?: {
             },
         };
 
-        // Role-based filtering - SIMPLIFIED AND FIXED
+        // Role-based filtering
         const isAdmin = role?.toUpperCase() === "ADMINISTRATOR" || role?.toUpperCase() === "ADMIN";
-        const isCoord = role?.toUpperCase() === "KOORDYNATORKA";
+        const isCoord = role?.toUpperCase() === "KOORDYNATORKA" || role?.toUpperCase() === "KOORDYNATOR";
+        const isDirector = role?.toUpperCase() === "DYREKTORKA" || role?.toUpperCase() === "DYREKTOR";
 
         if (isAdmin) {
-            // Admins see all tasks by default.
-            // If they are in a specific team view in the backend (optional filtering)
+            // Admins see:
+            // 1. Tasks they created
+            // 2. Tasks explicitly marked visible to admin
+            // 3. Tasks assigned to them (just in case)
+            query.where = {
+                OR: [
+                    { utworzonePrzezId: userId },
+                    { isVisibleToAdmin: true },
+                    { assignments: { some: { userId: userId } } }, // In case admin is assigned
+                    { executions: { some: { userId: userId } } }
+                ]
+            };
+
+            // If filtering by team, add that constraint
             if (teamId) {
                 query.where = {
-                    OR: [
-                        { teamId: teamId },
-                        { teamId: null }
+                    AND: [
+                        query.where,
+                        { OR: [{ teamId: teamId }, { teamId: null }] }
                     ]
                 };
             }
-            // If teamId is undefined, query.where is {}, which means "everything"
+        } else if (isDirector) {
+            // Directors see:
+            // 1. Tasks in their assigned teams
+            // 2. Tasks they created
+            // 3. Tasks assigned to them
+
+            // We need to know which teams the Director manages or is assigned to.
+            // Assuming the 'Director' role is assigned per team OR globally?
+            // The plan says "assigned to specific teams". 
+            // So we rely on `userId` to find the user's teams.
+            // But `getTasks` filters don't give us the user's full profile.
+            // We must assume the caller passes `teamId` if they want to filter by specific team.
+            // OR we fetch the user's teams here? Efficient? 
+            // Better: Director sees everything in teams where they are a member (as Dyrektorka or otherwise).
+
+            // For now, let's treat Director similar to Coordinator but with potentially more access if we implement 'My Teams' view.
+            // If Director is just a role in a team, it behaves like Coordinator for that team.
+
+            query.where = {
+                OR: [
+                    { teamId: teamId }, // If teamId matches one of their teams (frontend should filter/backend shold verify?)
+                    { assignments: { some: { userId: userId } } },
+                    { executions: { some: { userId: userId } } },
+                    { utworzonePrzezId: userId },
+                    // Also include tasks from ALL teams where this user is present?
+                    // To be safe and simple: The Director usually views "My Teams" page which passes a teamId.
+                    // If viewing "All Tasks":
+                    { team: { users: { some: { userId: userId } } } }
+                ]
+            };
+
+            if (teamId) {
+                // If specific team requested
+                query.where = {
+                    AND: [
+                        { OR: [{ teamId: teamId }, { teamId: null }] },
+                        {
+                            OR: [
+                                { team: { users: { some: { userId: userId } } } },
+                                { utworzonePrzezId: userId }
+                            ]
+                        }
+                    ]
+                };
+            } else {
+                // All tasks from their teams
+                query.where = {
+                    OR: [
+                        { team: { users: { some: { userId: userId } } } },
+                        { utworzonePrzezId: userId }
+                    ]
+                };
+            }
+
         } else if (isCoord) {
             // Coordinators see ALL tasks for their team OR tasks they are explicitly involved in
             query.where = {
@@ -85,6 +151,14 @@ export async function getTasks(filters?: {
                     { utworzonePrzezId: userId }
                 ]
             };
+            if (teamId) {
+                query.where = {
+                    AND: [
+                        { OR: [{ teamId: teamId }, { teamId: null }] },
+                        query.where
+                    ]
+                };
+            }
         } else {
             // Participants see:
             // 1. Tasks assigned to their team (or global) with typPrzypisania CALY_ZESPOL
@@ -198,7 +272,14 @@ export async function createTask(data: {
                 } : undefined,
                 attachments: attachments && attachments.length > 0 ? {
                     create: attachments
-                } : undefined
+                } : undefined,
+                isVisibleToAdmin: (data.utworzonePrzez || "").toLowerCase() === "system" || data.utworzonePrzezId === 1 || data.utworzonePrzez.includes("(Admin)") // Heuristic: Admin created -> Visible. Frontend can pass explicit flag if needed, but for now we assume Admin tasks are visible.
+                // Better approach: We should check if the user is Admin in backend, or pass a flag.
+                // Let's assume we default to FALSE for safety, and only set TRUE if we are sure?
+                // Actually, the requirement: "Admin sees only tasks he created".
+                // If he created it, it's visible to him naturally via `utworzonePrzezId` check in getTasks.
+                // So `isVisibleToAdmin` is mainly for "Forwarded tasks".
+                // So default `false` is FINE. Admin sees his own tasks via `utworzonePrzezId`.
             },
         });
 
@@ -532,5 +613,21 @@ export async function uploadTaskFile(formData: FormData) {
     } catch (error) {
         console.error('Error uploading file to Cloudinary:', error);
         return { success: false, error: 'Błąd podczas przesyłania pliku do chmury' };
+    }
+}
+
+export async function forwardTaskToAdmin(taskId: number) {
+    try {
+        await prisma.task.update({
+            where: { id: taskId },
+            data: { isVisibleToAdmin: true }
+        });
+        revalidatePath('/tasks');
+        revalidatePath('/admin-teams');
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error forwarding task to admin:', error);
+        return { success: false, error: 'Failed to forward task' };
     }
 }

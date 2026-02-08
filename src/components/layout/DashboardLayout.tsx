@@ -41,9 +41,10 @@ export default function DashboardLayout({
                 const team = storedTeam || parsed.teams?.[0] || "Brak zespołu";
                 setActiveTeam(team);
 
-                // Role logic: Administrator stays Administrator, others use team role
-                if (userRole === "ADMINISTRATOR" || userRole === "ADMIN") {
-                    setActiveRole("ADMINISTRATOR");
+                // Role logic: Administrator stays Administrator, System stays System/Admin
+                const isSystem = (parsed.name || "").toLowerCase() === "system" || (parsed.imieNazwisko || "").toLowerCase() === "system";
+                if (isSystem || userRole === "SYSTEM" || userRole === "ADMINISTRATOR" || userRole === "ADMIN") {
+                    setActiveRole(isSystem || userRole === "SYSTEM" ? "SYSTEM" : "ADMINISTRATOR");
                 } else {
                     setActiveRole(storedRole?.toUpperCase() || userRole || "UCZESTNICZKA");
                 }

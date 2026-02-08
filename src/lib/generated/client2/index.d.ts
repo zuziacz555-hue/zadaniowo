@@ -13195,6 +13195,7 @@ export namespace Prisma {
     status: string | null
     uwagiOdrzucenia: string | null
     poprawione: boolean | null
+    isVisibleToAdmin: boolean | null
   }
 
   export type TaskMaxAggregateOutputType = {
@@ -13211,6 +13212,7 @@ export namespace Prisma {
     status: string | null
     uwagiOdrzucenia: string | null
     poprawione: boolean | null
+    isVisibleToAdmin: boolean | null
   }
 
   export type TaskCountAggregateOutputType = {
@@ -13227,6 +13229,7 @@ export namespace Prisma {
     status: number
     uwagiOdrzucenia: number
     poprawione: number
+    isVisibleToAdmin: number
     _all: number
   }
 
@@ -13257,6 +13260,7 @@ export namespace Prisma {
     status?: true
     uwagiOdrzucenia?: true
     poprawione?: true
+    isVisibleToAdmin?: true
   }
 
   export type TaskMaxAggregateInputType = {
@@ -13273,6 +13277,7 @@ export namespace Prisma {
     status?: true
     uwagiOdrzucenia?: true
     poprawione?: true
+    isVisibleToAdmin?: true
   }
 
   export type TaskCountAggregateInputType = {
@@ -13289,6 +13294,7 @@ export namespace Prisma {
     status?: true
     uwagiOdrzucenia?: true
     poprawione?: true
+    isVisibleToAdmin?: true
     _all?: true
   }
 
@@ -13392,6 +13398,7 @@ export namespace Prisma {
     status: string
     uwagiOdrzucenia: string | null
     poprawione: boolean
+    isVisibleToAdmin: boolean
     _count: TaskCountAggregateOutputType | null
     _avg: TaskAvgAggregateOutputType | null
     _sum: TaskSumAggregateOutputType | null
@@ -13427,6 +13434,7 @@ export namespace Prisma {
     status?: boolean
     uwagiOdrzucenia?: boolean
     poprawione?: boolean
+    isVisibleToAdmin?: boolean
     team?: boolean | Task$teamArgs<ExtArgs>
     creator?: boolean | Task$creatorArgs<ExtArgs>
     submissions?: boolean | Task$submissionsArgs<ExtArgs>
@@ -13450,6 +13458,7 @@ export namespace Prisma {
     status?: boolean
     uwagiOdrzucenia?: boolean
     poprawione?: boolean
+    isVisibleToAdmin?: boolean
     team?: boolean | Task$teamArgs<ExtArgs>
     creator?: boolean | Task$creatorArgs<ExtArgs>
   }, ExtArgs["result"]["task"]>
@@ -13468,6 +13477,7 @@ export namespace Prisma {
     status?: boolean
     uwagiOdrzucenia?: boolean
     poprawione?: boolean
+    isVisibleToAdmin?: boolean
   }
 
   export type TaskInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -13508,6 +13518,7 @@ export namespace Prisma {
       status: string
       uwagiOdrzucenia: string | null
       poprawione: boolean
+      isVisibleToAdmin: boolean
     }, ExtArgs["result"]["task"]>
     composites: {}
   }
@@ -13920,6 +13931,7 @@ export namespace Prisma {
     readonly status: FieldRef<"Task", 'String'>
     readonly uwagiOdrzucenia: FieldRef<"Task", 'String'>
     readonly poprawione: FieldRef<"Task", 'Boolean'>
+    readonly isVisibleToAdmin: FieldRef<"Task", 'Boolean'>
   }
     
 
@@ -18453,6 +18465,8 @@ export namespace Prisma {
     coordinatorTasks: boolean | null
     coordinatorTeamEditing: boolean | null
     coordinatorResignationAlerts: boolean | null
+    enableDirectorRole: boolean | null
+    enableCoordinatorApplications: boolean | null
   }
 
   export type SystemSettingsMaxAggregateOutputType = {
@@ -18463,6 +18477,8 @@ export namespace Prisma {
     coordinatorTasks: boolean | null
     coordinatorTeamEditing: boolean | null
     coordinatorResignationAlerts: boolean | null
+    enableDirectorRole: boolean | null
+    enableCoordinatorApplications: boolean | null
   }
 
   export type SystemSettingsCountAggregateOutputType = {
@@ -18473,6 +18489,8 @@ export namespace Prisma {
     coordinatorTasks: number
     coordinatorTeamEditing: number
     coordinatorResignationAlerts: number
+    enableDirectorRole: number
+    enableCoordinatorApplications: number
     _all: number
   }
 
@@ -18493,6 +18511,8 @@ export namespace Prisma {
     coordinatorTasks?: true
     coordinatorTeamEditing?: true
     coordinatorResignationAlerts?: true
+    enableDirectorRole?: true
+    enableCoordinatorApplications?: true
   }
 
   export type SystemSettingsMaxAggregateInputType = {
@@ -18503,6 +18523,8 @@ export namespace Prisma {
     coordinatorTasks?: true
     coordinatorTeamEditing?: true
     coordinatorResignationAlerts?: true
+    enableDirectorRole?: true
+    enableCoordinatorApplications?: true
   }
 
   export type SystemSettingsCountAggregateInputType = {
@@ -18513,6 +18535,8 @@ export namespace Prisma {
     coordinatorTasks?: true
     coordinatorTeamEditing?: true
     coordinatorResignationAlerts?: true
+    enableDirectorRole?: true
+    enableCoordinatorApplications?: true
     _all?: true
   }
 
@@ -18610,6 +18634,8 @@ export namespace Prisma {
     coordinatorTasks: boolean
     coordinatorTeamEditing: boolean
     coordinatorResignationAlerts: boolean
+    enableDirectorRole: boolean
+    enableCoordinatorApplications: boolean
     _count: SystemSettingsCountAggregateOutputType | null
     _avg: SystemSettingsAvgAggregateOutputType | null
     _sum: SystemSettingsSumAggregateOutputType | null
@@ -18639,6 +18665,8 @@ export namespace Prisma {
     coordinatorTasks?: boolean
     coordinatorTeamEditing?: boolean
     coordinatorResignationAlerts?: boolean
+    enableDirectorRole?: boolean
+    enableCoordinatorApplications?: boolean
   }, ExtArgs["result"]["systemSettings"]>
 
   export type SystemSettingsSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
@@ -18649,6 +18677,8 @@ export namespace Prisma {
     coordinatorTasks?: boolean
     coordinatorTeamEditing?: boolean
     coordinatorResignationAlerts?: boolean
+    enableDirectorRole?: boolean
+    enableCoordinatorApplications?: boolean
   }, ExtArgs["result"]["systemSettings"]>
 
   export type SystemSettingsSelectScalar = {
@@ -18659,6 +18689,8 @@ export namespace Prisma {
     coordinatorTasks?: boolean
     coordinatorTeamEditing?: boolean
     coordinatorResignationAlerts?: boolean
+    enableDirectorRole?: boolean
+    enableCoordinatorApplications?: boolean
   }
 
 
@@ -18673,6 +18705,8 @@ export namespace Prisma {
       coordinatorTasks: boolean
       coordinatorTeamEditing: boolean
       coordinatorResignationAlerts: boolean
+      enableDirectorRole: boolean
+      enableCoordinatorApplications: boolean
     }, ExtArgs["result"]["systemSettings"]>
     composites: {}
   }
@@ -19073,6 +19107,8 @@ export namespace Prisma {
     readonly coordinatorTasks: FieldRef<"SystemSettings", 'Boolean'>
     readonly coordinatorTeamEditing: FieldRef<"SystemSettings", 'Boolean'>
     readonly coordinatorResignationAlerts: FieldRef<"SystemSettings", 'Boolean'>
+    readonly enableDirectorRole: FieldRef<"SystemSettings", 'Boolean'>
+    readonly enableCoordinatorApplications: FieldRef<"SystemSettings", 'Boolean'>
   }
     
 
@@ -23471,7 +23507,8 @@ export namespace Prisma {
     dataUtworzenia: 'dataUtworzenia',
     status: 'status',
     uwagiOdrzucenia: 'uwagiOdrzucenia',
-    poprawione: 'poprawione'
+    poprawione: 'poprawione',
+    isVisibleToAdmin: 'isVisibleToAdmin'
   };
 
   export type TaskScalarFieldEnum = (typeof TaskScalarFieldEnum)[keyof typeof TaskScalarFieldEnum]
@@ -23535,7 +23572,9 @@ export namespace Prisma {
     alertsRaporty: 'alertsRaporty',
     coordinatorTasks: 'coordinatorTasks',
     coordinatorTeamEditing: 'coordinatorTeamEditing',
-    coordinatorResignationAlerts: 'coordinatorResignationAlerts'
+    coordinatorResignationAlerts: 'coordinatorResignationAlerts',
+    enableDirectorRole: 'enableDirectorRole',
+    enableCoordinatorApplications: 'enableCoordinatorApplications'
   };
 
   export type SystemSettingsScalarFieldEnum = (typeof SystemSettingsScalarFieldEnum)[keyof typeof SystemSettingsScalarFieldEnum]
@@ -24366,6 +24405,7 @@ export namespace Prisma {
     status?: StringFilter<"Task"> | string
     uwagiOdrzucenia?: StringNullableFilter<"Task"> | string | null
     poprawione?: BoolFilter<"Task"> | boolean
+    isVisibleToAdmin?: BoolFilter<"Task"> | boolean
     team?: XOR<TeamNullableRelationFilter, TeamWhereInput> | null
     creator?: XOR<UserNullableRelationFilter, UserWhereInput> | null
     submissions?: TaskSubmissionListRelationFilter
@@ -24388,6 +24428,7 @@ export namespace Prisma {
     status?: SortOrder
     uwagiOdrzucenia?: SortOrderInput | SortOrder
     poprawione?: SortOrder
+    isVisibleToAdmin?: SortOrder
     team?: TeamOrderByWithRelationInput
     creator?: UserOrderByWithRelationInput
     submissions?: TaskSubmissionOrderByRelationAggregateInput
@@ -24413,6 +24454,7 @@ export namespace Prisma {
     status?: StringFilter<"Task"> | string
     uwagiOdrzucenia?: StringNullableFilter<"Task"> | string | null
     poprawione?: BoolFilter<"Task"> | boolean
+    isVisibleToAdmin?: BoolFilter<"Task"> | boolean
     team?: XOR<TeamNullableRelationFilter, TeamWhereInput> | null
     creator?: XOR<UserNullableRelationFilter, UserWhereInput> | null
     submissions?: TaskSubmissionListRelationFilter
@@ -24435,6 +24477,7 @@ export namespace Prisma {
     status?: SortOrder
     uwagiOdrzucenia?: SortOrderInput | SortOrder
     poprawione?: SortOrder
+    isVisibleToAdmin?: SortOrder
     _count?: TaskCountOrderByAggregateInput
     _avg?: TaskAvgOrderByAggregateInput
     _max?: TaskMaxOrderByAggregateInput
@@ -24459,6 +24502,7 @@ export namespace Prisma {
     status?: StringWithAggregatesFilter<"Task"> | string
     uwagiOdrzucenia?: StringNullableWithAggregatesFilter<"Task"> | string | null
     poprawione?: BoolWithAggregatesFilter<"Task"> | boolean
+    isVisibleToAdmin?: BoolWithAggregatesFilter<"Task"> | boolean
   }
 
   export type TaskAttachmentWhereInput = {
@@ -24751,6 +24795,8 @@ export namespace Prisma {
     coordinatorTasks?: BoolFilter<"SystemSettings"> | boolean
     coordinatorTeamEditing?: BoolFilter<"SystemSettings"> | boolean
     coordinatorResignationAlerts?: BoolFilter<"SystemSettings"> | boolean
+    enableDirectorRole?: BoolFilter<"SystemSettings"> | boolean
+    enableCoordinatorApplications?: BoolFilter<"SystemSettings"> | boolean
   }
 
   export type SystemSettingsOrderByWithRelationInput = {
@@ -24761,6 +24807,8 @@ export namespace Prisma {
     coordinatorTasks?: SortOrder
     coordinatorTeamEditing?: SortOrder
     coordinatorResignationAlerts?: SortOrder
+    enableDirectorRole?: SortOrder
+    enableCoordinatorApplications?: SortOrder
   }
 
   export type SystemSettingsWhereUniqueInput = Prisma.AtLeast<{
@@ -24774,6 +24822,8 @@ export namespace Prisma {
     coordinatorTasks?: BoolFilter<"SystemSettings"> | boolean
     coordinatorTeamEditing?: BoolFilter<"SystemSettings"> | boolean
     coordinatorResignationAlerts?: BoolFilter<"SystemSettings"> | boolean
+    enableDirectorRole?: BoolFilter<"SystemSettings"> | boolean
+    enableCoordinatorApplications?: BoolFilter<"SystemSettings"> | boolean
   }, "id">
 
   export type SystemSettingsOrderByWithAggregationInput = {
@@ -24784,6 +24834,8 @@ export namespace Prisma {
     coordinatorTasks?: SortOrder
     coordinatorTeamEditing?: SortOrder
     coordinatorResignationAlerts?: SortOrder
+    enableDirectorRole?: SortOrder
+    enableCoordinatorApplications?: SortOrder
     _count?: SystemSettingsCountOrderByAggregateInput
     _avg?: SystemSettingsAvgOrderByAggregateInput
     _max?: SystemSettingsMaxOrderByAggregateInput
@@ -24802,6 +24854,8 @@ export namespace Prisma {
     coordinatorTasks?: BoolWithAggregatesFilter<"SystemSettings"> | boolean
     coordinatorTeamEditing?: BoolWithAggregatesFilter<"SystemSettings"> | boolean
     coordinatorResignationAlerts?: BoolWithAggregatesFilter<"SystemSettings"> | boolean
+    enableDirectorRole?: BoolWithAggregatesFilter<"SystemSettings"> | boolean
+    enableCoordinatorApplications?: BoolWithAggregatesFilter<"SystemSettings"> | boolean
   }
 
   export type NotificationWhereInput = {
@@ -25676,6 +25730,7 @@ export namespace Prisma {
     status?: string
     uwagiOdrzucenia?: string | null
     poprawione?: boolean
+    isVisibleToAdmin?: boolean
     team?: TeamCreateNestedOneWithoutTasksInput
     creator?: UserCreateNestedOneWithoutTasksCreatedInput
     submissions?: TaskSubmissionCreateNestedManyWithoutTaskInput
@@ -25698,6 +25753,7 @@ export namespace Prisma {
     status?: string
     uwagiOdrzucenia?: string | null
     poprawione?: boolean
+    isVisibleToAdmin?: boolean
     submissions?: TaskSubmissionUncheckedCreateNestedManyWithoutTaskInput
     assignments?: TaskAssignmentUncheckedCreateNestedManyWithoutTaskInput
     executions?: TaskExecutionUncheckedCreateNestedManyWithoutTaskInput
@@ -25715,6 +25771,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     uwagiOdrzucenia?: NullableStringFieldUpdateOperationsInput | string | null
     poprawione?: BoolFieldUpdateOperationsInput | boolean
+    isVisibleToAdmin?: BoolFieldUpdateOperationsInput | boolean
     team?: TeamUpdateOneWithoutTasksNestedInput
     creator?: UserUpdateOneWithoutTasksCreatedNestedInput
     submissions?: TaskSubmissionUpdateManyWithoutTaskNestedInput
@@ -25737,6 +25794,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     uwagiOdrzucenia?: NullableStringFieldUpdateOperationsInput | string | null
     poprawione?: BoolFieldUpdateOperationsInput | boolean
+    isVisibleToAdmin?: BoolFieldUpdateOperationsInput | boolean
     submissions?: TaskSubmissionUncheckedUpdateManyWithoutTaskNestedInput
     assignments?: TaskAssignmentUncheckedUpdateManyWithoutTaskNestedInput
     executions?: TaskExecutionUncheckedUpdateManyWithoutTaskNestedInput
@@ -25757,6 +25815,7 @@ export namespace Prisma {
     status?: string
     uwagiOdrzucenia?: string | null
     poprawione?: boolean
+    isVisibleToAdmin?: boolean
   }
 
   export type TaskUpdateManyMutationInput = {
@@ -25770,6 +25829,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     uwagiOdrzucenia?: NullableStringFieldUpdateOperationsInput | string | null
     poprawione?: BoolFieldUpdateOperationsInput | boolean
+    isVisibleToAdmin?: BoolFieldUpdateOperationsInput | boolean
   }
 
   export type TaskUncheckedUpdateManyInput = {
@@ -25786,6 +25846,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     uwagiOdrzucenia?: NullableStringFieldUpdateOperationsInput | string | null
     poprawione?: BoolFieldUpdateOperationsInput | boolean
+    isVisibleToAdmin?: BoolFieldUpdateOperationsInput | boolean
   }
 
   export type TaskAttachmentCreateInput = {
@@ -26047,6 +26108,8 @@ export namespace Prisma {
     coordinatorTasks?: boolean
     coordinatorTeamEditing?: boolean
     coordinatorResignationAlerts?: boolean
+    enableDirectorRole?: boolean
+    enableCoordinatorApplications?: boolean
   }
 
   export type SystemSettingsUncheckedCreateInput = {
@@ -26057,6 +26120,8 @@ export namespace Prisma {
     coordinatorTasks?: boolean
     coordinatorTeamEditing?: boolean
     coordinatorResignationAlerts?: boolean
+    enableDirectorRole?: boolean
+    enableCoordinatorApplications?: boolean
   }
 
   export type SystemSettingsUpdateInput = {
@@ -26066,6 +26131,8 @@ export namespace Prisma {
     coordinatorTasks?: BoolFieldUpdateOperationsInput | boolean
     coordinatorTeamEditing?: BoolFieldUpdateOperationsInput | boolean
     coordinatorResignationAlerts?: BoolFieldUpdateOperationsInput | boolean
+    enableDirectorRole?: BoolFieldUpdateOperationsInput | boolean
+    enableCoordinatorApplications?: BoolFieldUpdateOperationsInput | boolean
   }
 
   export type SystemSettingsUncheckedUpdateInput = {
@@ -26076,6 +26143,8 @@ export namespace Prisma {
     coordinatorTasks?: BoolFieldUpdateOperationsInput | boolean
     coordinatorTeamEditing?: BoolFieldUpdateOperationsInput | boolean
     coordinatorResignationAlerts?: BoolFieldUpdateOperationsInput | boolean
+    enableDirectorRole?: BoolFieldUpdateOperationsInput | boolean
+    enableCoordinatorApplications?: BoolFieldUpdateOperationsInput | boolean
   }
 
   export type SystemSettingsCreateManyInput = {
@@ -26086,6 +26155,8 @@ export namespace Prisma {
     coordinatorTasks?: boolean
     coordinatorTeamEditing?: boolean
     coordinatorResignationAlerts?: boolean
+    enableDirectorRole?: boolean
+    enableCoordinatorApplications?: boolean
   }
 
   export type SystemSettingsUpdateManyMutationInput = {
@@ -26095,6 +26166,8 @@ export namespace Prisma {
     coordinatorTasks?: BoolFieldUpdateOperationsInput | boolean
     coordinatorTeamEditing?: BoolFieldUpdateOperationsInput | boolean
     coordinatorResignationAlerts?: BoolFieldUpdateOperationsInput | boolean
+    enableDirectorRole?: BoolFieldUpdateOperationsInput | boolean
+    enableCoordinatorApplications?: BoolFieldUpdateOperationsInput | boolean
   }
 
   export type SystemSettingsUncheckedUpdateManyInput = {
@@ -26105,6 +26178,8 @@ export namespace Prisma {
     coordinatorTasks?: BoolFieldUpdateOperationsInput | boolean
     coordinatorTeamEditing?: BoolFieldUpdateOperationsInput | boolean
     coordinatorResignationAlerts?: BoolFieldUpdateOperationsInput | boolean
+    enableDirectorRole?: BoolFieldUpdateOperationsInput | boolean
+    enableCoordinatorApplications?: BoolFieldUpdateOperationsInput | boolean
   }
 
   export type NotificationCreateInput = {
@@ -27057,6 +27132,7 @@ export namespace Prisma {
     status?: SortOrder
     uwagiOdrzucenia?: SortOrder
     poprawione?: SortOrder
+    isVisibleToAdmin?: SortOrder
   }
 
   export type TaskAvgOrderByAggregateInput = {
@@ -27079,6 +27155,7 @@ export namespace Prisma {
     status?: SortOrder
     uwagiOdrzucenia?: SortOrder
     poprawione?: SortOrder
+    isVisibleToAdmin?: SortOrder
   }
 
   export type TaskMinOrderByAggregateInput = {
@@ -27095,6 +27172,7 @@ export namespace Prisma {
     status?: SortOrder
     uwagiOdrzucenia?: SortOrder
     poprawione?: SortOrder
+    isVisibleToAdmin?: SortOrder
   }
 
   export type TaskSumOrderByAggregateInput = {
@@ -27293,6 +27371,8 @@ export namespace Prisma {
     coordinatorTasks?: SortOrder
     coordinatorTeamEditing?: SortOrder
     coordinatorResignationAlerts?: SortOrder
+    enableDirectorRole?: SortOrder
+    enableCoordinatorApplications?: SortOrder
   }
 
   export type SystemSettingsAvgOrderByAggregateInput = {
@@ -27307,6 +27387,8 @@ export namespace Prisma {
     coordinatorTasks?: SortOrder
     coordinatorTeamEditing?: SortOrder
     coordinatorResignationAlerts?: SortOrder
+    enableDirectorRole?: SortOrder
+    enableCoordinatorApplications?: SortOrder
   }
 
   export type SystemSettingsMinOrderByAggregateInput = {
@@ -27317,6 +27399,8 @@ export namespace Prisma {
     coordinatorTasks?: SortOrder
     coordinatorTeamEditing?: SortOrder
     coordinatorResignationAlerts?: SortOrder
+    enableDirectorRole?: SortOrder
+    enableCoordinatorApplications?: SortOrder
   }
 
   export type SystemSettingsSumOrderByAggregateInput = {
@@ -29386,6 +29470,7 @@ export namespace Prisma {
     status?: string
     uwagiOdrzucenia?: string | null
     poprawione?: boolean
+    isVisibleToAdmin?: boolean
     team?: TeamCreateNestedOneWithoutTasksInput
     submissions?: TaskSubmissionCreateNestedManyWithoutTaskInput
     assignments?: TaskAssignmentCreateNestedManyWithoutTaskInput
@@ -29406,6 +29491,7 @@ export namespace Prisma {
     status?: string
     uwagiOdrzucenia?: string | null
     poprawione?: boolean
+    isVisibleToAdmin?: boolean
     submissions?: TaskSubmissionUncheckedCreateNestedManyWithoutTaskInput
     assignments?: TaskAssignmentUncheckedCreateNestedManyWithoutTaskInput
     executions?: TaskExecutionUncheckedCreateNestedManyWithoutTaskInput
@@ -29729,6 +29815,7 @@ export namespace Prisma {
     status?: StringFilter<"Task"> | string
     uwagiOdrzucenia?: StringNullableFilter<"Task"> | string | null
     poprawione?: BoolFilter<"Task"> | boolean
+    isVisibleToAdmin?: BoolFilter<"Task"> | boolean
   }
 
   export type TaskSubmissionUpsertWithWhereUniqueWithoutUserInput = {
@@ -30092,6 +30179,7 @@ export namespace Prisma {
     status?: string
     uwagiOdrzucenia?: string | null
     poprawione?: boolean
+    isVisibleToAdmin?: boolean
     creator?: UserCreateNestedOneWithoutTasksCreatedInput
     submissions?: TaskSubmissionCreateNestedManyWithoutTaskInput
     assignments?: TaskAssignmentCreateNestedManyWithoutTaskInput
@@ -30112,6 +30200,7 @@ export namespace Prisma {
     status?: string
     uwagiOdrzucenia?: string | null
     poprawione?: boolean
+    isVisibleToAdmin?: boolean
     submissions?: TaskSubmissionUncheckedCreateNestedManyWithoutTaskInput
     assignments?: TaskAssignmentUncheckedCreateNestedManyWithoutTaskInput
     executions?: TaskExecutionUncheckedCreateNestedManyWithoutTaskInput
@@ -31565,6 +31654,7 @@ export namespace Prisma {
     status?: string
     uwagiOdrzucenia?: string | null
     poprawione?: boolean
+    isVisibleToAdmin?: boolean
     team?: TeamCreateNestedOneWithoutTasksInput
     creator?: UserCreateNestedOneWithoutTasksCreatedInput
     submissions?: TaskSubmissionCreateNestedManyWithoutTaskInput
@@ -31586,6 +31676,7 @@ export namespace Prisma {
     status?: string
     uwagiOdrzucenia?: string | null
     poprawione?: boolean
+    isVisibleToAdmin?: boolean
     submissions?: TaskSubmissionUncheckedCreateNestedManyWithoutTaskInput
     assignments?: TaskAssignmentUncheckedCreateNestedManyWithoutTaskInput
     executions?: TaskExecutionUncheckedCreateNestedManyWithoutTaskInput
@@ -31618,6 +31709,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     uwagiOdrzucenia?: NullableStringFieldUpdateOperationsInput | string | null
     poprawione?: BoolFieldUpdateOperationsInput | boolean
+    isVisibleToAdmin?: BoolFieldUpdateOperationsInput | boolean
     team?: TeamUpdateOneWithoutTasksNestedInput
     creator?: UserUpdateOneWithoutTasksCreatedNestedInput
     submissions?: TaskSubmissionUpdateManyWithoutTaskNestedInput
@@ -31639,6 +31731,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     uwagiOdrzucenia?: NullableStringFieldUpdateOperationsInput | string | null
     poprawione?: BoolFieldUpdateOperationsInput | boolean
+    isVisibleToAdmin?: BoolFieldUpdateOperationsInput | boolean
     submissions?: TaskSubmissionUncheckedUpdateManyWithoutTaskNestedInput
     assignments?: TaskAssignmentUncheckedUpdateManyWithoutTaskNestedInput
     executions?: TaskExecutionUncheckedUpdateManyWithoutTaskNestedInput
@@ -31655,6 +31748,7 @@ export namespace Prisma {
     status?: string
     uwagiOdrzucenia?: string | null
     poprawione?: boolean
+    isVisibleToAdmin?: boolean
     team?: TeamCreateNestedOneWithoutTasksInput
     creator?: UserCreateNestedOneWithoutTasksCreatedInput
     assignments?: TaskAssignmentCreateNestedManyWithoutTaskInput
@@ -31676,6 +31770,7 @@ export namespace Prisma {
     status?: string
     uwagiOdrzucenia?: string | null
     poprawione?: boolean
+    isVisibleToAdmin?: boolean
     assignments?: TaskAssignmentUncheckedCreateNestedManyWithoutTaskInput
     executions?: TaskExecutionUncheckedCreateNestedManyWithoutTaskInput
     attachments?: TaskAttachmentUncheckedCreateNestedManyWithoutTaskInput
@@ -31748,6 +31843,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     uwagiOdrzucenia?: NullableStringFieldUpdateOperationsInput | string | null
     poprawione?: BoolFieldUpdateOperationsInput | boolean
+    isVisibleToAdmin?: BoolFieldUpdateOperationsInput | boolean
     team?: TeamUpdateOneWithoutTasksNestedInput
     creator?: UserUpdateOneWithoutTasksCreatedNestedInput
     assignments?: TaskAssignmentUpdateManyWithoutTaskNestedInput
@@ -31769,6 +31865,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     uwagiOdrzucenia?: NullableStringFieldUpdateOperationsInput | string | null
     poprawione?: BoolFieldUpdateOperationsInput | boolean
+    isVisibleToAdmin?: BoolFieldUpdateOperationsInput | boolean
     assignments?: TaskAssignmentUncheckedUpdateManyWithoutTaskNestedInput
     executions?: TaskExecutionUncheckedUpdateManyWithoutTaskNestedInput
     attachments?: TaskAttachmentUncheckedUpdateManyWithoutTaskNestedInput
@@ -31831,6 +31928,7 @@ export namespace Prisma {
     status?: string
     uwagiOdrzucenia?: string | null
     poprawione?: boolean
+    isVisibleToAdmin?: boolean
     team?: TeamCreateNestedOneWithoutTasksInput
     creator?: UserCreateNestedOneWithoutTasksCreatedInput
     submissions?: TaskSubmissionCreateNestedManyWithoutTaskInput
@@ -31852,6 +31950,7 @@ export namespace Prisma {
     status?: string
     uwagiOdrzucenia?: string | null
     poprawione?: boolean
+    isVisibleToAdmin?: boolean
     submissions?: TaskSubmissionUncheckedCreateNestedManyWithoutTaskInput
     executions?: TaskExecutionUncheckedCreateNestedManyWithoutTaskInput
     attachments?: TaskAttachmentUncheckedCreateNestedManyWithoutTaskInput
@@ -31954,6 +32053,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     uwagiOdrzucenia?: NullableStringFieldUpdateOperationsInput | string | null
     poprawione?: BoolFieldUpdateOperationsInput | boolean
+    isVisibleToAdmin?: BoolFieldUpdateOperationsInput | boolean
     team?: TeamUpdateOneWithoutTasksNestedInput
     creator?: UserUpdateOneWithoutTasksCreatedNestedInput
     submissions?: TaskSubmissionUpdateManyWithoutTaskNestedInput
@@ -31975,6 +32075,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     uwagiOdrzucenia?: NullableStringFieldUpdateOperationsInput | string | null
     poprawione?: BoolFieldUpdateOperationsInput | boolean
+    isVisibleToAdmin?: BoolFieldUpdateOperationsInput | boolean
     submissions?: TaskSubmissionUncheckedUpdateManyWithoutTaskNestedInput
     executions?: TaskExecutionUncheckedUpdateManyWithoutTaskNestedInput
     attachments?: TaskAttachmentUncheckedUpdateManyWithoutTaskNestedInput
@@ -32091,6 +32192,7 @@ export namespace Prisma {
     status?: string
     uwagiOdrzucenia?: string | null
     poprawione?: boolean
+    isVisibleToAdmin?: boolean
     team?: TeamCreateNestedOneWithoutTasksInput
     creator?: UserCreateNestedOneWithoutTasksCreatedInput
     submissions?: TaskSubmissionCreateNestedManyWithoutTaskInput
@@ -32112,6 +32214,7 @@ export namespace Prisma {
     status?: string
     uwagiOdrzucenia?: string | null
     poprawione?: boolean
+    isVisibleToAdmin?: boolean
     submissions?: TaskSubmissionUncheckedCreateNestedManyWithoutTaskInput
     assignments?: TaskAssignmentUncheckedCreateNestedManyWithoutTaskInput
     attachments?: TaskAttachmentUncheckedCreateNestedManyWithoutTaskInput
@@ -32208,6 +32311,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     uwagiOdrzucenia?: NullableStringFieldUpdateOperationsInput | string | null
     poprawione?: BoolFieldUpdateOperationsInput | boolean
+    isVisibleToAdmin?: BoolFieldUpdateOperationsInput | boolean
     team?: TeamUpdateOneWithoutTasksNestedInput
     creator?: UserUpdateOneWithoutTasksCreatedNestedInput
     submissions?: TaskSubmissionUpdateManyWithoutTaskNestedInput
@@ -32229,6 +32333,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     uwagiOdrzucenia?: NullableStringFieldUpdateOperationsInput | string | null
     poprawione?: BoolFieldUpdateOperationsInput | boolean
+    isVisibleToAdmin?: BoolFieldUpdateOperationsInput | boolean
     submissions?: TaskSubmissionUncheckedUpdateManyWithoutTaskNestedInput
     assignments?: TaskAssignmentUncheckedUpdateManyWithoutTaskNestedInput
     attachments?: TaskAttachmentUncheckedUpdateManyWithoutTaskNestedInput
@@ -32841,6 +32946,7 @@ export namespace Prisma {
     status?: string
     uwagiOdrzucenia?: string | null
     poprawione?: boolean
+    isVisibleToAdmin?: boolean
   }
 
   export type TaskSubmissionCreateManyUserInput = {
@@ -32950,6 +33056,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     uwagiOdrzucenia?: NullableStringFieldUpdateOperationsInput | string | null
     poprawione?: BoolFieldUpdateOperationsInput | boolean
+    isVisibleToAdmin?: BoolFieldUpdateOperationsInput | boolean
     team?: TeamUpdateOneWithoutTasksNestedInput
     submissions?: TaskSubmissionUpdateManyWithoutTaskNestedInput
     assignments?: TaskAssignmentUpdateManyWithoutTaskNestedInput
@@ -32970,6 +33077,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     uwagiOdrzucenia?: NullableStringFieldUpdateOperationsInput | string | null
     poprawione?: BoolFieldUpdateOperationsInput | boolean
+    isVisibleToAdmin?: BoolFieldUpdateOperationsInput | boolean
     submissions?: TaskSubmissionUncheckedUpdateManyWithoutTaskNestedInput
     assignments?: TaskAssignmentUncheckedUpdateManyWithoutTaskNestedInput
     executions?: TaskExecutionUncheckedUpdateManyWithoutTaskNestedInput
@@ -32989,6 +33097,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     uwagiOdrzucenia?: NullableStringFieldUpdateOperationsInput | string | null
     poprawione?: BoolFieldUpdateOperationsInput | boolean
+    isVisibleToAdmin?: BoolFieldUpdateOperationsInput | boolean
   }
 
   export type TaskSubmissionUpdateWithoutUserInput = {
@@ -33256,6 +33365,7 @@ export namespace Prisma {
     status?: string
     uwagiOdrzucenia?: string | null
     poprawione?: boolean
+    isVisibleToAdmin?: boolean
   }
 
   export type TaskAssignmentCreateManyTeamInput = {
@@ -33364,6 +33474,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     uwagiOdrzucenia?: NullableStringFieldUpdateOperationsInput | string | null
     poprawione?: BoolFieldUpdateOperationsInput | boolean
+    isVisibleToAdmin?: BoolFieldUpdateOperationsInput | boolean
     creator?: UserUpdateOneWithoutTasksCreatedNestedInput
     submissions?: TaskSubmissionUpdateManyWithoutTaskNestedInput
     assignments?: TaskAssignmentUpdateManyWithoutTaskNestedInput
@@ -33384,6 +33495,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     uwagiOdrzucenia?: NullableStringFieldUpdateOperationsInput | string | null
     poprawione?: BoolFieldUpdateOperationsInput | boolean
+    isVisibleToAdmin?: BoolFieldUpdateOperationsInput | boolean
     submissions?: TaskSubmissionUncheckedUpdateManyWithoutTaskNestedInput
     assignments?: TaskAssignmentUncheckedUpdateManyWithoutTaskNestedInput
     executions?: TaskExecutionUncheckedUpdateManyWithoutTaskNestedInput
@@ -33403,6 +33515,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     uwagiOdrzucenia?: NullableStringFieldUpdateOperationsInput | string | null
     poprawione?: BoolFieldUpdateOperationsInput | boolean
+    isVisibleToAdmin?: BoolFieldUpdateOperationsInput | boolean
   }
 
   export type TaskAssignmentUpdateWithoutTeamInput = {

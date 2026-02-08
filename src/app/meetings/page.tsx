@@ -62,7 +62,9 @@ export default function MeetingsPage() {
     }
 
     const normalizedUserRole = (user.rola || user.role || "").toUpperCase();
-    const isAdmin = activeRole === "ADMINISTRATOR" || normalizedUserRole === "ADMINISTRATOR";
+    const isSystem = (user.name || "").toLowerCase() === "system" || (user.imieNazwisko || "").toLowerCase() === "system" || activeRole === "SYSTEM";
+    const isAdmin = activeRole === "ADMINISTRATOR" || normalizedUserRole === "ADMINISTRATOR" || isSystem;
+    const isDirector = activeRole === "DYREKTORKA" || normalizedUserRole === "DYREKTORKA";
     const isCoord = activeRole === "KOORDYNATORKA" || isAdmin;
 
     return (
@@ -70,6 +72,7 @@ export default function MeetingsPage() {
             initialMeetings={meetings}
             teams={teams}
             isAdmin={isAdmin}
+            isDirector={isDirector}
             isCoord={isCoord}
             currentUser={user.name}
             currentUserId={user.id}

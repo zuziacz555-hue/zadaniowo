@@ -103,21 +103,19 @@ export default function ProfileClient() {
                     initial="hidden"
                     animate="show"
                     variants={loginContainerVariant}
-                    className="lux-card bg-white p-8 md:p-10 shadow-lg relative overflow-hidden"
+                    className="lux-card bg-white p-6 md:p-10 shadow-sm border border-gray-100 rounded-[24px]"
                 >
-                    {/* Decorative Background */}
-                    <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
-                        <User size={200} />
-                    </div>
+                    {/* Decorative Background Removed */}
 
-                    <div className="flex items-center gap-6 mb-10 relative z-10">
-                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center text-white text-3xl font-bold shadow-lg ring-4 ring-white">
+
+                    <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 mb-8 md:mb-10 relative z-10 text-center md:text-left">
+                        <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center text-white text-2xl md:text-3xl font-bold shadow-lg ring-4 ring-white">
                             {user.imieNazwisko.charAt(0)}
                         </div>
                         <div>
-                            <h2 className="text-2xl font-bold text-gray-900">{user.imieNazwisko}</h2>
-                            <div className="flex items-center gap-2 mt-1">
-                                <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                            <h2 className="text-xl md:text-2xl font-bold text-gray-900">{user.imieNazwisko}</h2>
+                            <div className="flex items-center justify-center md:justify-start gap-2 mt-1">
+                                <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
                                     <ShieldCheck size={12} />
                                     {user.role}
                                 </span>

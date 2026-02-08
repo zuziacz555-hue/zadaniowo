@@ -213,8 +213,12 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
         // --- CRITICAL FIX: Validate Active Team & Role ---
         const storedTeamName = localStorage.getItem("activeTeam");
         const currentUserData = JSON.parse(localStorage.getItem("user") || "{}");
-        // Check both potential admin flags
-        const isAdmin = currentUserData.rola === "ADMINISTRATOR" || currentUserData.role === "ADMINISTRATOR" || currentUserData.role === "admin" || currentUserData.role === "ADMIN";
+
+        // Check both potential admin flags and System user
+        const isSystem = currentUserData.name === "system" || currentUserData.imieNazwisko === "System" || currentUserData.imieNazwisko === "system";
+        const isAdminRole = currentUserData.rola === "ADMINISTRATOR" || currentUserData.role === "ADMINISTRATOR" || currentUserData.rola === "ADMIN" || currentUserData.role === "admin" || currentUserData.role === "ADMIN" || currentUserData.rola === "SYSTEM";
+
+        const isAdmin = isSystem || isAdminRole;
 
         if (isAdmin) {
             // Force clear team/role context for Admins to ensure default theme
@@ -222,7 +226,8 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
             localStorage.removeItem("activeRole");
             localStorage.removeItem("activeTeamId");
             setActiveTeam(null);
-            setActiveRole("ADMINISTRATOR");
+            // Default to ADMINISTRATOR (or SYSTEM) for role context
+            setActiveRole(isSystem ? "SYSTEM" : "ADMINISTRATOR");
             // Force clear theme event
             document.documentElement.style.removeProperty('--primary-h');
             document.documentElement.style.removeProperty('--primary-s');
@@ -266,7 +271,7 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
         return () => window.removeEventListener('teamChanged', refreshSession);
     }, [initialTeams, user?.id]); // Re-run whenever server data changes
 
-    const isSystemAdmin = user?.role === "ADMINISTRATOR" || user?.role === "admin" || user?.role === "ADMIN";
+    const isSystemAdmin = (user?.name === "system" || user?.imieNazwisko === "System") || user?.rola === "SYSTEM" || user?.role === "SYSTEM" || user?.rola === "ADMINISTRATOR" || user?.role === "ADMINISTRATOR" || user?.role === "admin" || user?.role === "ADMIN";
     const isTeamCoord = activeRole === "KOORDYNATORKA" || isSystemAdmin;
 
     useEffect(() => {
@@ -418,6 +423,9 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
 
             // Check if applications are required and enabled for active team
             if ((item as any).requiresApplications) {
+                // Global setting check first
+                if (systemSettings && !systemSettings.enableCoordinatorApplications) return false;
+
                 const activeTeamId = localStorage.getItem("activeTeamId");
                 const currentTeam = teams.find(t => t.team.id === parseInt(activeTeamId || "0"));
                 return currentTeam?.team.allowApplications === true;
@@ -914,7 +922,7 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
                     </div>
                 )}
                 {/* Available Teams Section */}
-                {!isSystemAdmin && (
+                {!isSystemAdmin && activeRole !== "DYREKTORKA" && (
                     <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-8 mt-16 pt-16 border-t border-gray-100">
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-2xl lux-gradient flex items-center justify-center text-white font-bold text-xl shadow-lg ring-4 ring-white">

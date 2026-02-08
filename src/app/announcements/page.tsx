@@ -64,7 +64,9 @@ export default function AnnouncementsPage() {
         );
     }
 
-    const isAdmin = activeRole === "ADMINISTRATOR" || user.role === "ADMINISTRATOR";
+    const isSystem = (user.name || "").toLowerCase() === "system" || (user.imieNazwisko || "").toLowerCase() === "system" || activeRole === "SYSTEM";
+    const isAdmin = activeRole === "ADMINISTRATOR" || user.role === "ADMINISTRATOR" || isSystem;
+    const isDirector = activeRole === "DYREKTORKA" || user.role === "DYREKTORKA";
     const isCoord = activeRole === "KOORDYNATORKA" || isAdmin;
 
     return (
@@ -73,6 +75,7 @@ export default function AnnouncementsPage() {
             teams={teams}
             userTasks={tasks}
             isAdmin={isAdmin}
+            isDirector={isDirector}
             isCoord={isCoord}
             currentUserName={user.name}
             currentUserId={user.id}

@@ -70,7 +70,8 @@ export default function TasksPage() {
 
                 console.log("Fetching tasks for:", { teamId, userId: parsedUser.id, role: activeRole });
 
-                const isReallyAdmin = parsedUser.role?.toUpperCase() === 'ADMINISTRATOR';
+                const isSystem = (parsedUser.name || "").toLowerCase() === "system" || (parsedUser.imieNazwisko || "").toLowerCase() === "system";
+                const isReallyAdmin = parsedUser.role?.toUpperCase() === 'ADMINISTRATOR' || isSystem;
 
                 const tasksRes = await getTasks({
                     teamId: isReallyAdmin ? undefined : (teamId || undefined),
@@ -112,11 +113,14 @@ export default function TasksPage() {
         );
     }
 
+    const isSystem = (user.name || "").toLowerCase() === "system" || (user.imieNazwisko || "").toLowerCase() === "system";
+    const effectiveRole = isSystem ? "ADMINISTRATOR" : (typeof window !== 'undefined' ? localStorage.getItem("activeRole") : null) || user.role;
+
     return (
         <TasksClient
             initialTasks={tasks}
             userId={user.id}
-            userRole={localStorage.getItem("activeRole") || user.role}
+            userRole={effectiveRole}
             userName={user.imieNazwisko || user.name}
             teamId={activeTeamId}
             settings={settings}

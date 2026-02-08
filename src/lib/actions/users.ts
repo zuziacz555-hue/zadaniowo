@@ -57,10 +57,14 @@ export async function createUser(data: {
     rola: string
 }, callerId: number) {
     try {
-        // Verify caller is "system"
+        // Verify caller is "system" or "ADMINISTRATOR"
         const caller = await prisma.user.findUnique({ where: { id: callerId } });
-        if (!caller || caller.imieNazwisko !== "system") {
-            return { success: false, error: 'Tylko system może dodawać użytkowników.' };
+        // Allow System user OR any Administrator
+        const isSystem = (caller?.imieNazwisko || "").toLowerCase() === "system";
+        const isAdmin = caller?.rola === "ADMINISTRATOR" || caller?.rola === "ADMIN";
+
+        if (!caller || (!isSystem && !isAdmin)) {
+            return { success: false, error: 'Tylko system lub administrator może dodawać użytkowników.' };
         }
 
         const name = data.imieNazwisko.trim();
@@ -104,7 +108,8 @@ export async function updateUser(id: number, data: Partial<{
 
         // If changing name or password, caller MUST be system OR the user themselves
         if ((data.imieNazwisko || data.haslo)) {
-            if (caller.imieNazwisko !== "system" && caller.id !== id) {
+            const isCallerSystem = (caller.imieNazwisko || "").toLowerCase() === "system";
+            if (!isCallerSystem && caller.id !== id) {
                 return { success: false, error: 'Nie masz uprawnień do zmiany tych danych.' };
             }
         }
@@ -137,14 +142,17 @@ export async function deleteUser(id: number, callerId: number) {
         if (!caller) return { success: false, error: 'Błąd autoryzacji.' };
 
         // 2. CRITICAL PROTECTION: Never delete main SuperAdmin ("system")
-        if (targetUser.imieNazwisko === "system") {
+        if ((targetUser.imieNazwisko || "").toLowerCase() === "system") {
             return { success: false, error: 'Systemu nie można usunąć.' };
         }
 
         // 3. HIERARCHY PROTECTION: 
         // Only "system" can delete other ADMINISTRATORs
-        if (targetUser.rola === "ADMINISTRATOR" && caller.imieNazwisko !== "system") {
-            return { success: false, error: 'Tylko system może usuwać innych administratorów.' };
+        const isTargetAdmin = targetUser.rola === "ADMINISTRATOR" || targetUser.rola === "ADMIN";
+        const isCallerSystem = (caller.imieNazwisko || "").toLowerCase() === "system";
+
+        if (isTargetAdmin && !isCallerSystem) {
+            return { success: false, error: 'Tylko profil SYSTEM może usuwać innych administratorów.' };
         }
 
         // 4. Perform deletion

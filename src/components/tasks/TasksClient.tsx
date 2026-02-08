@@ -29,7 +29,8 @@ import {
     Paperclip,
     ExternalLink,
     Layers,
-    Archive
+    Archive,
+    Share2
 } from "lucide-react";
 import {
     createTask,
@@ -42,7 +43,8 @@ import {
     updateTask,
     addTaskAttachment,
     deleteTaskAttachment,
-    uploadTaskFile
+    uploadTaskFile,
+    forwardTaskToAdmin
 } from "@/lib/actions/tasks";
 import { moveExecutionToArchive } from "@/lib/actions/archive";
 import { getTeams, getTeamById } from "@/lib/actions/teams";
@@ -208,8 +210,9 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
     // --- DERIVED STATE ---
     const isAdmin = activeRole?.toUpperCase() === "ADMINISTRATOR";
     const isCoord = activeRole?.toUpperCase() === 'KOORDYNATORKA';
+    const isDirector = activeRole?.toUpperCase() === 'DYREKTORKA';
     const canCoordHaveTasks = isCoord && settings?.coordinatorTasks;
-    const showParticipantView = !isAdmin && (!isCoord || (canCoordHaveTasks && coordViewMode === "PERSONAL"));
+    const showParticipantView = !isAdmin && !isDirector && (!isCoord || (canCoordHaveTasks && coordViewMode === "PERSONAL"));
 
     // --- EFFECTS ---
 
@@ -331,8 +334,8 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
     const getReferenceTasks = () => {
         let tasks = initialTasks;
 
-        // Admin Filter
-        if (isAdmin && adminTeamFilter !== "ALL") {
+        // Admin & Director Filter
+        if ((isAdmin || isDirector) && adminTeamFilter !== "ALL") {
             if (adminTeamFilter === -1) {
                 // COORDINATOR TASKS FOLDER
                 // Rule: Tasks executed by at least one coordinator.
@@ -353,7 +356,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                         const userTeamRole = t.teamId
                             ? e.user?.zespoly?.find((ut: any) => ut.teamId === t.teamId)?.rola
                             : e.user?.rola;
-                        return userTeamRole?.toUpperCase() === "UCZESTNICZKA";
+                        return userTeamRole?.toUpperCase() === 'UCZESTNICZKA';
                     });
 
                     return hasParticipant;
@@ -367,7 +370,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
 
 
         // COORDINATOR FILTER: Filter by active teamId
-        if (isCoord && !isAdmin && teamId) {
+        if (isCoord && !isAdmin && !isDirector && teamId) {
             tasks = tasks.filter(t => t.teamId === Number(teamId));
         }
 
@@ -401,7 +404,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
 
         // Helper to check if execution should be visible to this user
         const isVisibleExecution = (e: any, t: any) => {
-            if (isAdmin) return true;
+            if (isAdmin || isDirector) return true;
             // Coordinator view: show participant submissions
             const teamRole = t.teamId
                 ? e.user?.zespoly?.find((ut: any) => ut.teamId === t.teamId)?.rola
@@ -562,6 +565,18 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
         }
     };
 
+    const handleForwardTask = async (taskId: number) => {
+        if (!confirm("Czy na pewno chcesz przekazać to zadanie Administratorowi? Stanie się ono widoczne w panelu Admina.")) return;
+        const res = await forwardTaskToAdmin(taskId);
+        if (res.success) {
+            alert("Zadanie zostało przekazane Administratorowi.");
+            setSelectedTask((prev: any) => prev ? ({ ...prev, isVisibleToAdmin: true }) : null);
+            onRefresh();
+        } else {
+            alert("Błąd podczas przekazywania zadania.");
+        }
+    };
+
     return (
         <DashboardLayout>
             <div>
@@ -585,7 +600,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                         </div>
 
                         <div className="flex flex-wrap gap-4 items-center">
-                            {(isAdmin || (isCoord && coordViewMode === "MANAGEMENT")) && (
+                            {(isAdmin || isDirector || (isCoord && coordViewMode === "MANAGEMENT")) && (
                                 <button
                                     onClick={() => setShowAddForm(true)}
                                     className="lux-btn flex items-center justify-center gap-3 py-4 px-8"
@@ -785,8 +800,8 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                     </div>
                                                 </div>
 
-                                                {/* COORDINATOR ASSIGNMENT CHECKBOX (Admin Only, Global Setting Check) */}
-                                                {settings?.coordinatorTasks && isAdmin && newTask.typPrzypisania === "CALY_ZESPOL" && (
+                                                {/* COORDINATOR ASSIGNMENT CHECKBOX (Admin/Director Only, Global Setting Check) */}
+                                                {settings?.coordinatorTasks && (isAdmin || isDirector) && newTask.typPrzypisania === "CALY_ZESPOL" && (
                                                     <label className="flex items-center gap-3 cursor-pointer p-4 bg-purple-50 rounded-xl border border-purple-100 hover:bg-purple-100/50 transition-colors animate-in fade-in slide-in-from-top-2">
                                                         <div className="relative flex items-center">
                                                             <input
@@ -933,10 +948,10 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
 
                 {/* --- UNIFIED ADMIN/COORDINATOR VIEW --- */}
 
-                {(isAdmin || isCoord) && (
+                {(isAdmin || isCoord || isDirector) && (
                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                         {/* LEFT COLUMN: NAVIGATION (ADMIN TEAMS / COORD MODES) */}
-                        {(isAdmin || (isCoord && settings?.coordinatorTasks)) && (
+                        {(isAdmin || isDirector || (isCoord && settings?.coordinatorTasks)) && (
                             <div className="lg:col-span-1 space-y-8">
                                 <div className="flex items-center gap-3 px-2">
                                     <div className="size-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
@@ -1128,7 +1143,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                         )}
 
                         {/* RIGHT COLUMN: TASKS CONTENT */}
-                        <div className={cn("space-y-6", (isAdmin || (isCoord && settings?.coordinatorTasks)) ? "lg:col-span-3" : "lg:col-span-4")}>
+                        <div className={cn("space-y-6", (isAdmin || isDirector || (isCoord && settings?.coordinatorTasks)) ? "lg:col-span-3" : "lg:col-span-4")}>
                             {showParticipantView ? (
                                 /* --- PARTICIPANT VIEW FOR COORDINATOR --- */
                                 <div className="glass-panel rounded-[40px] overflow-hidden border-white/40 animate-in fade-in slide-in-from-right-4">
@@ -1300,7 +1315,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                     <Layers size={18} />
                                                 </div>
                                                 <h2 className="text-xl font-black tracking-tight text-foreground">
-                                                    {isAdmin ? (adminTeamFilter === "ALL" ? "Wszystkie zadania" : "Zadania zespołu") : "Zlecone przez Ciebie"}
+                                                    {(isAdmin || isDirector) ? (adminTeamFilter === "ALL" ? "Wszystkie zadania" : "Zadania zespołu") : "Zlecone przez Ciebie"}
                                                 </h2>
                                             </div>
 
@@ -1514,7 +1529,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                 {
                     mounted && createPortal(
                         <AnimatePresence>
-                            {selectedTask && (showParticipantView || (!isAdmin && !isCoord)) && activeTab !== "wykonane" && (
+                            {selectedTask && (showParticipantView || (!isAdmin && !isCoord && !isDirector)) && activeTab !== "wykonane" && (
                                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6">
                                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedTask(null)} className="absolute inset-0 bg-black/60 backdrop-blur-[20px]" />
                                     <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="lux-card-strong p-10 max-w-lg w-full relative z-10 shadow-2xl border-white/40">
@@ -1585,7 +1600,37 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                         <p className="text-[10px] text-muted-foreground/40 font-black uppercase tracking-widest text-center py-4 bg-white/20 rounded-2xl italic">Brak załączników</p>
                                                     )}
                                                 </div>
+                                                {/* Action Buttons */}
+                                                {(isAdmin || isDirector || (isCoord && activeTab !== "do-zrobienia")) && (
+                                                    <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
+                                                        {/* Delete Button */}
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (confirm("Czy na pewno chcesz usunąć to zadanie?")) {
+                                                                    deleteTask(selectedTask.id).then(() => {
+                                                                        setSelectedTask(null);
+                                                                        onRefresh();
+                                                                    });
+                                                                }
+                                                            }}
+                                                            className="px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-red-100 transition-colors flex items-center gap-2"
+                                                        >
+                                                            <Trash2 size={14} /> Usuń
+                                                        </button>
 
+                                                        {/* Edit Button */}
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setIsEditing(true);
+                                                            }}
+                                                            className="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-blue-100 transition-colors flex items-center gap-2"
+                                                        >
+                                                            <Edit2 size={14} /> Edytuj
+                                                        </button>
+                                                    </div>
+                                                )}
                                                 <div className="space-y-3">
                                                     <div className="flex gap-2">
                                                         <input
@@ -1668,7 +1713,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                 {
                     mounted && createPortal(
                         <AnimatePresence>
-                            {selectedTask && (isCoord || isAdmin) && rejectionNotes !== null && selectedTask.targetUserId && (
+                            {selectedTask && (isCoord || isAdmin || isDirector) && rejectionNotes !== null && selectedTask.targetUserId && (
                                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6">
                                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { setSelectedTask(null); setRejectionNotes(""); }} className="absolute inset-0 bg-black/60 backdrop-blur-[20px]" />
                                     <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="lux-card-strong p-10 max-w-lg w-full relative z-10 shadow-2xl border-white/40">
@@ -1740,6 +1785,8 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                 setSelectedExecutionForDetail(null);
                             }}
                             setIsAdmin={isAdmin}
+                            isDirector={isDirector}
+                            onForward={(taskId: number) => handleForwardTask(taskId)}
                             onArchive={() => {
                                 setExecutionToArchive(selectedExecutionForDetail.id);
                                 setIsArchiveModalOpen(true);
@@ -1753,7 +1800,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
 
                 {/* NEW ADMIN TASK DETAIL MODAL */}
                 {
-                    mounted && selectedTask && (isAdmin || isCoord) && !selectedTask.targetUserId && !showParticipantView && createPortal(
+                    mounted && selectedTask && (isAdmin || isCoord || isDirector) && !selectedTask.targetUserId && !showParticipantView && createPortal(
                         <AnimatePresence>
                             <motion.div
                                 initial={{ opacity: 0 }}
@@ -1794,6 +1841,18 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                             </div>
 
                                             <div className="flex gap-2">
+                                                {/* Director Forward Button */}
+                                                {isDirector && !selectedTask.isVisibleToAdmin && (
+                                                    <button
+                                                        onClick={() => handleForwardTask(selectedTask.id)}
+                                                        className="h-10 px-4 bg-purple-600 text-white hover:bg-purple-700 rounded-xl transition-all shadow-lg shadow-purple-200 flex items-center justify-center gap-2 hover:-translate-y-0.5"
+                                                        title="Przekaż Administratorowi (sprawi, że zadanie będzie widoczne dla Admina)"
+                                                    >
+                                                        <span className="text-[10px] font-black uppercase tracking-wider">Przekaż Adminowi</span>
+                                                        <Share2 size={16} />
+                                                    </button>
+                                                )}
+
                                                 {isEditing ? (
                                                     <div className="flex gap-2">
                                                         <button
@@ -2038,21 +2097,23 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                             </div>
                                                         </div>
 
-                                                        <button
-                                                            onClick={async () => {
-                                                                if (!confirm(`Czy usunąć wykonawcę ${ex.imieNazwisko} z tego zadania?`)) return;
-                                                                await deleteTaskExecution(selectedTask.id, ex.userId);
-                                                                setSelectedTask((prev: any) => ({
-                                                                    ...prev,
-                                                                    executions: prev.executions.filter((e: any) => e.userId !== ex.userId)
-                                                                }));
-                                                                onRefresh();
-                                                            }}
-                                                            className="p-2 text-muted-foreground/20 hover:text-red-600 transition-colors"
-                                                            title="Usuń wykonawcę"
-                                                        >
-                                                            <Trash2 size={16} />
-                                                        </button>
+                                                        {(isAdmin || isDirector || (isCoord && selectedTask.utworzonePrzezId === Number(userId))) && (
+                                                            <button
+                                                                onClick={async () => {
+                                                                    if (!confirm(`Czy usunąć wykonawcę ${ex.imieNazwisko} z tego zadania?`)) return;
+                                                                    await deleteTaskExecution(selectedTask.id, ex.userId);
+                                                                    setSelectedTask((prev: any) => ({
+                                                                        ...prev,
+                                                                        executions: prev.executions.filter((e: any) => e.userId !== ex.userId)
+                                                                    }));
+                                                                    onRefresh();
+                                                                }}
+                                                                className="p-2 text-muted-foreground/20 hover:text-red-600 transition-colors"
+                                                                title="Usuń wykonawcę"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 ))}
                                                 {(!selectedTask.executions || selectedTask.executions.length === 0) && (
@@ -2349,7 +2410,7 @@ function CollapsibleExecutionCard({ execution, onViewDetail, tabType }: any) {
 }
 
 // Full Screen Detail Modal for Verification
-function ExecutionDetailModal({ execution, onClose, onApprove, onReject, isAdmin, onArchive }: any) {
+function ExecutionDetailModal({ execution, onClose, onApprove, onReject, isAdmin, isDirector, onForward, onArchive }: any) {
     if (!execution) return null;
     const task = execution.task;
     const tabType = execution.tabType || execution.status.toLowerCase();
@@ -2569,6 +2630,15 @@ function ExecutionDetailModal({ execution, onClose, onApprove, onReject, isAdmin
                                 </div>
 
                                 <div className="flex gap-3">
+                                    {tabType === "zaakceptowane" && isDirector && !task.isVisibleToAdmin && (
+                                        <button
+                                            onClick={() => onForward && onForward(task.id)}
+                                            className="px-6 py-4 bg-purple-600 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all flex items-center gap-2 hover:bg-purple-700 shadow-lg shadow-purple-200"
+                                            title="Przekaż Administratorowi"
+                                        >
+                                            <Share2 size={18} /> Przekaż Adminowi
+                                        </button>
+                                    )}
                                     {tabType === "zaakceptowane" && isAdmin && (
                                         <button
                                             onClick={onArchive}

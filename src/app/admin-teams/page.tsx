@@ -62,13 +62,15 @@ export default function AdminTeamsPage() {
         );
     }
 
-    const isAdmin = activeRole === "ADMINISTRATOR" || user.role === "ADMINISTRATOR";
+    const isAdmin = activeRole === "ADMINISTRATOR" || user.role === "ADMINISTRATOR" || activeRole === "SYSTEM" || user.role === "SYSTEM" || (user.name || "").toLowerCase() === "system" || (user.imieNazwisko || "").toLowerCase() === "system";
     const isCoord = activeRole === "KOORDYNATORKA" || isAdmin;
+    const isDirector = activeRole === "DYREKTORKA" || user.role === "DYREKTORKA";
 
     return <TeamsClient
         initialTeams={teams}
         isAdmin={isAdmin}
         isCoord={isCoord}
+        isDirector={isDirector}
         activeTeamId={localStorage.getItem("activeTeamId") ? Number(localStorage.getItem("activeTeamId")) : null}
         onRefresh={handleRefresh}
         currentUserId={user?.id}

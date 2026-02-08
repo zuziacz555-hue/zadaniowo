@@ -171,6 +171,7 @@ model Task {
   status           String    @default("AKTYWNE")
   uwagiOdrzucenia  String?   @map("uwagi_odrzucenia")
   poprawione       Boolean   @default(false)
+  isVisibleToAdmin Boolean   @default(false) @map("is_visible_to_admin")
 
   team        Team?            @relation(fields: [teamId], references: [id], onDelete: SetNull)
   creator     User?            @relation("CreatedTasks", fields: [utworzonePrzezId], references: [id], onDelete: SetNull)
@@ -258,6 +259,7 @@ model SystemSettings {
   coordinatorTasks             Boolean @default(false) @map("coordinator_tasks")
   coordinatorTeamEditing       Boolean @default(false) @map("coordinator_team_editing")
   coordinatorResignationAlerts Boolean @default(true) @map("coordinator_resignation_alerts")
+  enableDirectorRole           Boolean @default(false) @map("enable_director_role")
 
   @@map("ustawienia_systemu")
 }

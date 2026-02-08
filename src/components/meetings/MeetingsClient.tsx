@@ -34,6 +34,7 @@ export default function MeetingsClient({
     initialMeetings,
     teams,
     isAdmin,
+    isDirector,
     isCoord,
     currentUser,
     currentUserId,
@@ -43,6 +44,7 @@ export default function MeetingsClient({
     initialMeetings: any[],
     teams: any[],
     isAdmin: boolean,
+    isDirector?: boolean,
     isCoord: boolean,
     currentUser: string,
     currentUserId: number,
@@ -352,7 +354,7 @@ export default function MeetingsClient({
                                 </select>
                             </>
                         )}
-                        {(isAdmin || isCoord) && (
+                        {(isAdmin || isCoord || isDirector) && (
                             <button
                                 onClick={() => setShowAddMeeting(true)}
                                 className="lux-btn flex items-center gap-2 group"

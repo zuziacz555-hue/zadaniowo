@@ -11,6 +11,8 @@ export interface SystemSettingsData {
     coordinatorTasks: boolean;
     coordinatorTeamEditing: boolean;
     coordinatorResignationAlerts: boolean;
+    enableDirectorRole: boolean;
+    enableCoordinatorApplications: boolean;
 }
 
 // Get current system settings (creates defaults if none exist)
@@ -27,7 +29,9 @@ export async function getSystemSettings(): Promise<{ success: boolean; data?: Sy
                     alertsRaporty: true,
                     coordinatorTasks: false,
                     coordinatorTeamEditing: false,
-                    coordinatorResignationAlerts: true
+                    coordinatorResignationAlerts: true,
+                    enableDirectorRole: false,
+                    enableCoordinatorApplications: false
                 }
             });
         }
@@ -53,7 +57,8 @@ export async function updateSystemSettings(data: Partial<Omit<SystemSettingsData
                     alertsRaporty: data.alertsRaporty ?? true,
                     coordinatorTasks: data.coordinatorTasks ?? false,
                     coordinatorTeamEditing: data.coordinatorTeamEditing ?? false,
-                    coordinatorResignationAlerts: data.coordinatorResignationAlerts ?? true
+                    coordinatorResignationAlerts: data.coordinatorResignationAlerts ?? true,
+                    enableDirectorRole: data.enableDirectorRole ?? false
                 }
             });
         } else {
@@ -66,7 +71,8 @@ export async function updateSystemSettings(data: Partial<Omit<SystemSettingsData
                     ...(data.alertsRaporty !== undefined && { alertsRaporty: data.alertsRaporty }),
                     ...(data.coordinatorTasks !== undefined && { coordinatorTasks: data.coordinatorTasks }),
                     ...(data.coordinatorTeamEditing !== undefined && { coordinatorTeamEditing: data.coordinatorTeamEditing }),
-                    ...(data.coordinatorResignationAlerts !== undefined && { coordinatorResignationAlerts: data.coordinatorResignationAlerts })
+                    ...(data.coordinatorResignationAlerts !== undefined && { coordinatorResignationAlerts: data.coordinatorResignationAlerts }),
+                    ...(data.enableDirectorRole !== undefined && { enableDirectorRole: data.enableDirectorRole })
                 }
             });
         }

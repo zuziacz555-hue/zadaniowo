@@ -27,6 +27,7 @@ interface AnnouncementsClientProps {
     teams: any[];
     userTasks?: any[];
     isAdmin: boolean;
+    isDirector?: boolean;
     isCoord: boolean;
     currentUserName: string;
     currentUserId: number;
@@ -40,6 +41,7 @@ export default function AnnouncementsClient({
     teams,
     userTasks = [],
     isAdmin,
+    isDirector,
     isCoord,
     currentUserName,
     currentUserId,
@@ -211,7 +213,7 @@ export default function AnnouncementsClient({
     };
 
 
-    const isAuthorizedToManage = isAdmin || isCoord;
+    const isAuthorizedToManage = isAdmin || isCoord || isDirector;
 
     return (
         <DashboardLayout>

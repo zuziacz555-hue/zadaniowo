@@ -37,12 +37,13 @@ interface TeamsClientProps {
     initialTeams: any[];
     isAdmin: boolean;
     isCoord: boolean;
+    isDirector?: boolean;
     activeTeamId: number | null;
     onRefresh?: () => void;
     currentUserId?: number;
 }
 
-export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeamId, onRefresh, currentUserId }: TeamsClientProps) {
+export default function TeamsClient({ initialTeams, isAdmin, isCoord, isDirector = false, activeTeamId, onRefresh, currentUserId }: TeamsClientProps) {
     const router = useRouter();
     const [mounted, setMounted] = useState(false);
 
@@ -343,7 +344,7 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
                                     <div className="flex items-center gap-8">
                                         <MemberStats ut={ut} team={currentTeam} />
 
-                                        {(isAdmin || (isCoord && ut.rola !== 'koordynatorka')) && (
+                                        {(isAdmin || isDirector || (isCoord && ut.rola !== 'koordynatorka')) && (
                                             <button
                                                 className="w-12 h-12 flex items-center justify-center bg-gray-50 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-sm group/btn"
                                                 title="Usuń z zespołu"
@@ -543,7 +544,7 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
 
                                     <div className="p-10 overflow-y-auto custom-scrollbar space-y-6 flex-grow">
 
-                                        {isAdmin && !showAddMember && (
+                                        {(isAdmin || isDirector) && !showAddMember && (
                                             <button
                                                 onClick={prepareAddMember}
                                                 className="w-full py-4 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 font-bold hover:border-primary hover:text-primary hover:bg-gray-50 transition-all flex items-center justify-center gap-2 mb-6"
@@ -563,7 +564,8 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
                                                     {allUsers
                                                         .filter((u: any) =>
                                                             !selectedTeam.users.some((existing: any) => existing.userId === u.id) &&
-                                                            u.rola !== 'ADMINISTRATOR'
+                                                            u.rola !== 'ADMINISTRATOR' &&
+                                                            (u.imieNazwisko || "").toLowerCase() !== "system" && (u.name || "").toLowerCase() !== "system"
                                                         )
                                                         .map((u: any) => (
                                                             <div key={u.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl hover:bg-white hover:shadow-md transition-all border border-gray-100">
@@ -615,7 +617,7 @@ export default function TeamsClient({ initialTeams, isAdmin, isCoord, activeTeam
                                                             <div className="flex gap-4">
                                                                 <MemberStats ut={ut} team={selectedTeam} />
 
-                                                                {(isAdmin || (isCoord && ut.rola !== 'koordynatorka')) && (
+                                                                {(isAdmin || isDirector || (isCoord && ut.rola !== 'koordynatorka')) && (
                                                                     <button
                                                                         className="w-12 h-12 flex items-center justify-center bg-white text-red-500 rounded-2xl shadow-sm border border-gray-100 hover:bg-red-500 hover:text-white transition-all opacity-0 group-hover/member:opacity-100"
                                                                         onClick={() => handleRemoveMember(selectedTeam.id, ut.userId)}

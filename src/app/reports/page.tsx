@@ -65,7 +65,8 @@ export default function MeetingReportsPage() {
         );
     }
 
-    const isAdmin = activeRole === "ADMINISTRATOR" || user.role === "ADMINISTRATOR";
+    const isSystem = (user.name || "").toLowerCase() === "system" || (user.imieNazwisko || "").toLowerCase() === "system" || activeRole === "SYSTEM";
+    const isAdmin = activeRole === "ADMINISTRATOR" || user.role === "ADMINISTRATOR" || isSystem;
     const isCoord = activeRole === "KOORDYNATORKA" || isAdmin;
 
     return (

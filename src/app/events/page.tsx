@@ -53,12 +53,15 @@ export default function EventsPage() {
         );
     }
 
-    const isAdmin = activeRole === "ADMINISTRATOR" || user.role === "ADMINISTRATOR";
+    const isSystem = (user.name || "").toLowerCase() === "system" || (user.imieNazwisko || "").toLowerCase() === "system";
+    const isAdmin = activeRole === "ADMINISTRATOR" || user.role === "ADMINISTRATOR" || isSystem;
+    const isDirector = activeRole === "DYREKTORKA" || user.role === "DYREKTORKA";
 
     return (
         <EventsClient
             initialEvents={events}
             isAdmin={isAdmin}
+            isDirector={isDirector}
             userId={user.id}
             currentUser={user.name}
             onRefresh={handleRefresh}

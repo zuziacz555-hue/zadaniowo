@@ -80,7 +80,8 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
         setTimeout(() => setStatusMessage(null), 3000);
     };
 
-    const isSystemAdmin = user?.role === "ADMINISTRATOR" || user?.role === "admin";
+    const isSystem = (user?.name || "").toLowerCase() === "system" || (user?.imieNazwisko || "").toLowerCase() === "system";
+    const isSystemAdmin = user?.role === "ADMINISTRATOR" || user?.role === "admin" || isSystem;
 
     const toggleItems = [
         {
@@ -124,6 +125,20 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
             title: 'Alerty o rezygnacji',
             description: 'Powiadomienia dla administratora o rezygnacji koordynatorki z zespołu (wyświetlane na Dashboard)',
             color: 'red'
+        },
+        {
+            key: 'enableDirectorRole' as const,
+            icon: Users,
+            title: 'Włącz rolę Dyrektorka',
+            description: 'Aktywuj funkcję Dyrektorki. Zadania koordynatorek będą ukryte dla administratora do momentu przekazania.',
+            color: 'purple'
+        },
+        {
+            key: 'enableCoordinatorApplications' as const,
+            icon: Sparkles,
+            title: 'Włącz Aplikacje dla Koordynatorek',
+            description: 'Zezwól koordynatorkom na widoczność modułu "Aplikacje" (kafel na pulpicie i w menu bocznym).',
+            color: 'pink'
         }
     ];
 
@@ -192,7 +207,7 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
                             </h2>
                             <div className="space-y-6">
                                 {toggleItems.filter(i =>
-                                    ['alertsTerminy', 'alertsPoprawki', 'alertsRaporty', 'coordinatorResignationAlerts'].includes(i.key)
+                                    ['alertsTerminy', 'alertsPoprawki', 'alertsRaporty', 'coordinatorResignationAlerts', 'enableDirectorRole'].includes(i.key)
                                 ).map((item) => (
                                     <ToggleItem key={item.key} item={item} settings={settings} onToggle={handleToggle} saving={saving} />
                                 ))}

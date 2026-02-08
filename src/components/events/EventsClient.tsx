@@ -19,14 +19,16 @@ import { useRouter } from "next/navigation";
 export default function EventsClient({
     initialEvents,
     isAdmin,
+    isDirector,
     userId,
     currentUser,
     onRefresh
 }: {
-    initialEvents: any[],
-    isAdmin: boolean,
-    userId: number,
-    currentUser: string,
+    initialEvents: any[];
+    isAdmin: boolean;
+    isDirector?: boolean;
+    userId: number;
+    currentUser: string;
     onRefresh?: () => void
 }) {
     const router = useRouter();
@@ -165,7 +167,7 @@ export default function EventsClient({
                     </div>
 
                     <div className="relative z-10 flex flex-wrap gap-4 items-center">
-                        {isAdmin && (
+                        {(isAdmin || isDirector) && (
                             <button
                                 onClick={() => setShowAddEvent(true)}
                                 className="lux-btn flex items-center gap-2 group bg-orange-600 hover:bg-orange-700 shadow-orange-200"
@@ -294,49 +296,49 @@ export default function EventsClient({
 
                                     {/* Action Button */}
                                     <div className="pt-4 mt-auto">
-                                        {isAdmin ? (
-                                            <div className="grid grid-cols-2 gap-3">
+                                        {(isAdmin || isDirector) && (
+                                            <div className="flex gap-2 mb-2">
                                                 <button
                                                     onClick={() => handleEditEvent(event)}
-                                                    className="w-full py-4 bg-white/60 hover:bg-white text-foreground rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all border border-white/80 shadow-sm flex items-center justify-center gap-2"
+                                                    className="flex-1 py-2 bg-white/60 hover:bg-white text-orange-600 rounded-xl font-bold text-[10px] uppercase tracking-widest border border-orange-100 flex items-center justify-center gap-2"
                                                 >
                                                     <Edit2 size={14} /> Edytuj
                                                 </button>
                                                 <button
                                                     onClick={() => handleDeleteEvent(event.id)}
-                                                    className="w-full py-4 bg-red-50 hover:bg-red-500 hover:text-white text-red-600 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all border border-red-100 shadow-sm flex items-center justify-center gap-2"
+                                                    className="flex-1 py-2 bg-red-50 hover:bg-red-500 hover:text-white text-red-600 rounded-xl font-bold text-[10px] uppercase tracking-widest border border-red-100 flex items-center justify-center gap-2"
                                                 >
                                                     <Trash2 size={14} /> Usuń
                                                 </button>
                                             </div>
-                                        ) : (
-                                            !isPast && (
-                                                registered && userRegistration ? (
-                                                    <button
-                                                        onClick={() => handleUnregister(userRegistration.id)}
-                                                        className="w-full py-4 bg-white/60 hover:bg-red-50 hover:text-red-500 text-foreground rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all border border-white/80 shadow-sm flex items-center justify-center gap-2 group/btn"
-                                                    >
-                                                        <X size={14} className="group-hover/btn:rotate-90 transition-transform" /> Jesteś zapisana
-                                                    </button>
-                                                ) : (
-                                                    <label className={cn(
-                                                        "w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all border shadow-sm flex items-center justify-center gap-3 cursor-pointer select-none",
-                                                        isFull || isDeadlinePassed
-                                                            ? "bg-gray-100 text-muted-foreground opacity-60 cursor-not-allowed border-gray-200"
-                                                            : selectedIds.includes(event.id)
-                                                                ? "bg-orange-600 text-white border-orange-600 shadow-orange-200 scale-95"
-                                                                : "bg-orange-50/50 hover:bg-orange-600 hover:text-white text-orange-600 border-orange-100"
-                                                    )}>
-                                                        <input
-                                                            type="checkbox"
-                                                            className="hidden"
-                                                            disabled={isFull || isDeadlinePassed}
-                                                            checked={selectedIds.includes(event.id)}
-                                                            onChange={() => handleToggleRegistration(event.id)}
-                                                        />
-                                                        {selectedIds.includes(event.id) ? "Wybrano do zapisu" : (isFull ? "Brak wolnych miejsc" : (isDeadlinePassed ? "Zapisy zamknięte" : "Zapisz się"))}
-                                                    </label>
-                                                )
+                                        )}
+
+                                        {!isPast && (
+                                            registered && userRegistration ? (
+                                                <button
+                                                    onClick={() => handleUnregister(userRegistration.id)}
+                                                    className="w-full py-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-2xl font-black text-xs uppercase tracking-widest transition-all border border-red-100 shadow-sm"
+                                                >
+                                                    Wypisz się
+                                                </button>
+                                            ) : (
+                                                <label className={cn(
+                                                    "block w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all border shadow-sm text-center cursor-pointer select-none",
+                                                    selectedIds.includes(event.id)
+                                                        ? "bg-orange-500 text-white border-orange-500 shadow-orange-200 scale-[1.02]"
+                                                        : (isFull || isDeadlinePassed)
+                                                            ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                                                            : "bg-orange-50/50 hover:bg-orange-600 hover:text-white text-orange-600 border-orange-100"
+                                                )}>
+                                                    <input
+                                                        type="checkbox"
+                                                        className="hidden"
+                                                        disabled={isFull || isDeadlinePassed}
+                                                        checked={selectedIds.includes(event.id)}
+                                                        onChange={() => handleToggleRegistration(event.id)}
+                                                    />
+                                                    {selectedIds.includes(event.id) ? "Wybrano do zapisu" : (isFull ? "Brak wolnych miejsc" : (isDeadlinePassed ? "Zapisy zamknięte" : "Zapisz się"))}
+                                                </label>
                                             )
                                         )}
                                     </div>

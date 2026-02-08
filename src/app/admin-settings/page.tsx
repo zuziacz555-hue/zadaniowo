@@ -21,7 +21,8 @@ export default function SettingsPage() {
         const user = JSON.parse(storedUser);
         const activeRole = localStorage.getItem("activeRole");
 
-        const isAdmin = user.role === "ADMINISTRATOR" || user.role === "admin";
+        const isSystem = (user.name || "").toLowerCase() === "system" || (user.imieNazwisko || "").toLowerCase() === "system" || activeRole === "SYSTEM";
+        const isAdmin = user.role === "ADMINISTRATOR" || user.role === "admin" || isSystem;
         const isCoord = activeRole === "KOORDYNATORKA" || activeRole === "koordynatorka";
 
         if (!isAdmin && !isCoord) {
@@ -41,7 +42,8 @@ export default function SettingsPage() {
                     alertsRaporty: true,
                     coordinatorTasks: false,
                     coordinatorTeamEditing: false,
-                    coordinatorResignationAlerts: true
+                    coordinatorResignationAlerts: true,
+                    enableDirectorRole: false
                 });
             }
             setIsLoading(false);

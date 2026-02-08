@@ -36,7 +36,8 @@ export default function ChatClient() {
         if (storedUser) {
             const parsed = JSON.parse(storedUser);
             setUser(parsed);
-            const r = (storedRole || parsed.role || parsed.rola || "UCZESTNICZKA").toUpperCase();
+            const isSystem = (parsed.name || "").toLowerCase() === "system" || (parsed.imieNazwisko || "").toLowerCase() === "system";
+            const r = isSystem ? "ADMINISTRATOR" : (storedRole || parsed.role || parsed.rola || "UCZESTNICZKA").toUpperCase();
             setRole(r);
         } else {
             router.push("/dashboard");
