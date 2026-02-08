@@ -1,4 +1,3 @@
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import ChatClient from "@/components/chat/ChatClient";
 
 export const metadata = {
@@ -7,11 +6,5 @@ export const metadata = {
 };
 
 export default function ChatPage() {
-    return (
-        <DashboardLayout>
-            <div className="h-[calc(100vh-140px)]">
-                <ChatClient />
-            </div>
-        </DashboardLayout>
-    );
+    return <ChatClient />;
 }

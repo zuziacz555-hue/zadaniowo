@@ -63,7 +63,7 @@ interface TasksClientProps {
 const AdminTaskTile = ({ task, onClick }: { task: any, onClick: () => void }) => {
     const totalExecutors = task.executions?.length || 0;
     const completedCount = task.executions?.filter((e: any) => e.status === "ZAAKCEPTOWANE").length || 0;
-    const teamColor = task.team?.kolor || "#f97316"; // Default orange if no team color
+    const teamColor = task.team?.kolor || "#f97316";
 
     const assignees = task.assignments?.length > 0 ? task.assignments.map((a: any) => a.user) : task.executions?.map((e: any) => e.user);
     const uniqueAssignees = Array.from(new Map(assignees?.map((u: any) => [u?.id, u])).values()).filter(Boolean);
@@ -71,86 +71,80 @@ const AdminTaskTile = ({ task, onClick }: { task: any, onClick: () => void }) =>
     return (
         <motion.div
             layout
-            whileHover={{ y: -8 }}
+            whileHover={{ y: -8, scale: 1.02 }}
             onClick={onClick}
-            className="glass-panel p-8 rounded-[40px] shadow-sm hover:shadow-2xl transition-all duration-500 cursor-pointer relative overflow-hidden group border-white/40"
+            className="lux-card p-0 rounded-[32px] cursor-pointer overflow-hidden group border-white/60 bg-white/40"
         >
-            {/* Background Accent */}
-            <div
-                className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-[40px] opacity-10 transition-all duration-500 group-hover:scale-150"
-                style={{ backgroundColor: teamColor }}
-            />
+            <div className="p-8 space-y-6 relative h-full flex flex-col">
+                {/* Background Accent */}
+                <div
+                    className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-[40px] opacity-10 transition-all duration-500 group-hover:scale-150"
+                    style={{ backgroundColor: teamColor }}
+                />
 
-            <div className="relative z-10 flex flex-col h-full gap-5">
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between relative z-10">
                     <div className={cn(
-                        "px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase border backdrop-blur-md",
-                        task.priorytet === "WYSOKI" ? "bg-red-500/10 text-red-600 border-red-500/20" :
-                            task.priorytet === "NORMALNY" ? "bg-blue-500/10 text-blue-600 border-blue-500/20" :
-                                "bg-green-500/10 text-green-600 border-green-500/20"
+                        "lux-badge shadow-sm",
+                        task.priorytet === "WYSOKI" ? "lux-badge-danger" :
+                            task.priorytet === "NORMALNY" ? "lux-badge-primary" :
+                                "lux-badge-success"
                     )}>
                         {task.priorytet}
                     </div>
                     {task.termin && (
-                        <div className="flex items-center gap-1.5 text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-60">
-                            <Calendar size={14} className="text-primary/60" />
-                            <span>{new Date(task.termin).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })}</span>
+                        <div className="flex items-center gap-2 text-[10px] font-black text-muted-foreground/60 uppercase tracking-[0.15em] bg-white/60 px-3 py-1.5 rounded-xl border border-white">
+                            <Calendar size={12} className="text-primary" />
+                            <span>{new Date(task.termin).toLocaleDateString()}</span>
                         </div>
                     )}
                 </div>
 
-                <div>
-                    <h3 className="text-2xl font-black tracking-tight text-foreground group-hover:text-primary transition-colors line-clamp-2 leading-tight mb-2">
+                <div className="relative z-10">
+                    <h3 className="text-xl font-black tracking-tight text-foreground transition-all line-clamp-2 leading-tight mb-2 group-hover:text-primary">
                         {task.tytul}
                     </h3>
 
                     {task.team && (
                         <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: teamColor }} />
-                            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-60">
+                            <div className="size-1.5 rounded-full" style={{ backgroundColor: teamColor }} />
+                            <span className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest">
                                 {task.team.nazwa}
                             </span>
                         </div>
                     )}
                 </div>
 
-                <div className="flex items-center justify-between pt-5 border-t border-white/40 mt-auto">
+                <div className="flex items-center justify-between pt-6 border-t border-white/40 mt-auto relative z-10">
                     <div className="flex -space-x-3">
                         {uniqueAssignees.slice(0, 4).map((u: any, i: number) => (
                             <div
                                 key={i}
-                                className="w-9 h-9 rounded-2xl border-2 border-white bg-white/60 flex items-center justify-center text-[10px] font-black text-foreground shadow-sm backdrop-blur-sm"
+                                className="size-9 rounded-xl border-2 border-white bg-white shadow-sm flex items-center justify-center font-black text-primary text-[10px]"
                                 title={u.imieNazwisko}
                             >
                                 {u.imieNazwisko?.[0]}
                             </div>
                         ))}
                         {uniqueAssignees.length > 4 && (
-                            <div className="w-9 h-9 rounded-2xl border-2 border-white bg-orange-50/80 flex items-center justify-center text-[10px] font-black text-orange-600 shadow-sm backdrop-blur-sm">
+                            <div className="size-9 rounded-xl border-2 border-white bg-primary text-white shadow-sm flex items-center justify-center font-black text-[10px]">
                                 +{uniqueAssignees.length - 4}
                             </div>
                         )}
                     </div>
 
                     <div className="flex flex-col items-end gap-2">
-                        <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest opacity-60">Realizacja</span>
                         <div className="flex items-center gap-3">
-                            <div className="w-20 h-2 bg-white/40 rounded-full overflow-hidden border border-white/20">
+                            <div className="w-20 h-1.5 bg-white shadow-inner rounded-full overflow-hidden border border-white/40">
                                 <motion.div
                                     initial={{ width: 0 }}
                                     animate={{ width: `${totalExecutors > 0 ? (completedCount / totalExecutors) * 100 : 0}%` }}
-                                    className="h-full bg-gradient-to-r from-emerald-400 to-green-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.3)]"
+                                    className="h-full lux-gradient rounded-full"
                                 />
                             </div>
                             <span className="text-[10px] font-black text-foreground">{completedCount}/{totalExecutors}</span>
                         </div>
                     </div>
                 </div>
-            </div>
-
-            {/* Hover Icon */}
-            <div className="absolute top-8 right-8 p-2 bg-white/40 rounded-xl border border-white/60 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0">
-                <ChevronRight size={18} className="text-primary" />
             </div>
         </motion.div>
     );
@@ -571,37 +565,33 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
     return (
         <DashboardLayout>
             <div>
-                <div className="space-y-10 animate-slide-in pb-10">
+                <div className="space-y-12 animate-slide-in pb-12">
                     {/* Header Section */}
-                    <div className="glass-panel p-10 rounded-[32px] flex flex-wrap justify-between items-center gap-8 relative overflow-hidden">
-                        {/* Background Glow */}
-                        <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/10 rounded-full blur-[80px]" />
-
-                        <div className="relative z-10 space-y-2">
-                            <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
-                                    <CheckCircle size={24} />
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-4">
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-5">
+                                <div className="p-4 lux-gradient shadow-xl shadow-primary/30 rounded-[28px] text-white">
+                                    <Layers size={32} />
                                 </div>
-                                <h1 className="text-4xl font-black tracking-tight text-foreground">Zadania</h1>
+                                <div>
+                                    <h1 className="text-5xl font-black gradient-text tracking-tighter">Zadania</h1>
+                                    <p className="text-muted-foreground font-medium text-lg opacity-70 mt-1">
+                                        {isAdmin ? "Pełna kontrola nad procesami i zespołami" :
+                                            isCoord ? "Zarządzaj zespołem i weryfikuj postępy" :
+                                                "Twoje centrum operacyjne i lista celów"}
+                                    </p>
+                                </div>
                             </div>
-                            <p className="text-muted-foreground font-medium">
-                                {isAdmin ? "Pełna kontrola nad wszystkimi zespołami i procesami" :
-                                    isCoord ? "Zarządzaj zespołem i weryfikuj zgłoszenia uczestników" :
-                                        "Przeglądaj i wykonuj przypisane Ci zadania"}
-                            </p>
                         </div>
 
-                        <div className="relative z-10 flex flex-wrap gap-4 items-center">
-
+                        <div className="flex flex-wrap gap-4 items-center">
                             {(isAdmin || (isCoord && coordViewMode === "MANAGEMENT")) && (
                                 <button
                                     onClick={() => setShowAddForm(true)}
-                                    className="lux-btn flex items-center gap-2 group bg-primary hover:bg-primary/90 shadow-primary/20"
+                                    className="lux-btn flex items-center justify-center gap-3 py-4 px-8"
                                 >
-                                    <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center group-hover:rotate-90 transition-transform">
-                                        <Plus size={14} />
-                                    </div>
-                                    Nowe zadanie
+                                    <Plus size={24} />
+                                    <span className="font-black uppercase tracking-widest text-sm text-white">Nowe zadanie</span>
                                 </button>
                             )}
                         </div>
@@ -619,13 +609,15 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                 className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-[20px] flex items-center justify-center p-4 overflow-y-auto"
                                 onClick={(e) => { if (e.target === e.currentTarget) setShowCloseConfirmation(true); }}
                             >
-                                <div className="bg-white p-8 rounded-[32px] w-full max-w-2xl shadow-2xl relative my-8">
-                                    <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-                                        <div className="p-2 bg-primary/10 rounded-xl text-primary"><Plus size={24} /></div>
-                                        Utwórz nowe zadanie
-                                    </h2>
+                                <div className="lux-card-strong p-0 w-full max-w-2xl relative my-8 overflow-hidden rounded-[32px]">
+                                    <div className="p-8 border-b border-white/20 bg-white/40">
+                                        <h2 className="text-3xl font-black gradient-text tracking-tighter flex items-center gap-3">
+                                            <Plus size={32} className="text-primary" />
+                                            Nowe zadanie
+                                        </h2>
+                                    </div>
 
-                                    <div className="space-y-5">
+                                    <div className="p-10 space-y-8">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="col-span-2 space-y-2">
                                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-1">Tytuł zadania</label>
@@ -945,40 +937,40 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                         {/* LEFT COLUMN: NAVIGATION (ADMIN TEAMS / COORD MODES) */}
                         {(isAdmin || (isCoord && settings?.coordinatorTasks)) && (
-                            <div className="lg:col-span-1 space-y-6">
-                                <div className="flex items-center gap-3 px-2 mb-2">
-                                    <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                            <div className="lg:col-span-1 space-y-8">
+                                <div className="flex items-center gap-3 px-2">
+                                    <div className="size-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
                                         <Folder size={18} />
                                     </div>
-                                    <h2 className="text-xl font-black tracking-tight text-foreground">
+                                    <h2 className="text-xl font-black tracking-tight text-foreground uppercase opacity-70">
                                         {isAdmin ? "Zespoły" : "Moje widoki"}
                                     </h2>
                                 </div>
 
-                                <div className="space-y-3">
+                                <div className="space-y-2">
                                     {isAdmin ? (
                                         <>
                                             {/* All Teams Option */}
                                             <button
                                                 onClick={() => setAdminTeamFilter("ALL")}
                                                 className={cn(
-                                                    "w-full text-left p-5 rounded-[28px] transition-all flex items-center justify-between group",
+                                                    "w-full text-left p-4 rounded-2xl transition-all flex items-center justify-between group",
                                                     adminTeamFilter === "ALL"
-                                                        ? "glass-panel bg-white/60 border-primary/20 shadow-lg scale-[1.02]"
-                                                        : "hover:bg-white/40 border border-transparent"
+                                                        ? "bg-white shadow-xl shadow-primary/5 ring-1 ring-primary/20"
+                                                        : "hover:bg-white/40"
                                                 )}
                                             >
                                                 <div className="flex items-center gap-4">
                                                     <div className={cn(
-                                                        "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-sm",
-                                                        adminTeamFilter === "ALL" ? "bg-primary text-white scale-110 shadow-primary/20" : "bg-white/60 text-muted-foreground group-hover:bg-white group-hover:text-primary"
+                                                        "size-10 rounded-xl flex items-center justify-center transition-all duration-500",
+                                                        adminTeamFilter === "ALL" ? "lux-gradient text-white shadow-lg shadow-primary/20" : "bg-white text-muted-foreground group-hover:bg-white group-hover:text-primary shadow-sm"
                                                     )}>
-                                                        <Users size={22} />
+                                                        <Users size={18} />
                                                     </div>
                                                     <div>
-                                                        <span className={cn("font-bold block transition-colors", adminTeamFilter === "ALL" ? "text-primary" : "text-foreground")}>Wszystkie</span>
-                                                        <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest opacity-60">
-                                                            Suma: {initialTasks.length}
+                                                        <span className={cn("text-xs font-black uppercase tracking-widest block transition-colors", adminTeamFilter === "ALL" ? "text-primary" : "text-foreground/60")}>Wszystkie</span>
+                                                        <span className="text-[10px] text-muted-foreground font-medium opacity-60">
+                                                            {initialTasks.length} zadań
                                                         </span>
                                                     </div>
                                                 </div>
@@ -992,67 +984,59 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                         key={team.id}
                                                         onClick={() => setAdminTeamFilter(team.id)}
                                                         className={cn(
-                                                            "w-full text-left p-5 rounded-[28px] transition-all flex items-center justify-between group",
+                                                            "w-full text-left p-4 rounded-2xl transition-all flex items-center justify-between group",
                                                             isActive
-                                                                ? "glass-panel bg-white/60 border-primary/20 shadow-lg scale-[1.02]"
-                                                                : "hover:bg-white/40 border border-transparent"
+                                                                ? "bg-white shadow-xl shadow-primary/5 ring-1 ring-primary/20"
+                                                                : "hover:bg-white/40"
                                                         )}
                                                     >
                                                         <div className="flex items-center gap-4">
                                                             <div
                                                                 className={cn(
-                                                                    "w-12 h-12 rounded-2xl flex items-center justify-center text-white transition-all duration-500 shadow-sm",
-                                                                    isActive ? "scale-110" : "bg-white/60 text-muted-foreground group-hover:bg-white"
+                                                                    "size-10 rounded-xl flex items-center justify-center text-white transition-all duration-500 shadow-sm",
+                                                                    isActive ? "shadow-lg" : "bg-white text-muted-foreground group-hover:bg-white"
                                                                 )}
                                                                 style={isActive ? {
                                                                     backgroundColor: team.kolor || '#5400FF',
-                                                                    boxShadow: `0 10px 20px -5px ${team.kolor || '#5400FF'}40`
+                                                                    boxShadow: `0 8px 16px -4px ${team.kolor || '#5400FF'}40`
                                                                 } : {}}
                                                             >
-                                                                <Folder size={22} style={!isActive ? { color: team.kolor || '#9ca3af' } : {}} />
+                                                                <Folder size={18} style={!isActive ? { color: team.kolor || '#9ca3af' } : {}} />
                                                             </div>
                                                             <div>
-                                                                <span className={cn("font-bold block transition-colors", isActive ? "text-foreground" : "text-foreground/80")}>{team.nazwa}</span>
-                                                                <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest opacity-60">
+                                                                <span className={cn("text-xs font-black uppercase tracking-widest block transition-colors", isActive ? "text-foreground" : "text-foreground/60")}>{team.nazwa}</span>
+                                                                <span className="text-[10px] text-muted-foreground font-medium opacity-60">
                                                                     {teamTaskCount} zadań
                                                                 </span>
                                                             </div>
                                                         </div>
-                                                        {teamTaskCount > 0 && (
-                                                            <div className={cn(
-                                                                "w-7 h-7 flex items-center justify-center rounded-xl font-black text-[10px] transition-all duration-500",
-                                                                isActive ? "bg-white/60 text-foreground" : "bg-white/40 text-muted-foreground group-hover:bg-white"
-                                                            )}>
-                                                                {teamTaskCount}
-                                                            </div>
-                                                        )}
                                                     </button>
                                                 );
                                             })}
 
-                                            <div className="h-px bg-white/40 mx-4 my-2" />
+                                            <div className="h-px bg-white/60 mx-4 my-4" />
 
                                             {/* Folder for Coordinator Tasks */}
                                             {settings?.coordinatorTasks && (
                                                 <button
                                                     onClick={() => setAdminTeamFilter(-1)}
                                                     className={cn(
-                                                        "w-full text-left p-5 rounded-[28px] transition-all flex items-center justify-between group",
+                                                        "w-full text-left p-4 rounded-2xl transition-all flex items-center justify-between group",
                                                         adminTeamFilter === -1
-                                                            ? "glass-panel bg-white/60 border-primary/20 shadow-lg scale-[1.02]"
-                                                            : "hover:bg-white/40 border border-transparent"
+                                                            ? "bg-white shadow-xl shadow-purple-500/5 ring-1 ring-purple-500/20"
+                                                            : "hover:bg-white/40"
                                                     )}
                                                 >
                                                     <div className="flex items-center gap-4">
                                                         <div className={cn(
-                                                            "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-sm",
-                                                            adminTeamFilter === -1 ? "bg-purple-600 text-white scale-110 shadow-purple-500/20" : "bg-white/60 text-muted-foreground group-hover:bg-white group-hover:text-purple-600"
+                                                            "size-10 rounded-xl flex items-center justify-center transition-all duration-500 shadow-sm",
+                                                            adminTeamFilter === -1 ? "bg-purple-600 text-white shadow-lg shadow-purple-500/20" : "bg-white text-muted-foreground group-hover:bg-white group-hover:text-purple-600"
                                                         )}>
-                                                            <Users size={22} />
+                                                            <Users size={18} />
                                                         </div>
                                                         <div>
-                                                            <span className={cn("font-bold block transition-colors", adminTeamFilter === -1 ? "text-purple-700" : "text-foreground")}>Koordynatorki</span>
-                                                            <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest opacity-60">
+                                                            <span className={cn("text-xs font-black uppercase tracking-widest block transition-colors", adminTeamFilter === -1 ? "text-purple-700" : "text-foreground/60")}>Koordynatorki</span>
+                                                            <span className="text-[10px] text-muted-foreground font-medium opacity-60">
                                                                 Specjalne
                                                             </span>
                                                         </div>
@@ -1063,31 +1047,27 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                             <button
                                                 onClick={() => setAdminTeamFilter(-2)}
                                                 className={cn(
-                                                    "w-full text-left p-5 rounded-[28px] transition-all flex items-center justify-between group",
+                                                    "w-full text-left p-4 rounded-2xl transition-all flex items-center justify-between group",
                                                     adminTeamFilter === -2
-                                                        ? "glass-panel bg-white/60 border-primary/20 shadow-lg scale-[1.02]"
-                                                        : "hover:bg-white/40 border border-transparent"
+                                                        ? "bg-white shadow-xl shadow-indigo-500/5 ring-1 ring-indigo-500/20"
+                                                        : "hover:bg-white/40"
                                                 )}
                                             >
                                                 <div className="flex items-center gap-4">
                                                     <div className={cn(
-                                                        "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-sm",
-                                                        adminTeamFilter === -2 ? "bg-indigo-600 text-white scale-110 shadow-indigo-500/20" : "bg-white/60 text-muted-foreground group-hover:bg-white group-hover:text-indigo-600"
+                                                        "size-10 rounded-xl flex items-center justify-center transition-all duration-500 shadow-sm",
+                                                        adminTeamFilter === -2 ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" : "bg-white text-muted-foreground group-hover:bg-white group-hover:text-indigo-600"
                                                     )}>
-                                                        <Users size={22} />
+                                                        <Users size={18} />
                                                     </div>
                                                     <div>
-                                                        <span className={cn("font-bold block transition-colors", adminTeamFilter === -2 ? "text-indigo-700" : "text-foreground")}>Mieszane</span>
-                                                        <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest opacity-60">
+                                                        <span className={cn("text-xs font-black uppercase tracking-widest block transition-colors", adminTeamFilter === -2 ? "text-indigo-700" : "text-foreground/60")}>Mieszane</span>
+                                                        <span className="text-[10px] text-muted-foreground font-medium opacity-60">
                                                             Wybrane osoby
                                                         </span>
                                                     </div>
                                                 </div>
                                             </button>
-
-                                            <div className="h-px bg-white/40 mx-4 my-2" />
-
-
                                         </>
                                     ) : (
                                         <>
@@ -1095,22 +1075,22 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                             <button
                                                 onClick={() => setCoordViewMode("MANAGEMENT")}
                                                 className={cn(
-                                                    "w-full text-left p-5 rounded-[28px] transition-all flex items-center group",
+                                                    "w-full text-left p-4 rounded-2xl transition-all flex items-center group",
                                                     coordViewMode === "MANAGEMENT"
-                                                        ? "glass-panel bg-white/60 border-primary/20 shadow-lg scale-[1.02]"
-                                                        : "hover:bg-white/40 border border-transparent"
+                                                        ? "bg-white shadow-xl shadow-primary/5 ring-1 ring-primary/20"
+                                                        : "hover:bg-white/40"
                                                 )}
                                             >
                                                 <div className="flex items-center gap-4">
                                                     <div className={cn(
-                                                        "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-sm",
-                                                        coordViewMode === "MANAGEMENT" ? "bg-primary text-white scale-110 shadow-primary/20" : "bg-white/60 text-muted-foreground group-hover:bg-white group-hover:text-primary"
+                                                        "size-10 rounded-xl flex items-center justify-center transition-all duration-500 shadow-sm",
+                                                        coordViewMode === "MANAGEMENT" ? "lux-gradient text-white shadow-lg shadow-primary/20" : "bg-white text-muted-foreground group-hover:bg-white group-hover:text-primary"
                                                     )}>
-                                                        <Users size={22} />
+                                                        <Users size={18} />
                                                     </div>
                                                     <div>
-                                                        <span className={cn("font-bold block transition-colors", coordViewMode === "MANAGEMENT" ? "text-primary" : "text-foreground")}>Zarządzanie</span>
-                                                        <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest opacity-60">
+                                                        <span className={cn("text-xs font-black uppercase tracking-widest block transition-colors", coordViewMode === "MANAGEMENT" ? "text-primary" : "text-foreground/60")}>Zarządzanie</span>
+                                                        <span className="text-[10px] text-muted-foreground font-medium opacity-60">
                                                             Weryfikacja zespołu
                                                         </span>
                                                     </div>
@@ -1120,29 +1100,27 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                             <button
                                                 onClick={() => setCoordViewMode("PERSONAL")}
                                                 className={cn(
-                                                    "w-full text-left p-5 rounded-[28px] transition-all flex items-center group",
+                                                    "w-full text-left p-4 rounded-2xl transition-all flex items-center group",
                                                     coordViewMode === "PERSONAL"
-                                                        ? "glass-panel bg-white/60 border-primary/20 shadow-lg scale-[1.02]"
-                                                        : "hover:bg-white/40 border border-transparent"
+                                                        ? "bg-white shadow-xl shadow-orange-500/5 ring-1 ring-orange-500/20"
+                                                        : "hover:bg-white/40"
                                                 )}
                                             >
                                                 <div className="flex items-center gap-4">
                                                     <div className={cn(
-                                                        "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-sm",
-                                                        coordViewMode === "PERSONAL" ? "bg-orange-600 text-white scale-110 shadow-orange-500/20" : "bg-white/60 text-muted-foreground group-hover:bg-white group-hover:text-orange-600"
+                                                        "size-10 rounded-xl flex items-center justify-center transition-all duration-500 shadow-sm",
+                                                        coordViewMode === "PERSONAL" ? "bg-orange-600 text-white shadow-lg shadow-orange-500/20" : "bg-white text-muted-foreground group-hover:bg-white group-hover:text-orange-600"
                                                     )}>
-                                                        <CheckCircle size={22} />
+                                                        <CheckCircle size={18} />
                                                     </div>
                                                     <div>
-                                                        <span className={cn("font-bold block transition-colors", coordViewMode === "PERSONAL" ? "text-orange-700" : "text-foreground")}>Moje zadania</span>
-                                                        <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest opacity-60">
+                                                        <span className={cn("text-xs font-black uppercase tracking-widest block transition-colors", coordViewMode === "PERSONAL" ? "text-orange-700" : "text-foreground/60")}>Moje zadania</span>
+                                                        <span className="text-[10px] text-muted-foreground font-medium opacity-60">
                                                             {doZrobienia.length} aktywnych
                                                         </span>
                                                     </div>
                                                 </div>
                                             </button>
-
-
                                         </>
                                     )}
                                 </div>
@@ -1223,34 +1201,19 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                     <div className="space-y-6">
                                         <div className="flex items-center justify-between px-2">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600 border border-amber-500/20">
-                                                    <Clock size={18} />
+                                                <div className="size-8 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600">
+                                                    <Clock size={16} />
                                                 </div>
-                                                <h2 className="text-xl font-black tracking-tight text-foreground">Do sprawdzenia</h2>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                {[
-                                                    { id: "oczekujace", color: "bg-amber-500" },
-                                                    { id: "zaakceptowane", color: "bg-emerald-500" },
-                                                    { id: "doPoprawy", color: "bg-red-500" }
-                                                ].map(t => (
-                                                    <div
-                                                        key={t.id}
-                                                        className={cn(
-                                                            "w-2 h-2 rounded-full transition-all duration-500",
-                                                            verificationTab === t.id ? t.color : "bg-white/40"
-                                                        )}
-                                                    />
-                                                ))}
+                                                <h2 className="text-xl font-black tracking-tight text-foreground uppercase opacity-70">Weryfikacja</h2>
                                             </div>
                                         </div>
 
-                                        <div className="glass-panel p-2 rounded-[32px] border-white/40">
-                                            <div className="flex p-1 gap-1">
+                                        <div className="bg-white/40 p-1.5 rounded-[28px] border border-white/60 shadow-xl shadow-primary/5">
+                                            <div className="flex gap-1">
                                                 {[
-                                                    { id: "oczekujace", label: "Do sprawdzenia", count: weryfikacja_oczekujace.length, icon: Clock, color: "text-amber-500" },
-                                                    { id: "zaakceptowane", label: "Zatwierdzone", count: weryfikacja_zaakceptowane.length, icon: CheckCircle, color: "text-emerald-500" },
-                                                    { id: "doPoprawy", label: "Do poprawy", count: weryfikacja_doPoprawy.length, icon: AlertTriangle, color: "text-red-500" }
+                                                    { id: "oczekujace", label: "Oczekujące", count: weryfikacja_oczekujace.length, icon: Clock, activeClass: "text-amber-600 bg-amber-50" },
+                                                    { id: "zaakceptowane", label: "Zatwierdzone", count: weryfikacja_zaakceptowane.length, icon: CheckCircle, activeClass: "text-emerald-600 bg-emerald-50" },
+                                                    { id: "doPoprawy", label: "Do poprawy", count: weryfikacja_doPoprawy.length, icon: AlertTriangle, activeClass: "text-red-600 bg-red-50" }
                                                 ].map((tab) => {
                                                     const Icon = tab.icon;
                                                     const isActive = verificationTab === tab.id;
@@ -1259,18 +1222,16 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                             key={tab.id}
                                                             onClick={() => setVerificationTab(tab.id as any)}
                                                             className={cn(
-                                                                "flex-1 py-4 rounded-[20px] flex flex-col items-center justify-center gap-1.5 transition-all group",
-                                                                isActive ? "bg-white text-primary shadow-lg scale-[1.02]" : "text-muted-foreground hover:bg-white/40"
+                                                                "flex-1 py-4 rounded-[22px] flex items-center justify-center gap-2.5 transition-all group relative",
+                                                                isActive ? cn("bg-white shadow-lg", tab.activeClass) : "text-muted-foreground/60 hover:bg-white/40"
                                                             )}
                                                         >
-                                                            <Icon size={16} className={cn("transition-colors", isActive ? tab.color : "opacity-40 group-hover:opacity-100")} />
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-[10px] font-black uppercase tracking-widest">{tab.label}</span>
-                                                                <span className={cn(
-                                                                    "px-1.5 py-0.5 rounded-md text-[8px] font-black",
-                                                                    isActive ? "bg-primary/10 text-primary" : "bg-white/40 text-muted-foreground"
-                                                                )}>{tab.count}</span>
-                                                            </div>
+                                                            <Icon size={16} className={cn("transition-colors", isActive ? "" : "opacity-40 group-hover:opacity-100")} />
+                                                            <span className="text-[10px] font-black uppercase tracking-widest">{tab.label}</span>
+                                                            <span className={cn(
+                                                                "px-2 py-0.5 rounded-lg text-[9px] font-black",
+                                                                isActive ? "bg-black/5" : "bg-black/5 opacity-50"
+                                                            )}>{tab.count}</span>
                                                         </button>
                                                     );
                                                 })}
@@ -1437,89 +1398,90 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                             </div>
                         </div>
 
-                        <div className="flex bg-white/20 p-2 border-b border-white/40">
-                            {[
-                                { id: "do-zrobienia", label: "Do zrobienia", count: doZrobienia.length, icon: Clock },
-                                { id: "wykonane", label: "Wykonane", count: wykonane.length, icon: History },
-                                { id: "do-poprawy", label: "Do poprawy", count: doPoprawy.length, icon: AlertTriangle }
-                            ].map((tab) => {
-                                const Icon = tab.icon;
-                                const isActive = activeTab === tab.id;
-                                return (
-                                    <div
-                                        key={tab.id}
-                                        role="button"
-                                        onClick={() => setActiveTab(tab.id)}
-                                        className={cn(
-                                            "flex-1 py-5 rounded-[22px] flex items-center justify-center gap-3 transition-all relative group cursor-pointer",
-                                            isActive ? "bg-white text-primary shadow-lg scale-[1.02]" : "text-muted-foreground hover:bg-white/40"
-                                        )}
-                                    >
-                                        <Icon size={18} className={cn("transition-colors", isActive ? "text-primary" : "opacity-40 group-hover:opacity-100")} />
-                                        <span className="font-black text-[11px] uppercase tracking-wider">{tab.label}</span>
-                                        <span className={cn(
-                                            "px-2 py-0.5 rounded-lg text-[9px] font-black",
-                                            isActive ? "bg-primary text-white" : "bg-white/40 text-muted-foreground"
-                                        )}>
-                                            {tab.count}
-                                        </span>
+                        <div className="bg-white/40 p-1.5 rounded-[28px] border-b border-white/60 shadow-xl shadow-primary/5">
+                            <div className="flex gap-1">
+                                {[
+                                    { id: "do-zrobienia", label: "Do zrobienia", count: doZrobienia.length, icon: Clock },
+                                    { id: "wykonane", label: "Wykonane", count: wykonane.length, icon: History },
+                                    { id: "do-poprawy", label: "Do poprawy", count: doPoprawy.length, icon: AlertTriangle }
+                                ].map((tab) => {
+                                    const Icon = tab.icon;
+                                    const isActive = activeTab === tab.id;
+                                    return (
+                                        <button
+                                            key={tab.id}
+                                            onClick={() => setActiveTab(tab.id)}
+                                            className={cn(
+                                                "flex-1 py-4 rounded-[22px] flex items-center justify-center gap-2.5 transition-all group relative",
+                                                isActive ? "bg-white text-primary shadow-lg" : "text-muted-foreground/60 hover:bg-white/40"
+                                            )}
+                                        >
+                                            <Icon size={16} className={cn("transition-colors", isActive ? "text-primary" : "opacity-40 group-hover:opacity-100")} />
+                                            <span className="text-[10px] font-black uppercase tracking-widest">{tab.label}</span>
+                                            <span className={cn(
+                                                "px-2 py-0.5 rounded-lg text-[9px] font-black",
+                                                isActive ? "bg-primary text-white" : "bg-black/5 opacity-50"
+                                            )}>
+                                                {tab.count}
+                                            </span>
 
-                                        {isActive && (
-                                            <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); setIsSortMenuOpen(!isSortMenuOpen); }}
-                                                    className="p-1.5 hover:bg-primary/5 rounded-lg text-primary transition-colors"
-                                                >
-                                                    <Filter size={14} />
-                                                </button>
+                                            {isActive && (
+                                                <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setIsSortMenuOpen(!isSortMenuOpen); }}
+                                                        className="p-1.5 hover:bg-primary/5 rounded-lg text-primary transition-colors"
+                                                    >
+                                                        <Filter size={14} />
+                                                    </button>
 
-                                                <AnimatePresence>
-                                                    {isSortMenuOpen && (
-                                                        <motion.div
-                                                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                                            className="absolute top-full right-0 mt-3 w-56 glass-panel p-2 z-[50] shadow-2xl border-white/60"
-                                                        >
-                                                            <div className="space-y-1">
-                                                                <span className="text-[9px] font-black uppercase text-muted-foreground/60 px-3 py-2 block tracking-widest">Sortuj wg priorytetu</span>
-                                                                <button
-                                                                    onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "PRIORYTET", direction: "DESC" }); setIsSortMenuOpen(false); }}
-                                                                    className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "PRIORYTET" && sortConfig.direction === "DESC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
-                                                                >
-                                                                    Najwyższy (Malejąco)
-                                                                </button>
-                                                                <button
-                                                                    onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "PRIORYTET", direction: "ASC" }); setIsSortMenuOpen(false); }}
-                                                                    className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "PRIORYTET" && sortConfig.direction === "ASC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
-                                                                >
-                                                                    Najniższy (Rosnąco)
-                                                                </button>
+                                                    <AnimatePresence>
+                                                        {isSortMenuOpen && (
+                                                            <motion.div
+                                                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                                className="absolute top-full right-0 mt-3 w-56 lux-card-strong p-2 z-[50] shadow-2xl border-white/60"
+                                                            >
+                                                                <div className="space-y-1">
+                                                                    <span className="text-[9px] font-black uppercase text-muted-foreground/60 px-3 py-2 block tracking-widest">Sortuj WG Priorytetu</span>
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "PRIORYTET", direction: "DESC" }); setIsSortMenuOpen(false); }}
+                                                                        className={cn("w-full text-left px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "PRIORYTET" && sortConfig.direction === "DESC" ? "lux-gradient text-white shadow-md" : "hover:bg-primary/10 text-foreground")}
+                                                                    >
+                                                                        Najwyższy
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "PRIORYTET", direction: "ASC" }); setIsSortMenuOpen(false); }}
+                                                                        className={cn("w-full text-left px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "PRIORYTET" && sortConfig.direction === "ASC" ? "lux-gradient text-white shadow-md" : "hover:bg-primary/10 text-foreground")}
+                                                                    >
+                                                                        Najniższy
+                                                                    </button>
 
-                                                                <div className="h-px bg-white/40 my-2 mx-2" />
+                                                                    <div className="h-px bg-white/40 my-2 mx-2" />
 
-                                                                <span className="text-[9px] font-black uppercase text-muted-foreground/60 px-3 py-2 block tracking-widest">Sortuj wg terminu</span>
-                                                                <button
-                                                                    onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "TERMIN", direction: "ASC" }); setIsSortMenuOpen(false); }}
-                                                                    className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "TERMIN" && sortConfig.direction === "ASC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
-                                                                >
-                                                                    Najbliższy (Rosnąco)
-                                                                </button>
-                                                                <button
-                                                                    onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "TERMIN", direction: "DESC" }); setIsSortMenuOpen(false); }}
-                                                                    className={cn("w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "TERMIN" && sortConfig.direction === "DESC" ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground")}
-                                                                >
-                                                                    Najdalszy (Malejąco)
-                                                                </button>
-                                                            </div>
-                                                        </motion.div>
-                                                    )}
-                                                </AnimatePresence>
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
+                                                                    <span className="text-[9px] font-black uppercase text-muted-foreground/60 px-3 py-2 block tracking-widest">Sortuj WG Terminu</span>
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "TERMIN", direction: "ASC" }); setIsSortMenuOpen(false); }}
+                                                                        className={cn("w-full text-left px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "TERMIN" && sortConfig.direction === "ASC" ? "lux-gradient text-white shadow-md" : "hover:bg-primary/10 text-foreground")}
+                                                                    >
+                                                                        Najbliższy
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); setSortConfig({ field: "TERMIN", direction: "DESC" }); setIsSortMenuOpen(false); }}
+                                                                        className={cn("w-full text-left px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all", sortConfig.field === "TERMIN" && sortConfig.direction === "DESC" ? "lux-gradient text-white shadow-md" : "hover:bg-primary/10 text-foreground")}
+                                                                    >
+                                                                        Najdalszy
+                                                                    </button>
+                                                                </div>
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
+                                                </div>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
 
                         <div className="p-10">
@@ -1555,48 +1517,47 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                             {selectedTask && (showParticipantView || (!isAdmin && !isCoord)) && activeTab !== "wykonane" && (
                                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6">
                                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedTask(null)} className="absolute inset-0 bg-black/60 backdrop-blur-[20px]" />
-                                    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="lux-card p-10 max-w-lg w-full relative z-10 shadow-2xl">
-                                        <div className="flex justify-between items-start mb-6">
+                                    <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="lux-card-strong p-10 max-w-lg w-full relative z-10 shadow-2xl border-white/40">
+                                        <div className="flex justify-between items-start mb-8">
                                             <div>
-                                                <h3 className="text-2xl font-bold">{activeTab === "do-poprawy" ? "Wyślij poprawkę" : "Oznacz jako wykonane"}</h3>
-                                                <p className="text-muted-foreground mt-1">Zadanie: <span className="font-bold text-foreground">{selectedTask.tytul}</span></p>
+                                                <h3 className="text-3xl font-black gradient-text tracking-tighter">{activeTab === "do-poprawy" ? "Wyślij poprawkę" : "Zgłoś wykonanie"}</h3>
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mt-2">Zadanie: <span className="text-primary">{selectedTask.tytul}</span></p>
                                             </div>
-                                            <div className="p-3 rounded-2xl bg-primary/5 text-primary">
+                                            <div className="p-4 rounded-[20px] bg-primary/5 text-primary shadow-inner">
                                                 <MessageSquare size={24} />
                                             </div>
                                         </div>
 
-                                        <div className="space-y-6">
+                                        <div className="space-y-8">
                                             {activeTab === "do-poprawy" && (
-                                                <div className="bg-red-50 p-4 rounded-2xl border-l-4 border-red-500">
-                                                    <p className="text-[10px] font-black uppercase text-red-600 mb-1">Poprzednie uwagi</p>
-                                                    <p className="text-sm text-red-900">{selectedTask.executions.find((e: any) => e.userId === userId)?.uwagiOdrzucenia}</p>
+                                                <div className="bg-red-50/50 p-5 rounded-[24px] border border-red-100/50">
+                                                    <p className="text-[9px] font-black uppercase text-red-600 mb-1.5 opacity-60">Poprzednie uwagi</p>
+                                                    <p className="text-sm text-red-900 font-medium italic">"{selectedTask.executions.find((e: any) => e.userId === userId)?.uwagiOdrzucenia}"</p>
                                                 </div>
                                             )}
 
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Opis wykonania / Poprawki</label>
+                                                <label className="text-[10px] font-black uppercase text-muted-foreground ml-2 tracking-widest">Opis wykonania / Poprawki</label>
                                                 <textarea
-                                                    className="lux-textarea h-40"
+                                                    className="lux-textarea h-40 bg-white/60 focus:bg-white"
                                                     placeholder="Opisz co zostało zrobione..."
                                                     value={submissionText}
                                                     onChange={e => setSubmissionText(e.target.value)}
                                                 />
                                             </div>
 
-                                            {/* NEW: Attachments Section for Participants */}
-                                            <div className="bg-gray-50 border border-gray-100 rounded-[28px] p-6">
+                                            <div className="bg-white/40 border border-white/60 rounded-[32px] p-6 shadow-primary/5 shadow-xl">
                                                 <h4 className="text-[10px] font-black uppercase text-primary/40 tracking-widest mb-4 flex items-center gap-2">
-                                                    <LinkIcon size={14} /> Załączniki (linki)
+                                                    <LinkIcon size={14} /> Załączniki (linki/pliki)
                                                 </h4>
 
-                                                <div className="space-y-3 mb-4">
+                                                <div className="space-y-2 mb-6">
                                                     {selectedTask.attachments && selectedTask.attachments.length > 0 ? (
                                                         <div className="grid grid-cols-1 gap-2">
                                                             {selectedTask.attachments.map((att: any) => (
-                                                                <div key={att.id} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-2xl group transition-all hover:shadow-sm">
-                                                                    <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold text-gray-700 hover:text-primary transition-colors overflow-hidden">
-                                                                        <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-primary transition-all">
+                                                                <div key={att.id} className="flex items-center justify-between p-3 bg-white/80 border border-white/60 rounded-2xl group transition-all hover:shadow-md">
+                                                                    <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-[10px] font-black uppercase text-gray-700 hover:text-primary transition-colors overflow-hidden">
+                                                                        <div className="size-8 rounded-lg bg-primary/5 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
                                                                             {(att.url.startsWith('/uploads/') || att.url.includes('cloudinary.com')) ? <Paperclip size={14} /> : <LinkIcon size={14} />}
                                                                         </div>
                                                                         <span className="truncate">{att.nazwa}</span>
@@ -1613,7 +1574,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                                                 onRefresh();
                                                                             }
                                                                         }}
-                                                                        className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                                                        className="p-2 text-muted-foreground/40 hover:text-red-600 transition-colors"
                                                                     >
                                                                         <Trash2 size={16} />
                                                                     </button>
@@ -1621,77 +1582,75 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                             ))}
                                                         </div>
                                                     ) : (
-                                                        <p className="text-[10px] text-muted-foreground italic text-center py-2">Brak dodanych załączników</p>
+                                                        <p className="text-[10px] text-muted-foreground/40 font-black uppercase tracking-widest text-center py-4 bg-white/20 rounded-2xl italic">Brak załączników</p>
                                                     )}
                                                 </div>
 
-                                                <div className="bg-white p-3 rounded-[22px] border border-gray-100">
-                                                    <div className="flex flex-col gap-2">
+                                                <div className="space-y-3">
+                                                    <div className="flex gap-2">
                                                         <input
-                                                            className="lux-input py-2 text-[10px] bg-gray-50/50"
-                                                            placeholder="Nazwa linku..."
+                                                            className="lux-input py-2 text-[10px] bg-white/60 flex-1"
+                                                            placeholder="Opis linku..."
                                                             value={newDetailAttachment.nazwa}
                                                             onChange={e => setNewDetailAttachment(prev => ({ ...prev, nazwa: e.target.value }))}
                                                         />
-                                                        <div className="flex gap-2">
-                                                            <input
-                                                                className="lux-input py-2 text-[10px] bg-gray-50/50 flex-1"
-                                                                placeholder="https://..."
-                                                                value={newDetailAttachment.url}
-                                                                onChange={e => setNewDetailAttachment(prev => ({ ...prev, url: e.target.value }))}
-                                                            />
-                                                            <button
-                                                                onClick={async () => {
-                                                                    if (!newDetailAttachment.nazwa || !newDetailAttachment.url) return;
-                                                                    const res = await addTaskAttachment(selectedTask.id, newDetailAttachment.nazwa, newDetailAttachment.url);
-                                                                    if (res.success && res.data) {
-                                                                        setSelectedTask({
-                                                                            ...selectedTask,
-                                                                            attachments: [...(selectedTask.attachments || []), res.data]
-                                                                        });
-                                                                        setNewDetailAttachment({ nazwa: "", url: "" });
-                                                                        onRefresh();
-                                                                    }
-                                                                }}
-                                                                className="p-2 bg-primary text-white rounded-xl shadow-md hover:translate-y-[-1px] transition-all"
-                                                            >
-                                                                <Plus size={18} />
-                                                            </button>
-                                                        </div>
+                                                        <input
+                                                            className="lux-input py-2 text-[10px] bg-white/60 flex-[2]"
+                                                            placeholder="https://..."
+                                                            value={newDetailAttachment.url}
+                                                            onChange={e => setNewDetailAttachment(prev => ({ ...prev, url: e.target.value }))}
+                                                        />
+                                                        <button
+                                                            onClick={async () => {
+                                                                if (!newDetailAttachment.nazwa || !newDetailAttachment.url) return;
+                                                                const res = await addTaskAttachment(selectedTask.id, newDetailAttachment.nazwa, newDetailAttachment.url);
+                                                                if (res.success && res.data) {
+                                                                    setSelectedTask({
+                                                                        ...selectedTask,
+                                                                        attachments: [...(selectedTask.attachments || []), res.data]
+                                                                    });
+                                                                    setNewDetailAttachment({ nazwa: "", url: "" });
+                                                                    onRefresh();
+                                                                }
+                                                            }}
+                                                            className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20 hover:-translate-y-0.5 transition-all"
+                                                        >
+                                                            <Plus size={18} />
+                                                        </button>
+                                                    </div>
 
-                                                        <div className="flex gap-2 border-t border-gray-100 pt-3 mt-1">
-                                                            <input
-                                                                type="file"
-                                                                id="file-upload-participant"
-                                                                className="hidden"
-                                                                onChange={(e) => {
-                                                                    const file = e.target.files?.[0];
-                                                                    if (file) handleFileUpload(file);
-                                                                }}
-                                                            />
-                                                            <button
-                                                                onClick={() => document.getElementById('file-upload-participant')?.click()}
-                                                                disabled={isUploading}
-                                                                className="flex-1 py-2 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-all flex items-center justify-center gap-2 shadow-sm"
-                                                            >
-                                                                {isUploading ? (
-                                                                    <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                                                ) : (
-                                                                    <Paperclip size={14} />
-                                                                )}
-                                                                {isUploading ? "Wgrywanie..." : "Wgraj plik z urządzenia"}
-                                                            </button>
-                                                        </div>
+                                                    <div className="pt-2">
+                                                        <input
+                                                            type="file"
+                                                            id="file-upload-participant"
+                                                            className="hidden"
+                                                            onChange={(e) => {
+                                                                const file = e.target.files?.[0];
+                                                                if (file) handleFileUpload(file);
+                                                            }}
+                                                        />
+                                                        <button
+                                                            onClick={() => document.getElementById('file-upload-participant')?.click()}
+                                                            disabled={isUploading}
+                                                            className="w-full py-4 bg-gray-900 text-white rounded-[20px] text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-all flex items-center justify-center gap-2 shadow-xl shadow-gray-200"
+                                                        >
+                                                            {isUploading ? (
+                                                                <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                            ) : (
+                                                                <Paperclip size={14} />
+                                                            )}
+                                                            {isUploading ? "Wgrywanie..." : "Wgraj plik z urządzenia"}
+                                                        </button>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div className="flex gap-4 mt-8">
-                                            <button onClick={() => setSelectedTask(null)} className="flex-1 py-4 font-bold text-muted-foreground hover:bg-gray-50 rounded-2xl transition-all">Anuluj</button>
+                                        <div className="flex gap-4 mt-10">
+                                            <button onClick={() => setSelectedTask(null)} className="flex-1 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 hover:text-foreground transition-all">Anuluj</button>
                                             <button
                                                 onClick={() => handleSubmitWork(selectedTask.id, submissionText, activeTab === "do-poprawy")}
-                                                className="flex-[2] lux-btn"
+                                                className="flex-[2] lux-btn bg-gray-900"
                                                 disabled={!submissionText.trim() || isSubmitting}
                                             >
                                                 {isSubmitting ? "Wysyłanie..." : activeTab === "do-poprawy" ? "Wyślij poprawkę" : "Zgłoś wykonanie"}
@@ -1712,43 +1671,47 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                             {selectedTask && (isCoord || isAdmin) && rejectionNotes !== null && selectedTask.targetUserId && (
                                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6">
                                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { setSelectedTask(null); setRejectionNotes(""); }} className="absolute inset-0 bg-black/60 backdrop-blur-[20px]" />
-                                    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="lux-card p-10 max-w-lg w-full relative z-10 shadow-2xl">
-                                        <h3 className="text-2xl font-bold mb-2 text-red-600">Odrzuć do poprawy</h3>
-                                        <p className="text-muted-foreground mb-6">Uczestniczka: <span className="font-bold text-foreground">{selectedTask.targetUserName}</span></p>
+                                    <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="lux-card-strong p-10 max-w-lg w-full relative z-10 shadow-2xl border-white/40">
+                                        <h3 className="text-3xl font-black text-red-600 tracking-tighter mb-2">Odrzuć do poprawy</h3>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-8">Uczestniczka: <span className="text-foreground">{selectedTask.targetUserName}</span></p>
 
-                                        <label className="text-[10px] font-black uppercase text-muted-foreground ml-1 mb-2 block">Uwagi do poprawy</label>
-                                        <textarea
-                                            className="lux-textarea h-40 mb-6 border-red-100 focus:border-red-500"
-                                            placeholder="Wypisz co dokładnie trzeba poprawić..."
-                                            value={rejectionNotes}
-                                            onChange={e => setRejectionNotes(e.target.value)}
-                                        />
-
-                                        <div className="mb-6 space-y-2">
-                                            <label className="text-[10px] font-black uppercase text-muted-foreground ml-1 block">Termin na poprawkę (opcjonalnie)</label>
-                                            <div className="flex gap-2 items-center">
-                                                <input
-                                                    type="date"
-                                                    className="lux-input flex-1"
-                                                    value={rejectionDeadline}
-                                                    onChange={(e) => setRejectionDeadline(e.target.value)}
+                                        <div className="space-y-6">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase text-muted-foreground ml-2 tracking-widest">Uwagi do poprawy</label>
+                                                <textarea
+                                                    className="lux-textarea h-40 bg-red-50/30 border-red-100 focus:border-red-500 focus:bg-white"
+                                                    placeholder="Wypisz co dokładnie trzeba poprawić..."
+                                                    value={rejectionNotes}
+                                                    onChange={e => setRejectionNotes(e.target.value)}
                                                 />
-                                                {rejectionDeadline && (
-                                                    <button
-                                                        onClick={() => setRejectionDeadline("")}
-                                                        className="text-[10px] text-red-500 font-bold hover:underline"
-                                                    >
-                                                        WYCZYŚĆ
-                                                    </button>
-                                                )}
+                                            </div>
+
+                                            <div className="bg-white/40 border border-white/60 rounded-[32px] p-6 shadow-sm">
+                                                <label className="text-[10px] font-black uppercase text-muted-foreground/60 ml-1 mb-3 block">Nowy termin (opcjonalnie)</label>
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="date"
+                                                        className="lux-input flex-1 py-3 text-[10px] bg-white/60"
+                                                        value={rejectionDeadline}
+                                                        onChange={(e) => setRejectionDeadline(e.target.value)}
+                                                    />
+                                                    {rejectionDeadline && (
+                                                        <button
+                                                            onClick={() => setRejectionDeadline("")}
+                                                            className="px-4 text-[10px] font-black uppercase tracking-widest text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                                        >
+                                                            Reset
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
 
-                                        <div className="flex gap-4">
-                                            <button onClick={() => { setSelectedTask(null); setRejectionNotes(""); setRejectionDeadline(""); }} className="flex-1 py-4 font-bold text-muted-foreground rounded-2xl transition-all">Anuluj</button>
+                                        <div className="flex gap-4 mt-10">
+                                            <button onClick={() => { setSelectedTask(null); setRejectionNotes(""); setRejectionDeadline(""); }} className="flex-1 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 hover:text-foreground transition-all">Anuluj</button>
                                             <button
                                                 onClick={() => handleRejectWork(selectedTask.id, selectedTask.targetUserId)}
-                                                className="flex-[2] bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 transition-all shadow-lg shadow-red-500/20"
+                                                className="flex-[2] bg-red-600 text-white font-black uppercase tracking-widest text-[10px] rounded-[20px] hover:bg-red-700 transition-all shadow-xl shadow-red-100 active:scale-[0.98]"
                                                 disabled={!rejectionNotes.trim()}
                                             >
                                                 Odrzuć i wyślij uwagi
@@ -1802,17 +1765,17 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                 <motion.div
                                     initial={{ scale: 0.95, opacity: 0 }}
                                     animate={{ scale: 1, opacity: 1 }}
-                                    className="bg-white rounded-[32px] w-full max-w-3xl shadow-2xl overflow-hidden relative border border-gray-100"
+                                    className="lux-card-strong w-full max-w-3xl relative border-white/40 flex flex-col max-h-[90vh]"
                                 >
                                     {/* Modal Header */}
-                                    <div className="p-8 pb-4">
-                                        <div className="flex justify-between items-start mb-4">
+                                    <div className="p-10 pb-6">
+                                        <div className="flex justify-between items-start mb-6">
                                             <div className="flex items-center gap-4">
                                                 {isEditing ? (
                                                     <select
                                                         value={editForm.priorytet}
                                                         onChange={(e) => setEditForm({ ...editForm, priorytet: e.target.value })}
-                                                        className="px-3 py-1 rounded-full text-xs font-black tracking-widest uppercase border border-gray-200 outline-none focus:border-primary"
+                                                        className="px-4 py-2 rounded-xl text-[10px] font-black tracking-widest uppercase bg-white/60 border border-white/60 outline-none focus:border-primary transition-all"
                                                     >
                                                         <option value="NORMALNY">NORMALNY</option>
                                                         <option value="WYSOKI">WYSOKI</option>
@@ -1820,10 +1783,10 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                     </select>
                                                 ) : (
                                                     <div className={cn(
-                                                        "px-3 py-1 rounded-full text-xs font-black tracking-widest uppercase inline-block",
-                                                        selectedTask.priorytet === "WYSOKI" ? "bg-red-50 text-red-600" :
-                                                            selectedTask.priorytet === "NORMALNY" ? "bg-blue-50 text-blue-600" :
-                                                                "bg-green-50 text-green-600"
+                                                        "px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase inline-block shadow-sm",
+                                                        selectedTask.priorytet === "WYSOKI" ? "bg-red-600 text-white" :
+                                                            selectedTask.priorytet === "NORMALNY" ? "bg-blue-600 text-white" :
+                                                                "bg-emerald-600 text-white"
                                                     )}>
                                                         {selectedTask.priorytet}
                                                     </div>
@@ -1832,53 +1795,51 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
 
                                             <div className="flex gap-2">
                                                 {isEditing ? (
-                                                    <>
+                                                    <div className="flex gap-2">
                                                         <button
                                                             onClick={handleSaveEdit}
-                                                            className="p-2 bg-primary text-white hover:bg-primary/90 rounded-full transition-colors shadow-lg shadow-primary/30"
+                                                            className="size-10 bg-primary text-white hover:bg-primary/90 rounded-xl transition-all shadow-lg shadow-primary/20 flex items-center justify-center hover:-translate-y-0.5"
                                                             title="Zapisz zmiany"
                                                         >
                                                             <Save size={20} />
                                                         </button>
                                                         <button
                                                             onClick={() => setIsEditing(false)}
-                                                            className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors"
+                                                            className="size-10 bg-white/60 text-muted-foreground/40 hover:text-foreground rounded-xl border border-white/60 transition-all flex items-center justify-center hover:-translate-y-0.5"
                                                             title="Anuluj edycję"
                                                         >
                                                             <XCircle size={20} />
                                                         </button>
-                                                    </>
+                                                    </div>
                                                 ) : (
-                                                    <button
-                                                        onClick={() => setIsEditing(true)}
-                                                        className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-primary transition-colors"
-                                                        title="Edytuj zadanie"
-                                                    >
-                                                        <Edit2 size={20} />
-                                                    </button>
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => setIsEditing(true)}
+                                                            className="size-10 bg-white/60 text-muted-foreground/40 hover:text-primary rounded-xl border border-white/60 transition-all flex items-center justify-center hover:-translate-y-0.5"
+                                                            title="Edytuj zadanie"
+                                                        >
+                                                            <Edit2 size={20} />
+                                                        </button>
+                                                        <button
+                                                            onClick={async () => {
+                                                                if (!confirm("Czy na pewno chcesz usunąć to zadanie dla WSZYSTKICH?")) return;
+                                                                await deleteTask(selectedTask.id);
+                                                                setSelectedTask(null);
+                                                                onRefresh();
+                                                            }}
+                                                            className="size-10 bg-red-50/50 text-red-300 hover:text-red-600 rounded-xl border border-red-100/50 transition-all flex items-center justify-center hover:-translate-y-0.5"
+                                                            title="Usuń zadanie dla wszystkich"
+                                                        >
+                                                            <Trash2 size={20} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setSelectedTask(null)}
+                                                            className="size-10 bg-white/60 text-muted-foreground/40 hover:text-red-600 rounded-xl border border-white/60 transition-all flex items-center justify-center hover:-translate-y-0.5"
+                                                        >
+                                                            <X size={24} />
+                                                        </button>
+                                                    </div>
                                                 )}
-
-                                                {!isEditing && (
-                                                    <button
-                                                        onClick={async () => {
-                                                            if (!confirm("Czy na pewno chcesz usunąć to zadanie dla WSZYSTKICH?")) return;
-                                                            await deleteTask(selectedTask.id);
-                                                            setSelectedTask(null);
-                                                            onRefresh();
-                                                        }}
-                                                        className="p-2 hover:bg-red-50 rounded-full text-gray-400 hover:text-red-500 transition-colors"
-                                                        title="Usuń zadanie dla wszystkich"
-                                                    >
-                                                        <Trash2 size={20} />
-                                                    </button>
-                                                )}
-
-                                                <button
-                                                    onClick={() => setSelectedTask(null)}
-                                                    className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors"
-                                                >
-                                                    <X size={24} />
-                                                </button>
                                             </div>
                                         </div>
 
@@ -1888,25 +1849,25 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                     type="text"
                                                     value={editForm.tytul}
                                                     onChange={(e) => setEditForm({ ...editForm, tytul: e.target.value })}
-                                                    className="text-3xl font-bold text-gray-900 w-full border-b border-gray-200 focus:border-primary outline-none py-2 bg-transparent placeholder:text-gray-300"
+                                                    className="text-4xl font-black gradient-text tracking-tighter w-full border-b border-white outline-none py-2 bg-transparent placeholder:text-muted-foreground/20"
                                                     placeholder="Tytuł zadania"
                                                 />
-                                                <div className="flex items-center gap-2 text-sm font-bold text-gray-500">
-                                                    <Calendar size={16} />
+                                                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+                                                    <Calendar size={14} className="text-primary" />
                                                     <input
                                                         type="date"
                                                         value={editForm.termin}
                                                         onChange={(e) => setEditForm({ ...editForm, termin: e.target.value })}
-                                                        className="border border-gray-200 rounded-lg px-2 py-1 outline-none focus:border-primary"
+                                                        className="bg-white/60 border border-white/60 rounded-lg px-2 py-1 outline-none focus:border-primary transition-all ml-1"
                                                     />
                                                 </div>
                                             </div>
                                         ) : (
                                             <>
-                                                <h2 className="text-3xl font-bold text-gray-900 mb-2">{selectedTask.tytul}</h2>
+                                                <h2 className="text-4xl font-black gradient-text tracking-tighter mb-3 leading-none">{selectedTask.tytul}</h2>
                                                 {selectedTask.termin && (
-                                                    <div className="flex items-center gap-2 text-sm font-bold text-gray-500">
-                                                        <Calendar size={16} />
+                                                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+                                                        <Calendar size={14} className="text-primary" />
                                                         <span>Termin: {new Date(selectedTask.termin).toLocaleDateString('pl-PL')}</span>
                                                     </div>
                                                 )}
@@ -1917,33 +1878,35 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                     {/* Scrollable Content */}
                                     <div className="px-8 pb-8 max-h-[60vh] overflow-y-auto custom-scrollbar space-y-8">
                                         {/* Description */}
-                                        <div className={cn("rounded-2xl text-gray-700 leading-relaxed whitespace-pre-wrap", isEditing ? "" : "bg-gray-50 p-6")}>
-                                            <h4 className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-2">Opis zadania</h4>
+                                        <div className={cn("rounded-[32px] text-foreground leading-relaxed whitespace-pre-wrap", isEditing ? "" : "bg-white/60 p-10 border border-white shadow-xl shadow-primary/5")}>
+                                            <h4 className="text-[10px] font-black uppercase text-muted-foreground/60 tracking-widest mb-4">Szczegóły wyzwania</h4>
                                             {isEditing ? (
                                                 <textarea
                                                     value={editForm.opis}
                                                     onChange={(e) => setEditForm({ ...editForm, opis: e.target.value })}
-                                                    className="w-full h-40 p-4 bg-gray-50 rounded-xl border border-gray-200 focus:border-primary outline-none transition-all"
-                                                    placeholder="Opis zadania..."
+                                                    className="lux-textarea h-40 bg-white/60 focus:bg-white"
+                                                    placeholder="Opisz co jest do zrobienia..."
                                                 />
                                             ) : (
-                                                selectedTask.opis || "Brak szczegółowego opisu."
+                                                <div className="text-lg font-medium leading-relaxed">
+                                                    {selectedTask.opis || <span className="italic opacity-40">Brak szczegółowego opisu.</span>}
+                                                </div>
                                             )}
                                         </div>
 
-                                        {/* NEW: Attachments Section for Admins/Coordinators */}
-                                        <div className="bg-white border-2 border-primary/5 rounded-[28px] p-6 shadow-sm">
-                                            <h4 className="text-[10px] font-black uppercase text-primary/40 tracking-widest mb-4 flex items-center gap-2">
-                                                <LinkIcon size={14} /> Załączniki do zadania
+                                        {/* Attachments Section */}
+                                        <div className="bg-white/40 border border-white/60 rounded-[32px] p-8 shadow-sm">
+                                            <h4 className="text-[10px] font-black uppercase text-primary/40 tracking-widest mb-6 flex items-center gap-2">
+                                                <LinkIcon size={14} /> Zasoby i materiały pomocnicze
                                             </h4>
-                                            <div className="space-y-3 mb-6">
+                                            <div className="space-y-3 mb-8">
                                                 {selectedTask.attachments && selectedTask.attachments.length > 0 ? (
                                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                         {selectedTask.attachments.map((att: any) => (
-                                                            <div key={att.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-2xl group transition-all hover:bg-white hover:shadow-sm">
-                                                                <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold text-gray-700 hover:text-primary transition-colors overflow-hidden">
-                                                                    <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-primary shadow-sm group-hover:bg-primary group-hover:text-white transition-all">
-                                                                        {(att.url.startsWith('/uploads/') || att.url.includes('cloudinary.com')) ? <Paperclip size={14} /> : <LinkIcon size={14} />}
+                                                            <div key={att.id} className="flex items-center justify-between p-4 bg-white/80 border border-white/60 rounded-[20px] group transition-all hover:shadow-md hover:-translate-y-0.5">
+                                                                <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 text-[10px] font-black uppercase text-gray-700 hover:text-primary transition-colors overflow-hidden">
+                                                                    <div className="size-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
+                                                                        {(att.url.startsWith('/uploads/') || att.url.includes('cloudinary.com')) ? <Paperclip size={16} /> : <LinkIcon size={16} />}
                                                                     </div>
                                                                     <span className="truncate">{att.nazwa}</span>
                                                                 </a>
@@ -1959,7 +1922,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                                             onRefresh();
                                                                         }
                                                                     }}
-                                                                    className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl opacity-0 group-hover:opacity-100 transition-all"
+                                                                    className="p-2 text-muted-foreground/30 hover:text-red-500 transition-colors"
                                                                 >
                                                                     <Trash2 size={16} />
                                                                 </button>
@@ -1967,24 +1930,24 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                         ))}
                                                     </div>
                                                 ) : (
-                                                    <div className="py-4 text-center border-2 border-dashed border-gray-100 rounded-[20px]">
-                                                        <p className="text-xs text-muted-foreground italic">Brak dodanych załączników</p>
+                                                    <div className="py-8 text-center border-2 border-dashed border-white/60 rounded-[28px] bg-white/20">
+                                                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 italic">Brak załączników szkoleniowych</p>
                                                     </div>
                                                 )}
                                             </div>
 
-                                            <div className="bg-gray-50 p-4 rounded-[22px] border border-gray-100">
-                                                <span className="text-[9px] font-black uppercase text-gray-400 block mb-3 ml-1">Dodaj nowy link lub plik</span>
+                                            <div className="bg-white/60 p-6 rounded-[28px] border border-white shadow-inner">
+                                                <span className="text-[9px] font-black uppercase text-muted-foreground/40 block mb-4 ml-2 tracking-widest">Dodaj nowe materiały</span>
                                                 <div className="flex flex-col sm:flex-row gap-3">
                                                     <input
-                                                        className="lux-input py-2 text-xs bg-white flex-[2]"
-                                                        placeholder="Nazwa np. Prezentacja"
+                                                        className="lux-input py-3 text-[10px] bg-white flex-[2]"
+                                                        placeholder="Nazwa materiału..."
                                                         value={newDetailAttachment.nazwa}
                                                         onChange={e => setNewDetailAttachment(prev => ({ ...prev, nazwa: e.target.value }))}
                                                     />
                                                     <div className="flex flex-1 gap-2">
                                                         <input
-                                                            className="lux-input py-2 text-xs bg-white flex-1"
+                                                            className="lux-input py-3 text-[10px] bg-white flex-1"
                                                             placeholder="https://..."
                                                             value={newDetailAttachment.url}
                                                             onChange={e => setNewDetailAttachment(prev => ({ ...prev, url: e.target.value }))}
@@ -2002,14 +1965,14 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                                     onRefresh();
                                                                 }
                                                             }}
-                                                            className="p-2 bg-primary text-white rounded-xl shadow-md hover:translate-y-[-2px] transition-all"
+                                                            className="p-3 bg-primary text-white rounded-[18px] shadow-lg shadow-primary/20 hover:-translate-y-1 transition-all"
                                                         >
                                                             <Plus size={20} />
                                                         </button>
                                                     </div>
                                                 </div>
 
-                                                <div className="mt-3 pt-3 border-t border-gray-200/50 flex gap-2">
+                                                <div className="mt-4 pt-4 border-t border-white flex gap-2">
                                                     <input
                                                         type="file"
                                                         id="file-upload-admin"
@@ -2022,27 +1985,27 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                     <button
                                                         onClick={() => document.getElementById('file-upload-admin')?.click()}
                                                         disabled={isUploading}
-                                                        className="flex-1 py-3 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-all flex items-center justify-center gap-2 shadow-sm"
+                                                        className="flex-1 py-4 bg-gray-900 text-white rounded-[20px] text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-all flex items-center justify-center gap-2 shadow-xl shadow-gray-200"
                                                     >
                                                         {isUploading ? (
-                                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                            <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                                         ) : (
                                                             <Paperclip size={16} />
                                                         )}
-                                                        {isUploading ? "Wgrywanie..." : "Dodaj plik z urządzenia"}
+                                                        {isUploading ? "Wgrywanie..." : "Wgraj plik z urządzenia"}
                                                     </button>
                                                 </div>
                                             </div>
                                         </div>
 
                                         {/* Execution Status / Table */}
-                                        <div>
-                                            <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4">Postęp Realizacji</h3>
+                                        <div className="bg-white/40 border border-white/60 rounded-[32px] p-8 shadow-sm">
+                                            <h3 className="text-[10px] font-black uppercase text-muted-foreground/60 tracking-widest mb-6 px-2">Postęp Realizacji</h3>
 
                                             {/* Global Progress Bar */}
-                                            <div className="mb-6 bg-gray-100 rounded-full h-4 overflow-hidden relative">
+                                            <div className="mb-8 bg-white/60 border border-white/60 rounded-full h-4 overflow-hidden relative shadow-inner">
                                                 <div
-                                                    className="h-full bg-gradient-to-r from-primary to-purple-600 rounded-full transition-all duration-1000"
+                                                    className="h-full bg-gradient-to-r from-primary via-purple-500 to-indigo-600 rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(var(--primary-rgb),0.3)]"
                                                     style={{ width: `${(selectedTask.executions?.filter((e: any) => e.status === "ZAAKCEPTOWANE").length / (selectedTask.executions?.length || 1)) * 100}%` }}
                                                 />
                                             </div>
@@ -2050,25 +2013,25 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                             {/* Executors List */}
                                             <div className="space-y-2">
                                                 {selectedTask.executions?.map((ex: any) => (
-                                                    <div key={ex.id} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl hover:shadow-sm transition-all">
-                                                        <div className="flex items-center gap-3">
+                                                    <div key={ex.id} className="flex items-center justify-between p-4 bg-white/80 border border-white/60 rounded-[20px] hover:shadow-md transition-all group">
+                                                        <div className="flex items-center gap-4">
                                                             <div className={cn(
-                                                                "w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold",
-                                                                ex.status === "ZAAKCEPTOWANE" ? "bg-green-100 text-green-600" :
-                                                                    ex.status === "ODRZUCONE" ? "bg-red-100 text-red-600" :
-                                                                        ex.status === "OCZEKUJACE" ? "bg-amber-100 text-amber-600" :
+                                                                "size-10 rounded-full flex items-center justify-center text-[10px] font-black uppercase shadow-lg",
+                                                                ex.status === "ZAAKCEPTOWANE" ? "lux-gradient text-white" :
+                                                                    ex.status === "ODRZUCONE" ? "bg-red-600 text-white" :
+                                                                        ex.status === "OCZEKUJACE" ? "bg-amber-500 text-white" :
                                                                             "bg-gray-100 text-gray-400"
                                                             )}>
-                                                                {ex.user?.imieNazwisko?.[0]}
+                                                                {ex.user?.imieNazwisko?.[0] || ex.imieNazwisko?.[0] || "?"}
                                                             </div>
                                                             <div>
-                                                                <div className="text-sm font-bold text-gray-800">{ex.imieNazwisko} <span className="text-[10px] text-gray-400 font-normal ml-1">#{ex.userId}</span></div>
+                                                                <div className="text-xs font-black uppercase tracking-tight text-gray-800">{ex.imieNazwisko} <span className="text-[9px] text-muted-foreground/40 font-normal ml-1">#{ex.userId}</span></div>
                                                                 <div className={cn(
-                                                                    "text-[10px] font-bold uppercase",
-                                                                    ex.status === "ZAAKCEPTOWANE" ? "text-green-600" :
+                                                                    "text-[9px] font-black uppercase tracking-widest mt-0.5",
+                                                                    ex.status === "ZAAKCEPTOWANE" ? "text-emerald-600" :
                                                                         ex.status === "ODRZUCONE" ? "text-red-600" :
-                                                                            ex.status === "OCZEKUJACE" ? "text-amber-500" :
-                                                                                "text-gray-400"
+                                                                            ex.status === "OCZEKUJACE" ? "text-amber-600" :
+                                                                                "text-muted-foreground/40"
                                                                 )}>
                                                                     {ex.status === "OCZEKUJACE" ? "Czeka na weryfikację" : ex.status}
                                                                 </div>
@@ -2085,7 +2048,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                                 }));
                                                                 onRefresh();
                                                             }}
-                                                            className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                            className="p-2 text-muted-foreground/20 hover:text-red-600 transition-colors"
                                                             title="Usuń wykonawcę"
                                                         >
                                                             <Trash2 size={16} />
@@ -2093,7 +2056,9 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                     </div>
                                                 ))}
                                                 {(!selectedTask.executions || selectedTask.executions.length === 0) && (
-                                                    <div className="text-center text-sm text-gray-400 italic py-4">Brak przypisanych wykonawców</div>
+                                                    <div className="text-center py-8">
+                                                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/30 italic">Brak przypisanych wykonawców</p>
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
@@ -2145,49 +2110,40 @@ function StackedTaskTile({ group, onViewDetail, onArchive }: any) {
                 layout
                 onClick={() => setIsExpanded(!isExpanded)}
                 className={cn(
-                    "rounded-[24px] p-5 cursor-pointer border-2 transition-all shadow-sm hover:shadow-md relative overflow-hidden group/stack",
-                    isExpanded ? "bg-emerald-50/50 border-emerald-200" : "bg-white border-emerald-100/50 hover:border-emerald-200"
+                    "lux-card p-5 cursor-pointer transition-all relative overflow-hidden group/stack border-white/60",
+                    isExpanded ? "bg-emerald-500/10" : "bg-white/40 hover:bg-white"
                 )}
             >
                 {/* Stack Effect Visuals */}
                 {!isExpanded && executions.length > 1 && (
                     <>
-                        <div className="absolute top-0.5 left-4 right-4 h-1 bg-emerald-100/50 rounded-t-xl mx-2 border-t border-x border-emerald-200/20" />
-                        <div className="absolute top-1.5 left-2 right-2 h-1 bg-emerald-100/80 rounded-t-xl mx-1 border-t border-x border-emerald-200/40" />
+                        <div className="absolute top-0.5 left-4 right-4 h-1 bg-emerald-100/40 rounded-t-xl mx-2" />
+                        <div className="absolute top-1.5 left-2 right-2 h-1 bg-emerald-100/60 rounded-t-xl mx-1" />
                     </>
                 )}
 
                 <div className="flex items-center justify-between gap-4 relative z-10 w-full">
                     <div className="flex items-center gap-4 min-w-0 flex-1">
                         <div className={cn(
-                            "w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 text-white shadow-sm transition-colors",
-                            isExpanded ? "bg-emerald-600" : "bg-emerald-500"
+                            "size-12 rounded-2xl flex items-center justify-center flex-shrink-0 text-white shadow-lg transition-all duration-500",
+                            isExpanded ? "bg-emerald-600" : "bg-emerald-500 group-hover/stack:scale-110"
                         )}>
-                            {executions.length > 1 ? (
-                                <Layers size={22} />
-                            ) : (
-                                <CheckCircle size={22} />
-                            )}
+                            {executions.length > 1 ? <Layers size={22} /> : <CheckCircle size={22} />}
                         </div>
 
                         <div className="min-w-0 flex-1">
                             <h4 className="font-bold text-gray-900 truncate text-base mb-1">{task.tytul}</h4>
                             <div className="flex items-center gap-2">
-                                <span className="bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full">
+                                <span className="lux-badge lux-badge-success scale-90 origin-left">
                                     {executions.length} {executions.length === 1 ? "osoba" : "osoby"}
                                 </span>
                                 {!isExpanded && (
-                                    <div className="flex -space-x-1.5">
+                                    <div className="flex -space-x-2">
                                         {sortedExecutions.slice(0, 3).map((ex: any, i: number) => (
-                                            <div key={i} className="w-5 h-5 rounded-full bg-white border border-emerald-100 flex items-center justify-center text-[8px] font-bold text-emerald-600 shadow-sm" title={ex.user?.imieNazwisko}>
+                                            <div key={i} className="size-6 rounded-full bg-white border border-emerald-100 flex items-center justify-center text-[8px] font-black text-emerald-600 shadow-sm" title={ex.user?.imieNazwisko}>
                                                 {ex.user?.imieNazwisko?.[0]}
                                             </div>
                                         ))}
-                                        {sortedExecutions.length > 3 && (
-                                            <div className="w-5 h-5 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-[8px] font-bold text-emerald-600">
-                                                +{sortedExecutions.length - 3}
-                                            </div>
-                                        )}
                                     </div>
                                 )}
                             </div>
@@ -2247,97 +2203,88 @@ function ParticipantTaskCard({ task, userId, onClick, status }: any) {
 
     const isOverdue = effectiveDeadline && effectiveDeadline < new Date() && status === "do-zrobienia";
 
-    // Sort submissions by date to show history if needed
-    const mySubmissions = task.submissions.filter((s: any) => s.userId === userId);
-
     return (
-        <motion.div layout className="lux-card p-7 flex flex-col h-full bg-white transition-all hover:shadow-md border-transparent hover:border-gray-100">
-            <div className="flex justify-between items-start mb-5">
+        <motion.div layout className="lux-card p-0 flex flex-col h-full bg-white/40 border-white/60 overflow-hidden group">
+            <div className="p-8 pb-5 flex justify-between items-start">
                 <div className={cn(
-                    "flex h-12 w-12 rounded-2xl items-center justify-center transition-transform shadow-sm relative overflow-hidden",
+                    "size-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-sm relative overflow-hidden",
                     status === "do-zrobienia" ? "bg-primary/5 text-primary" :
                         status === "wykonane" ? "bg-amber-50 text-amber-600" : "bg-red-50 text-red-600",
-                    isOverdue && "ring-2 ring-red-500 shadow-md shadow-red-500/20"
+                    isOverdue && "ring-2 ring-red-500 shadow-lg shadow-red-500/20"
                 )}>
                     {status === "do-zrobienia" ? <Clock size={24} className={cn(isOverdue && "animate-pulse text-red-500")} /> : status === "wykonane" ? <History size={24} /> : <AlertTriangle size={24} />}
                 </div>
                 <div className="flex flex-col items-end gap-2">
-                    {/* OVERDUE PRIORITY OVERRIDE */}
                     {isOverdue ? (
-                        <span className="text-[8px] bg-red-600 text-white px-3 py-1 rounded-full font-black uppercase tracking-[0.1em] shadow-lg shadow-red-500/30 animate-pulse">
-                            BARDZO PRIORYTETOWE
-                        </span>
+                        <span className="lux-badge lux-badge-danger animate-pulse">Spóźnione!</span>
                     ) : (
-                        task.priorytet === "WYSOKI" && <span className="text-[7px] bg-red-500 text-white px-2 py-0.5 rounded-full font-black uppercase tracking-[0.2em] shadow-sm">Priorytet</span>
+                        task.priorytet === "WYSOKI" && <span className="lux-badge lux-badge-danger">Wysoki</span>
                     )}
 
                     {(ex?.poprawione || ex?.status === 'ZAAKCEPTOWANE' && ex?.poprawione) && (
-                        <span className="text-[7px] bg-emerald-500 text-white px-2 py-0.5 rounded-full font-black uppercase tracking-[0.2em] shadow-sm">Poprawione</span>
+                        <span className="lux-badge lux-badge-success">Poprawione</span>
                     )}
                 </div>
             </div>
 
-            <h3 className="font-bold text-xl mb-2 text-gray-900">{task.tytul}</h3>
-            <p className="text-sm text-muted-foreground flex-1 line-clamp-2 mb-4 leading-relaxed">{task.opis || "Brak opisu dodatkowego."}</p>
+            <div className="px-8 pb-4 flex-1">
+                <h3 className="font-bold text-xl mb-2 text-gray-900 leading-tight group-hover:text-primary transition-colors">{task.tytul}</h3>
+                <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed mb-6 opacity-80">{task.opis || "Brak opisu dodatkowego."}</p>
 
-            {/* NEW: Attachments for Participants */}
-            {task.attachments && task.attachments.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-6 p-3 bg-gray-50 rounded-2xl border border-gray-100/50">
-                    <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest w-full mb-1 ml-1 opacity-60">Załączniki:</span>
-                    {task.attachments.slice(0, 3).map((att: any) => (
-                        <a
-                            key={att.id}
-                            href={att.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-100 rounded-xl text-[10px] font-bold text-gray-600 hover:text-primary hover:border-primary/20 transition-all shadow-sm hover:shadow-md"
-                        >
-                            <ExternalLink size={10} className="text-primary/60" />
-                            {att.nazwa}
-                        </a>
-                    ))}
-                    {task.attachments.length > 3 && (
-                        <span className="text-[10px] text-gray-400 font-bold self-center ml-1">+{task.attachments.length - 3}</span>
-                    )}
-                </div>
-            )}
-
-            <div className="space-y-5 pt-5 border-t border-gray-50 mt-auto">
-                <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
-                    <div className="flex flex-col gap-1">
-                        <span className={cn("flex items-center gap-1.5", ex?.terminPoprawki ? "text-red-500 font-bold" : "text-muted-foreground")}>
-                            <Clock size={12} className={ex?.terminPoprawki ? "text-red-400" : "text-gray-300"} />
-                            {ex?.terminPoprawki ? `Poprawa do: ${new Date(ex.terminPoprawki).toLocaleDateString()}` : (effectiveDeadline ? effectiveDeadline.toLocaleDateString() : "Bez terminu")}
-                        </span>
-                        {isOverdue && <span className="text-red-500 italic font-black">Spóźnione!</span>}
+                {task.attachments && task.attachments.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-6 p-4 bg-white/40 rounded-2xl border border-white/60 shadow-inner">
+                        <span className="text-[9px] font-black text-muted-foreground/40 uppercase tracking-widest w-full mb-1">Załączniki:</span>
+                        {task.attachments.slice(0, 2).map((att: any) => (
+                            <a
+                                key={att.id}
+                                href={att.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex items-center gap-2 px-3 py-1.5 bg-white border border-white/60 rounded-xl text-[10px] font-black uppercase text-gray-600 hover:text-primary transition-all shadow-sm"
+                            >
+                                <ExternalLink size={10} />
+                                {att.nazwa}
+                            </a>
+                        ))}
                     </div>
-                    <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1 rounded-full">
-                        <Users size={12} className="text-primary/40" />
-                        <span className="text-gray-600">{task.executions.length} osób</span>
+                )}
+            </div>
+
+            <div className="px-8 pb-8 pt-6 border-t border-white/40 space-y-6">
+                <div className="flex justify-between items-center">
+                    <div className="flex flex-col gap-1">
+                        <div className={cn("flex items-center gap-2 text-[10px] font-black uppercase tracking-widest", ex?.terminPoprawki ? "text-red-600" : "text-muted-foreground/60")}>
+                            <Calendar size={12} />
+                            {ex?.terminPoprawki ? `Poprawa do: ${new Date(ex.terminPoprawki).toLocaleDateString()}` : (effectiveDeadline ? effectiveDeadline.toLocaleDateString() : "Bez terminu")}
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-primary/5 px-2.5 py-1 rounded-full border border-primary/10">
+                        <Users size={12} className="text-primary/60" />
+                        <span className="text-[10px] font-black text-primary/80">{task.executions.length}</span>
                     </div>
                 </div>
 
                 {status === "do-zrobienia" && (
-                    <button onClick={onClick} className="w-full py-4 bg-gray-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-all flex items-center justify-center gap-2 shadow-lg shadow-gray-200">
-                        <MessageSquare size={16} /> Dodaj opis
+                    <button onClick={onClick} className="w-full lux-btn flex items-center justify-center gap-2 bg-gray-900 group-hover:bg-primary">
+                        <MessageSquare size={16} /> Wyślij Rozwiązanie
                     </button>
                 )}
 
                 {status === "wykonane" && (
-                    <div className="w-full py-4 bg-amber-50 text-amber-700 border border-amber-100/50 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-center shadow-inner">
-                        W trakcie weryfikacji
+                    <div className="w-full py-4 bg-amber-50 text-amber-600 rounded-[20px] text-[10px] font-black uppercase tracking-widest text-center border border-amber-200/50 shadow-inner">
+                        Weryfikacja...
                     </div>
                 )}
 
                 {status === "do-poprawy" && (
                     <div className="space-y-4">
-                        <div className="bg-red-50/70 p-4 rounded-2xl border border-red-100">
-                            <span className="text-[8px] font-black text-red-600 uppercase tracking-widest block mb-2 opacity-70">Uwagi odrzucenia:</span>
-                            <p className="text-xs text-red-900 font-medium leading-relaxed italic">"{ex?.uwagiOdrzucenia}"</p>
+                        <div className="bg-red-50 p-4 rounded-2xl border border-red-100/50">
+                            <span className="text-[8px] font-black text-red-600 uppercase tracking-widest block mb-1">Uwagi:</span>
+                            <p className="text-xs text-red-900 font-medium italic opacity-80">"{ex?.uwagiOdrzucenia}"</p>
                         </div>
-                        <button onClick={onClick} className="w-full py-4 bg-red-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-200">
-                            <History size={16} /> Wyślij poprawkę
+                        <button onClick={onClick} className="w-full lux-btn flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 shadow-red-200">
+                            <History size={16} /> Popraw Zadanie
                         </button>
                     </div>
                 )}
@@ -2368,33 +2315,35 @@ function CollapsibleExecutionCard({ execution, onViewDetail, tabType }: any) {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className={cn(
-                "rounded-[20px] p-4 flex items-center justify-between gap-3 cursor-pointer border-2 transition-all shadow-sm hover:shadow-md",
-                `bg-gradient-to-br from-${statusColor}-50 to-white border-${statusColor}-100 hover:border-${statusColor}-300`,
-                tabType === "oczekujace" && isOverdue && "from-red-50 to-red-100 border-red-200/50"
+                "lux-card p-4 flex items-center justify-between gap-3 cursor-pointer transition-all border-white/60",
+                tabType === "oczekujace" && "bg-amber-500/5",
+                tabType === "zaakceptowane" && "bg-emerald-500/5",
+                tabType === "doPoprawy" && "bg-red-500/5",
+                tabType === "oczekujace" && isOverdue && "bg-red-500/10 border-red-200/50"
             )}
             onClick={onViewDetail}
         >
             <div className="flex items-center gap-3 min-w-0">
                 <div className={cn(
-                    "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-white shadow-sm",
-                    tabType === "oczekujace" ? (isOverdue ? "bg-red-500" : "bg-amber-500") :
-                        tabType === "zaakceptowane" ? "bg-emerald-500" : "bg-red-500"
+                    "size-10 rounded-xl flex items-center justify-center flex-shrink-0 text-white shadow-lg",
+                    tabType === "oczekujace" ? (isOverdue ? "bg-red-600" : "bg-amber-600") :
+                        tabType === "zaakceptowane" ? "bg-emerald-600" : "bg-red-600"
                 )}>
                     <StatusIcon size={18} />
                 </div>
                 <div className="min-w-0">
                     <h4 className="font-bold text-gray-900 truncate text-sm mb-0.5">{task.tytul}</h4>
-                    <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                        <span>{execution.user?.imieNazwisko}</span>
+                    <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                        <span className="opacity-60">{execution.user?.imieNazwisko}</span>
                         {execution.terminPoprawki && tabType === "doPoprawy" && (
-                            <span className="text-red-500 flex items-center gap-1">
-                                <Clock size={10} /> Poprawa: {new Date(execution.terminPoprawki).toLocaleDateString()}
+                            <span className="text-red-600 flex items-center gap-1 bg-red-50 px-2 py-0.5 rounded-full">
+                                <Clock size={10} /> {new Date(execution.terminPoprawki).toLocaleDateString()}
                             </span>
                         )}
                     </div>
                 </div>
             </div>
-            <ChevronDown className="text-gray-400 rotate-270" size={18} />
+            <ChevronRight className="text-muted-foreground/40" size={18} />
         </motion.div>
     );
 }
@@ -2419,99 +2368,98 @@ function ExecutionDetailModal({ execution, onClose, onApprove, onReject, isAdmin
                 <div className="absolute inset-0 bg-black/60 backdrop-blur-[20px]" onClick={onClose} />
 
                 {/* Modal Content */}
+                {/* Modal Content */}
                 <motion.div
-                    initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                    initial={{ scale: 0.95, opacity: 0, y: 20 }}
                     animate={{ scale: 1, opacity: 1, y: 0 }}
-                    exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                    className="bg-white w-full max-w-4xl max-h-[90vh] rounded-[40px] shadow-2xl relative overflow-hidden flex flex-col"
+                    exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                    className="lux-card-strong w-full max-w-4xl max-h-[90vh] p-0 relative overflow-hidden flex flex-col border-white/40"
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Modal Header */}
-                    <div className="p-8 pb-6 border-b border-gray-100 flex justify-between items-start gap-6 bg-gray-50/50">
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2">
+                    <div className="p-10 pb-6 border-b border-white/20 flex justify-between items-start gap-6 bg-white/40">
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-3">
                                 <span className={cn(
-                                    "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border",
-                                    tabType === "oczekujace" ? "bg-amber-50 text-amber-600 border-amber-200" :
-                                        tabType === "zaakceptowane" ? "bg-emerald-50 text-emerald-600 border-emerald-200" :
-                                            "bg-red-50 text-red-600 border-red-200"
+                                    "lux-badge",
+                                    tabType === "oczekujace" ? "lux-badge-primary" :
+                                        tabType === "zaakceptowane" ? "lux-badge-success" : "lux-badge-danger"
                                 )}>
-                                    {tabType === "oczekujace" ? "Oczekuje na weryfikację" :
+                                    {tabType === "oczekujace" ? "Weryfikacja" :
                                         tabType === "zaakceptowane" ? "Zatwierdzone" : "Do poprawy"}
                                 </span>
                                 {isOverdue && tabType === "oczekujace" && (
-                                    <span className="bg-red-500 text-white px-2 py-1 rounded-full text-[8px] font-black uppercase animate-pulse">PO TERMINIE</span>
+                                    <span className="lux-badge lux-badge-danger animate-pulse">PO TERMINIE</span>
                                 )}
                             </div>
-                            <h2 className="text-3xl font-bold text-gray-900 leading-tight">{task.tytul}</h2>
-                            <div className="flex items-center gap-3 text-sm text-muted-foreground font-medium">
+                            <h2 className="text-4xl font-black gradient-text tracking-tighter leading-none">{task.tytul}</h2>
+                            <div className="flex items-center gap-4 text-xs font-black uppercase tracking-widest text-muted-foreground/60">
                                 <div className="flex items-center gap-2">
-                                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary text-[10px] font-bold">
+                                    <div className="size-6 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-[10px]">
                                         {execution.user?.imieNazwisko?.[0]}
                                     </div>
-                                    <span>{execution.user?.imieNazwisko}</span>
+                                    <span className="text-foreground">{execution.user?.imieNazwisko}</span>
                                 </div>
-                                <span>•</span>
-                                <div className="flex items-center gap-1.5">
-                                    <Clock size={14} />
-                                    <span>Wysłano: {new Date(execution.dataWyslania || execution.updatedAt).toLocaleString()}</span>
+                                <span>/</span>
+                                <div className="flex items-center gap-2">
+                                    <Clock size={14} className="opacity-40" />
+                                    <span>{new Date(execution.dataWyslania || execution.updatedAt).toLocaleString()}</span>
                                 </div>
                             </div>
                         </div>
-                        <button onClick={onClose} className="p-3 hover:bg-white rounded-2xl transition-all shadow-sm hover:shadow-md border border-transparent hover:border-gray-100 text-gray-400 hover:text-gray-900 group">
-                            <X size={24} className="group-hover:rotate-90 transition-transform duration-300" />
+                        <button onClick={onClose} className="p-4 hover:bg-white rounded-[24px] transition-all text-muted-foreground hover:text-foreground shadow-sm bg-white/40">
+                            <X size={24} />
                         </button>
                     </div>
 
                     {/* Modal Body - Scrollable */}
-                    <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto p-10 space-y-10 custom-scrollbar">
                         {/* Grid for Quick Info */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="bg-gray-50 rounded-[24px] p-6 border border-gray-100 space-y-3 shadow-sm">
-                                <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                                    <Filter size={14} /> Szczegóły zadania
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="bg-white/40 rounded-[32px] p-8 border border-white/60 shadow-xl shadow-primary/5 space-y-4">
+                                <h4 className="text-[10px] font-black text-muted-foreground/40 uppercase tracking-widest flex items-center gap-2">
+                                    <Filter size={14} /> Szczegóły
                                 </h4>
-                                <div className="space-y-4">
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-gray-500">Priorytet:</span>
+                                <div className="space-y-3">
+                                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider">
+                                        <span className="text-muted-foreground">Priorytet:</span>
                                         <span className={cn(
-                                            "font-bold",
-                                            task.priorytet === "WYSOKI" ? "text-red-500" :
-                                                task.priorytet === "NISKI" ? "text-blue-500" : "text-gray-700"
+                                            task.priorytet === "WYSOKI" ? "text-red-600" :
+                                                task.priorytet === "NISKI" ? "text-blue-600" : "text-foreground"
                                         )}>{task.priorytet}</span>
                                     </div>
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-gray-500">Termin oddania:</span>
-                                        <span className="font-bold text-gray-700">{deadline ? deadline.toLocaleDateString() : "Brak"}</span>
+                                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider">
+                                        <span className="text-muted-foreground">Termin:</span>
+                                        <span className="text-foreground">{deadline ? deadline.toLocaleDateString() : "-"}</span>
                                     </div>
                                     {task.team && (
-                                        <div className="flex justify-between items-center text-sm">
-                                            <span className="text-gray-500">Zespół:</span>
-                                            <span className="px-3 py-1 bg-white rounded-lg border border-gray-100 shadow-sm font-bold text-gray-700 text-xs">{task.team.nazwa}</span>
+                                        <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider">
+                                            <span className="text-muted-foreground">Zespół:</span>
+                                            <span className="text-primary">{task.team.nazwa}</span>
                                         </div>
                                     )}
                                 </div>
                             </div>
 
-                            <div className="bg-gray-50 rounded-[24px] p-6 border border-gray-100 space-y-3 shadow-sm">
-                                <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                                    <CheckCircle size={14} /> Status zgłoszenia
+                            <div className="bg-white/40 rounded-[32px] p-8 border border-white/60 shadow-xl shadow-primary/5 space-y-4">
+                                <h4 className="text-[10px] font-black text-muted-foreground/40 uppercase tracking-widest flex items-center gap-2">
+                                    <CheckCircle size={14} /> Status
                                 </h4>
-                                <div className="space-y-4">
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-gray-500">Obecny stan:</span>
-                                        <span className="font-bold text-gray-700 uppercase tracking-tight">{tabType}</span>
+                                <div className="space-y-3">
+                                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider">
+                                        <span className="text-muted-foreground">Etap:</span>
+                                        <span className="text-foreground">{tabType}</span>
                                     </div>
                                     {execution.poprawione && (
-                                        <div className="flex justify-between items-center text-sm">
-                                            <span className="text-gray-500">Po poprawce:</span>
-                                            <span className="bg-emerald-500 text-white px-2 py-0.5 rounded-full text-[9px] font-black uppercase">TAK</span>
+                                        <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider">
+                                            <span className="text-emerald-600">Poprawione:</span>
+                                            <span className="bg-emerald-500 text-white px-2 py-0.5 rounded-lg">TAK</span>
                                         </div>
                                     )}
                                     {execution.terminPoprawki && (
-                                        <div className="flex justify-between items-center text-sm">
-                                            <span className="text-red-500 font-bold">Termin poprawki:</span>
-                                            <span className="font-bold text-red-500">{new Date(execution.terminPoprawki).toLocaleDateString()}</span>
+                                        <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-red-600">
+                                            <span>Limit poprawy:</span>
+                                            <span>{new Date(execution.terminPoprawki).toLocaleDateString()}</span>
                                         </div>
                                     )}
                                 </div>
@@ -2519,30 +2467,30 @@ function ExecutionDetailModal({ execution, onClose, onApprove, onReject, isAdmin
                         </div>
 
                         {/* Task Description & Attachments */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             {task.opis && (
-                                <div className="space-y-3 animate-in fade-in slide-in-from-top-4">
-                                    <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest pl-1">Instrukcja do zadania</h4>
-                                    <div className="bg-blue-50/50 rounded-[24px] p-6 border border-blue-100/50 text-gray-700 text-base leading-relaxed h-full">
+                                <div className="space-y-4">
+                                    <h4 className="text-[10px] font-black text-muted-foreground/40 uppercase tracking-widest ml-2">Instrukcja</h4>
+                                    <div className="bg-white/60 rounded-[32px] p-8 border border-white/60 text-foreground text-sm leading-relaxed shadow-sm italic">
                                         {task.opis}
                                     </div>
                                 </div>
                             )}
 
-                            <div className="space-y-3 animate-in fade-in slide-in-from-top-4">
-                                <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest pl-1">Załączniki</h4>
-                                <div className="bg-gray-50/50 rounded-[24px] p-6 border border-gray-100 flex-1 h-full min-h-[100px]">
+                            <div className="space-y-4">
+                                <h4 className="text-[10px] font-black text-muted-foreground/40 uppercase tracking-widest ml-2">Załączniki</h4>
+                                <div className="bg-white/40 rounded-[32px] p-6 border border-white/60 flex-1 min-h-[120px]">
                                     {task.attachments && task.attachments.length > 0 ? (
-                                        <div className="space-y-2">
+                                        <div className="grid grid-cols-1 gap-2">
                                             {task.attachments.map((att: any) => (
                                                 <a
                                                     key={att.id}
                                                     href={att.url}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="flex items-center gap-3 p-3 bg-white border border-gray-100 rounded-xl text-sm font-bold text-gray-700 hover:text-primary transition-all shadow-sm hover:shadow-md"
+                                                    className="flex items-center gap-3 p-4 bg-white/60 border border-white/60 rounded-2xl text-[10px] font-black uppercase tracking-wider text-gray-700 hover:text-primary transition-all shadow-sm group"
                                                 >
-                                                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                                                    <div className="size-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
                                                         <ExternalLink size={14} />
                                                     </div>
                                                     {att.nazwa}
@@ -2550,7 +2498,7 @@ function ExecutionDetailModal({ execution, onClose, onApprove, onReject, isAdmin
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="flex items-center justify-center h-full text-xs text-muted-foreground italic">
+                                        <div className="flex items-center justify-center h-full text-[10px] font-black uppercase text-muted-foreground/40 tracking-widest italic py-8">
                                             Brak załączników
                                         </div>
                                     )}
@@ -2559,21 +2507,24 @@ function ExecutionDetailModal({ execution, onClose, onApprove, onReject, isAdmin
                         </div>
 
                         {/* User Response - The Core Content */}
-                        <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4">
-                            <div className="flex justify-between items-end">
-                                <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest pl-1">Odpowiedź uczestnika</h4>
-                                <span className="text-[10px] font-bold text-muted-foreground bg-gray-100 px-3 py-1 rounded-full">{execution.user?.imieNazwisko}</span>
+                        <div className="space-y-4 pb-4">
+                            <div className="flex justify-between items-center px-2">
+                                <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Odpowiedź uczestniczki</h4>
+                                <div className="bg-primary/5 text-primary text-[9px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full border border-primary/10">
+                                    {execution.user?.imieNazwisko}
+                                </div>
                             </div>
-                            <div className="bg-white rounded-[32px] p-8 border-2 border-gray-100 text-lg text-gray-800 leading-relaxed shadow-inner min-h-[200px]">
-                                {(task.submissions?.find((s: any) => s.userId === execution.userId)?.opis) || execution.odpowiedz || <span className="italic text-gray-300">Brak treści odpowiedzi uczestnika...</span>}
+                            <div className="bg-white/80 rounded-[40px] p-10 border-2 border-white/60 text-lg font-medium text-foreground leading-relaxed shadow-xl shadow-primary/5 min-h-[250px] relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-2 h-full bg-primary/20" />
+                                {(task.submissions?.find((s: any) => s.userId === execution.userId)?.opis) || execution.odpowiedz || <span className="italic text-gray-300">Uczestniczka nie podała treści odpowiedzi...</span>}
                             </div>
                         </div>
 
                         {/* Rejection Notes */}
                         {execution.uwagiOdrzucenia && (
-                            <div className="space-y-3 animate-in fade-in zoom-in-95">
-                                <h4 className="text-xs font-black text-red-500 uppercase tracking-widest pl-1">Uwagi do poprawy</h4>
-                                <div className="bg-red-50 rounded-[24px] p-6 border border-red-100 text-red-800 italic text-base">
+                            <div className="space-y-4">
+                                <h4 className="text-[10px] font-black text-red-600 uppercase tracking-widest ml-2">Uwagi do poprawy (historia)</h4>
+                                <div className="bg-red-50/50 rounded-[32px] p-10 border border-red-200/40 text-red-800 italic text-base leading-relaxed">
                                     "{execution.uwagiOdrzucenia}"
                                 </div>
                             </div>
@@ -2581,43 +2532,51 @@ function ExecutionDetailModal({ execution, onClose, onApprove, onReject, isAdmin
                     </div>
 
                     {/* Modal Footer - Actions */}
-                    <div className="p-8 border-t border-gray-100 bg-gray-50/80 backdrop-blur-md flex gap-4">
+                    <div className="p-10 border-t border-white/20 bg-white/60 backdrop-blur-md flex gap-4">
                         {tabType === "oczekujace" ? (
                             <>
                                 <button
                                     onClick={() => onApprove(task.id, execution.userId)}
-                                    className="flex-1 py-5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-[24px] transition-all flex items-center justify-center gap-3 shadow-xl shadow-emerald-200 hover:-translate-y-1"
+                                    className="flex-1 py-5 lux-gradient text-white font-black uppercase tracking-widest rounded-[24px] transition-all flex items-center justify-center gap-3 shadow-xl shadow-primary/20 hover:-translate-y-1 active:scale-[0.98]"
                                 >
-                                    <CheckCircle size={24} /> Zatwierdź zgłoszenie
+                                    <CheckCircle size={22} /> Zatwierdź zgłoszenie
                                 </button>
                                 <button
                                     onClick={() => onReject(task, execution.userId)}
-                                    className="flex-1 py-5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-[24px] transition-all flex items-center justify-center gap-3 shadow-xl shadow-red-200 hover:-translate-y-1"
+                                    className="flex-1 py-5 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest rounded-[24px] transition-all flex items-center justify-center gap-3 shadow-xl shadow-red-200 hover:-translate-y-1 active:scale-[0.98]"
                                 >
-                                    <X size={24} /> Odrzuć do poprawy
+                                    <XCircle size={22} /> Odrzuć do poprawy
                                 </button>
                             </>
                         ) : (
-                            <div className="w-full flex justify-between items-center bg-white p-4 rounded-[24px] border border-gray-100 shadow-sm">
-                                <div className="flex items-center gap-3 px-4">
+                            <div className="w-full flex justify-between items-center bg-white/40 p-5 rounded-[32px] border border-white/60 shadow-lg">
+                                <div className="flex items-center gap-4 px-2">
                                     <div className={cn(
-                                        "p-2 rounded-xl text-white",
-                                        tabType === "zaakceptowane" ? "bg-emerald-500" : "bg-red-500"
+                                        "size-10 rounded-xl text-white flex items-center justify-center shadow-lg",
+                                        tabType === "zaakceptowane" ? "bg-emerald-600" : "bg-red-600"
                                     )}>
                                         {tabType === "zaakceptowane" ? <CheckCircle size={20} /> : <AlertTriangle size={20} />}
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none mb-1">Status końcowy</p>
+                                        <p className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest leading-none mb-1.5">Status końcowy</p>
                                         <p className={cn(
-                                            "text-lg font-bold leading-none",
-                                            tabType === "zaakceptowane" ? "text-emerald-600" : "text-red-600"
+                                            "text-xl font-black leading-none uppercase tracking-tight",
+                                            tabType === "zaakceptowane" ? "text-emerald-700" : "text-red-700"
                                         )}>
-                                            {tabType === "zaakceptowane" ? "Zatwierdzono" : "Odrzucono do poprawy"}
+                                            {tabType === "zaakceptowane" ? "Zatwierdzono" : "Do poprawy"}
                                         </p>
                                     </div>
                                 </div>
 
-                                {tabType === "zaakceptowane" && (<>
+                                <div className="flex gap-3">
+                                    {tabType === "zaakceptowane" && isAdmin && (
+                                        <button
+                                            onClick={onArchive}
+                                            className="px-8 py-4 bg-gray-900 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all flex items-center gap-2 hover:bg-primary shadow-lg shadow-gray-200"
+                                        >
+                                            <Archive size={18} /> Archiwizuj
+                                        </button>
+                                    )}
                                     <button
                                         onClick={async () => {
                                             if (confirm("Czy na pewno chcesz trwale usunąć to zgłoszenie? Tej operacji nie można cofnąć.")) {
@@ -2625,19 +2584,11 @@ function ExecutionDetailModal({ execution, onClose, onApprove, onReject, isAdmin
                                                 onClose();
                                             }
                                         }}
-                                        className="px-6 py-4 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-2xl transition-all flex items-center gap-2 border border-red-100"
+                                        className="px-8 py-4 bg-red-50 hover:bg-red-100 text-red-600 font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all flex items-center gap-2 border border-red-100 shadow-sm"
                                     >
-                                        <Trash2 size={20} /> Usuń trwale
+                                        <Trash2 size={18} /> Usuń
                                     </button>
-                                    {isAdmin && (
-                                        <button
-                                            onClick={onArchive}
-                                            className="px-6 py-4 bg-gray-900 text-white font-bold rounded-2xl transition-all flex items-center gap-2 hover:bg-gray-800"
-                                        >
-                                            <Archive size={20} /> Archiwizuj
-                                        </button>
-                                    )}
-                                </>)}
+                                </div>
                             </div>
                         )}
                     </div>

@@ -10,7 +10,9 @@ import {
     UserMinus,
     Plus,
     Minimize2,
-    Maximize2
+    Maximize2,
+    Users,
+    ChevronRight
 } from "lucide-react";
 import { createUser, deleteUser, updateUser } from "@/lib/actions/users";
 import { addUserToTeam, removeUserFromTeam } from "@/lib/actions/teams";
@@ -42,10 +44,11 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
     const isMainAdmin = currentUser?.name === "system";
 
     const getRoleBadgeClass = (rola: string) => {
-        switch (rola) {
-            case "ADMINISTRATOR": return "bg-blue-50 text-blue-700 border border-blue-100";
-            case "KOORDYNATORKA": return "bg-purple-50 text-purple-700 border border-purple-100";
-            default: return "bg-gray-50 text-gray-600 border border-gray-100";
+        switch (rola.toUpperCase()) {
+            case "ADMINISTRATOR": return "lux-badge lux-badge-danger";
+            case "KOORDYNATORKA":
+            case "KOORDYNATOR": return "lux-badge lux-badge-primary";
+            default: return "lux-badge";
         }
     };
 
@@ -153,12 +156,17 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
 
     return (
         <DashboardLayout>
-            <div className="space-y-8 animate-slide-in">
+            <div className="space-y-12 animate-slide-in p-8 max-w-[1600px] mx-auto">
                 {/* Header */}
-                <div className="lux-card-strong p-10 flex justify-between items-center group">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
                     <div>
-                        <h1 className="text-4xl font-bold gradient-text mb-2">Użytkownicy</h1>
-                        <p className="text-muted-foreground">Uporządkowane role i delikatna kontrola dostępu w jednym miejscu.</p>
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className="p-3 lux-gradient shadow-lg shadow-primary/30 rounded-[20px] text-white">
+                                <Users size={32} />
+                            </div>
+                            <h1 className="text-5xl font-black gradient-text tracking-tighter">Użytkownicy</h1>
+                        </div>
+                        <p className="text-muted-foreground font-medium text-lg ml-1 opacity-70">Uporządkowane role i precyzyjna kontrola uprawnień w całym systemie.</p>
                     </div>
                     {isMainAdmin && (
                         <button
@@ -166,10 +174,12 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                                 if (showAddForm) handleCancelEdit();
                                 else setShowAddForm(true);
                             }}
-                            className="lux-btn flex items-center gap-2"
+                            className="lux-btn flex items-center justify-center gap-3 py-4 px-8"
                         >
-                            {showAddForm ? <Minimize2 size={20} /> : <UserPlus size={20} />}
-                            {showAddForm ? "Zamknij formularz" : "Dodaj użytkownika"}
+                            {showAddForm ? <Minimize2 size={24} /> : <UserPlus size={24} />}
+                            <span className="font-black uppercase tracking-widest text-sm">
+                                {showAddForm ? "Zamknij formularz" : "Dodaj użytkownika"}
+                            </span>
                         </button>
                     )}
                 </div>
@@ -183,10 +193,12 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                             exit={{ height: 0, opacity: 0 }}
                             className="overflow-hidden"
                         >
-                            <div className="lux-card p-8 mb-8 border border-primary/10">
-                                <h3 className="text-xl font-bold mb-6 text-primary flex items-center gap-2">
-                                    <UserPlus size={22} className="text-primary" />
-                                    {editingUserId ? "Edytuj użytkownika" : "Nowy użytkownik"}
+                            <div className="lux-card-strong p-10 mb-12 border-white/60">
+                                <h3 className="text-2xl font-black mb-8 text-foreground flex items-center gap-3">
+                                    <div className="p-2 bg-primary/10 rounded-xl text-primary">
+                                        <UserPlus size={24} />
+                                    </div>
+                                    {editingUserId ? "Edytuj dane użytkownika" : "Tworzenie nowego użytkownika"}
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="space-y-2">
@@ -247,13 +259,13 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                                         </>
                                     )}
                                 </div>
-                                <div className="flex gap-4 mt-6">
-                                    <button className="lux-btn flex-1" onClick={handleSaveUser}>
-                                        {editingUserId ? "Zapisz zmiany" : "Dodaj użytkownika"}
+                                <div className="flex gap-4 mt-10">
+                                    <button className="lux-btn flex-1 py-5" onClick={handleSaveUser}>
+                                        <span className="font-black uppercase tracking-widest">{editingUserId ? "Zapisz zmiany" : "Stwórz profil użytkownika"}</span>
                                     </button>
                                     {editingUserId && (
-                                        <button className="lux-btn-outline" onClick={handleCancelEdit}>
-                                            Anuluj edycję
+                                        <button className="lux-btn-outline px-10" onClick={handleCancelEdit}>
+                                            <span className="font-black uppercase tracking-widest">Anuluj</span>
                                         </button>
                                     )}
                                 </div>
@@ -263,21 +275,23 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                 </AnimatePresence>
 
                 {/* Filter Bar */}
-                <div className="lux-card p-6 flex flex-wrap gap-4 items-end bg-white/50 border-white/60">
-                    <div className="flex-1 min-w-[200px] space-y-2">
-                        <label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Szukaj użytkownika</label>
-                        <input
-                            type="text"
-                            placeholder="Wpisz imię i nazwisko..."
-                            className="lux-input text-sm"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
+                <div className="lux-card-strong p-8 flex flex-wrap gap-8 items-end bg-white/40 border-white/60">
+                    <div className="flex-1 min-w-[300px] space-y-3">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-2">Wyszukiwarka</label>
+                        <div className="relative group">
+                            <input
+                                type="text"
+                                placeholder="Wpisz imię i nazwisko..."
+                                className="lux-input text-sm py-4"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
                     </div>
-                    <div className="w-full md:w-48 space-y-2">
-                        <label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Filtruj po roli</label>
+                    <div className="w-full md:w-64 space-y-3">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-2">Rola Systemowa</label>
                         <select
-                            className="lux-select text-sm font-semibold"
+                            className="lux-select text-sm font-bold"
                             value={filterRole}
                             onChange={(e) => setFilterRole(e.target.value)}
                         >
@@ -286,10 +300,10 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                             <option value="ADMINISTRATOR">Administrator</option>
                         </select>
                     </div>
-                    <div className="w-full md:w-64 space-y-2">
-                        <label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Filtruj po zespole</label>
+                    <div className="w-full md:w-72 space-y-3">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-2">Przynależność</label>
                         <select
-                            className="lux-select text-sm font-semibold"
+                            className="lux-select text-sm font-bold"
                             value={filterTeam}
                             onChange={(e) => setFilterTeam(e.target.value)}
                         >
@@ -300,7 +314,7 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                     {(searchTerm || filterRole || filterTeam) && (
                         <button
                             onClick={() => { setSearchTerm(""); setFilterRole(""); setFilterTeam(""); }}
-                            className="px-4 py-3 text-[10px] font-black uppercase text-primary hover:underline"
+                            className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-primary hover:text-primary-foreground transition-colors"
                         >
                             Wyczyść filtry
                         </button>
@@ -308,62 +322,72 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                 </div>
 
                 {/* Users Table */}
-                <div className="lux-card p-8 overflow-hidden">
-                    <h2 className="text-2xl font-bold mb-8 pb-4 border-b-4 border-primary inline-block">Lista użytkowników</h2>
+                <div className="lux-card-strong p-10 overflow-hidden border-white/60">
+                    <div className="flex items-center gap-4 mb-10 pb-6 border-b border-white/40">
+                        <div className="size-10 rounded-xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20">
+                            <Users size={20} />
+                        </div>
+                        <h2 className="text-2xl font-black text-foreground tracking-tight">Lista członków</h2>
+                    </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full border-collapse">
+                    <div className="overflow-x-auto custom-scrollbar">
+                        <table className="w-full border-separate border-spacing-0">
                             <thead>
-                                <tr className="gradient-bg text-white">
-                                    <th className="px-6 py-4 text-left font-bold rounded-l-xl">Użytkownik</th>
-                                    {isMainAdmin && <th className="px-6 py-4 text-left font-bold">Hasło</th>}
-                                    <th className="px-6 py-4 text-left font-bold">Zespoły i role</th>
-                                    <th className="px-6 py-4 text-left font-bold rounded-r-xl">Zarządzanie zespołami</th>
+                                <tr className="lux-gradient-strong text-white">
+                                    <th className="px-8 py-6 text-left text-[10px] font-black uppercase tracking-[0.2em] rounded-tl-[24px]">Użytkownik</th>
+                                    {isMainAdmin && <th className="px-8 py-6 text-left text-[10px] font-black uppercase tracking-[0.2em]">Hasło</th>}
+                                    <th className="px-8 py-6 text-left text-[10px] font-black uppercase tracking-[0.2em]">Zespoły i role</th>
+                                    <th className="px-8 py-6 text-left text-[10px] font-black uppercase tracking-[0.2em] rounded-tr-[24px]">Zarządzanie</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {filteredUsers.map((user) => (
                                     <tr key={user.id} className="border-b border-gray-100 hover:bg-white/60 transition-colors group">
-                                        <td className="px-6 py-8 align-top min-w-[250px]">
-                                            <div className="space-y-4">
-                                                <div>
-                                                    <p className="text-lg font-bold text-foreground">{user.imieNazwisko}</p>
-                                                    <span className={cn(
-                                                        "px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider block w-fit mt-1",
-                                                        getRoleBadgeClass(user.rola)
-                                                    )}>
-                                                        {user.rola}
-                                                    </span>
+                                        <td className="px-8 py-10 align-top min-w-[280px]">
+                                            <div className="space-y-6">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="size-14 rounded-2xl bg-white border border-white/60 shadow-sm flex items-center justify-center font-black text-primary text-xl">
+                                                        {user.imieNazwisko[0]}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-lg font-black text-foreground leading-tight">{user.imieNazwisko}</p>
+                                                        <span className={cn(
+                                                            "inline-block mt-2",
+                                                            getRoleBadgeClass(user.rola)
+                                                        )}>
+                                                            {user.rola}
+                                                        </span>
+                                                    </div>
                                                 </div>
 
                                                 {((user.rola?.toUpperCase() !== "ADMINISTRATOR" || isMainAdmin) && user.imieNazwisko !== "system") ? (
-                                                    <div className="space-y-2">
+                                                    <div className="flex gap-2">
                                                         {isMainAdmin && (
                                                             <button
-                                                                className="w-full py-3 rounded-xl font-bold text-[11px] uppercase tracking-widest transition-all lux-btn-outline hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
+                                                                className="flex-1 py-3 px-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all bg-white border border-white/60 hover:border-primary/40 hover:text-primary shadow-sm"
                                                                 onClick={() => handleStartEdit(user)}
                                                             >
-                                                                Edytuj dane
+                                                                Edytuj
                                                             </button>
                                                         )}
                                                         <button
-                                                            className="w-full py-3 rounded-xl font-bold text-[11px] uppercase tracking-widest transition-all lux-btn-outline hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                                                            className="flex-1 py-3 px-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all bg-red-50 text-red-500 border border-red-100 hover:bg-red-500 hover:text-white shadow-sm"
                                                             onClick={() => handleDeleteUser(user.id)}
                                                         >
-                                                            Usuń użytkownika
+                                                            Usuń
                                                         </button>
                                                     </div>
                                                 ) : (
-                                                    <div className="w-full py-3 rounded-xl font-bold text-[11px] uppercase tracking-widest bg-gray-100/50 text-gray-400 border border-gray-100 flex items-center justify-center cursor-not-allowed">
-                                                        {user.imieNazwisko === "system" ? "System" : "Brak uprawnień"}
+                                                    <div className="w-full py-3 rounded-xl font-black text-[10px] uppercase tracking-widest bg-gray-100/30 text-gray-400 border border-gray-100 flex items-center justify-center cursor-not-allowed italic">
+                                                        Chroniony
                                                     </div>
                                                 )}
                                             </div>
                                         </td>
 
                                         {isMainAdmin && (
-                                            <td className="px-6 py-8 align-top">
-                                                <div className="font-mono text-sm bg-gray-100 p-2 rounded border border-gray-200">
+                                            <td className="px-8 py-10 align-top">
+                                                <div className="font-bold text-sm bg-white/60 backdrop-blur-md px-4 py-3 rounded-xl border border-white shadow-inner text-primary/60 font-mono">
                                                     {user.id === currentUserId ? "—" : user.haslo}
                                                 </div>
                                             </td>
@@ -394,42 +418,44 @@ export default function UsersClient({ initialUsers, initialTeams }: { initialUse
                                             </div>
                                         </td>
 
-                                        <td className="px-6 py-8 align-top min-w-[300px]">
+                                        <td className="px-8 py-10 align-top min-w-[340px]">
                                             {user.rola?.toUpperCase() !== "ADMINISTRATOR" && (
-                                                <div className="bg-white/80 p-6 rounded-2xl border border-gray-100 space-y-4 shadow-inner">
-                                                    <div className="space-y-1">
-                                                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Zespół</label>
-                                                        <select
-                                                            className="w-full lux-select text-sm font-semibold"
-                                                            value={assignments[user.id]?.teamId || ""}
-                                                            onChange={(e) => setAssignments(prev => ({
-                                                                ...prev,
-                                                                [user.id]: { teamId: e.target.value, role: prev[user.id]?.role || "uczestniczka" }
-                                                            }))}
-                                                        >
-                                                            <option value="">-- Wybierz zespół --</option>
-                                                            {teams.map(t => <option key={t.id} value={t.id}>{t.nazwa}</option>)}
-                                                        </select>
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Rola w zespole</label>
-                                                        <select
-                                                            className="w-full lux-select text-sm font-semibold"
-                                                            value={assignments[user.id]?.role || "uczestniczka"}
-                                                            onChange={(e) => setAssignments(prev => ({
-                                                                ...prev,
-                                                                [user.id]: { teamId: prev[user.id]?.teamId || "", role: e.target.value }
-                                                            }))}
-                                                        >
-                                                            <option value="uczestniczka">uczestniczka</option>
-                                                            <option value="koordynatorka">koordynatorka</option>
-                                                        </select>
+                                                <div className="bg-white/40 backdrop-blur-md p-8 rounded-[32px] border border-white/60 space-y-6 shadow-xl shadow-primary/5">
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div className="space-y-2">
+                                                            <label className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest ml-2">Zespół</label>
+                                                            <select
+                                                                className="w-full lux-select text-xs font-bold py-3"
+                                                                value={assignments[user.id]?.teamId || ""}
+                                                                onChange={(e) => setAssignments(prev => ({
+                                                                    ...prev,
+                                                                    [user.id]: { teamId: e.target.value, role: prev[user.id]?.role || "uczestniczka" }
+                                                                }))}
+                                                            >
+                                                                <option value="">-- Wybierz --</option>
+                                                                {teams.map(t => <option key={t.id} value={t.id}>{t.nazwa}</option>)}
+                                                            </select>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <label className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest ml-2">Rola</label>
+                                                            <select
+                                                                className="w-full lux-select text-xs font-bold py-3"
+                                                                value={assignments[user.id]?.role || "uczestniczka"}
+                                                                onChange={(e) => setAssignments(prev => ({
+                                                                    ...prev,
+                                                                    [user.id]: { teamId: prev[user.id]?.teamId || "", role: e.target.value }
+                                                                }))}
+                                                            >
+                                                                <option value="uczestniczka">uczestnik</option>
+                                                                <option value="koordynatorka">koordynator</option>
+                                                            </select>
+                                                        </div>
                                                     </div>
                                                     <button
-                                                        className="w-full lux-btn text-xs flex items-center justify-center gap-2"
+                                                        className="w-full lux-btn text-[10px] py-4 flex items-center justify-center gap-3 transition-transform hover:scale-[1.02] active:scale-[0.98]"
                                                         onClick={() => handleAssignTeam(user.id)}
                                                     >
-                                                        <Plus size={16} /> Dodaj do zespołu
+                                                        <Plus size={16} /> <span className="font-black uppercase tracking-widest">Dodaj do zespołu</span>
                                                     </button>
                                                 </div>
                                             )}

@@ -111,8 +111,32 @@
     @apply w-full bg-gray-50 border border-gray-200 rounded-xl px-5 py-3.5 outline-none focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 transition-all text-foreground font-medium placeholder:text-gray-400;
   }
 
+  .lux-badge {
+    @apply px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all;
+  }
+
+  .lux-badge-primary {
+    @apply bg-primary/10 text-primary border-primary/20;
+  }
+
+  .lux-badge-success {
+    @apply bg-emerald-50 text-emerald-600 border-emerald-100;
+  }
+
+  .lux-badge-warning {
+    @apply bg-orange-50 text-orange-600 border-orange-100;
+  }
+
+  .lux-badge-danger {
+    @apply bg-red-50 text-red-600 border-red-100;
+  }
+
+  .lux-badge-outline {
+    @apply bg-white text-gray-500 border-gray-100 hover:border-primary/30 hover:text-primary;
+  }
+
   .lux-gradient {
-    background-image: linear-gradient(to bottom right, var(--color-primary), hsl(var(--primary-h), var(--primary-s), 60%), hsl(var(--primary-h), var(--primary-s), 70%));
+    background: linear-gradient(135deg, var(--color-primary) 0%, hsl(var(--primary-h), var(--primary-s), 65%) 100%);
   }
 
   .glass-panel {
@@ -123,8 +147,12 @@
     @apply backdrop-blur-3xl bg-white/80 border-r border-white/40 shadow-2xl;
   }
 
+  .lux-gradient-strong {
+    background: linear-gradient(135deg, hsl(var(--primary-h), var(--primary-s), 40%) 0%, var(--color-primary) 100%);
+  }
+
   .lux-gradient-soft {
-    background-image: linear-gradient(to bottom right, hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.8), hsla(var(--primary-h), var(--primary-s), 70%, 0.8));
+    background: linear-gradient(135deg, hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.05) 0%, hsla(var(--primary-h), var(--primary-s), 70%, 0.1) 100%);
   }
 }
 

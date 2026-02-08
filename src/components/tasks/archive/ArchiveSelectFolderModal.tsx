@@ -50,55 +50,68 @@ export default function ArchiveSelectFolderModal({ isOpen, onClose, onSelect, us
                         className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
                     />
                     <motion.div
-                        initial={{ scale: 0.9, opacity: 0 }}
+                        initial={{ scale: 0.95, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0.9, opacity: 0 }}
-                        className="bg-white p-8 rounded-[32px] shadow-2xl relative z-10 w-full max-w-md max-h-[80vh] flex flex-col"
+                        exit={{ scale: 0.95, opacity: 0 }}
+                        className="lux-card-strong p-10 relative z-10 w-full max-w-md max-h-[85vh] flex flex-col border-white/40"
                     >
-                        <button onClick={onClose} className="absolute top-6 right-6 text-gray-400 hover:text-gray-900 transition-colors">
+                        <button onClick={onClose} className="absolute top-8 right-8 text-muted-foreground/30 hover:text-red-600 transition-colors">
                             <X size={24} />
                         </button>
 
-                        <h3 className="text-2xl font-bold mb-2">Wybierz folder</h3>
-                        <p className="text-muted-foreground text-sm mb-6">Wybierz folder w archiwum, do którego trafią zadania.</p>
+                        <div className="mb-8">
+                            <h3 className="text-3xl font-black gradient-text tracking-tighter leading-none mb-3">Wybierz folder</h3>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Gdzie chcesz zarchiwizować to zgłoszenie?</p>
+                        </div>
 
-                        <div className="flex gap-2 mb-6">
+                        <div className="flex gap-2 mb-8 bg-white/40 p-3 rounded-[24px] border border-white/60 shadow-inner">
                             <input
-                                className="lux-input py-2 text-sm"
-                                placeholder="Nowy folder..."
+                                className="lux-input py-3 text-[10px] bg-white/60 flex-1"
+                                placeholder="Nazwa nowego folderu..."
                                 value={newFolderName}
                                 onChange={e => setNewFolderName(e.target.value)}
                             />
                             <button
                                 onClick={handleCreate}
                                 disabled={!newFolderName.trim() || isCreating}
-                                className="p-3 bg-gray-100 hover:bg-gray-200 rounded-xl disabled:opacity-50 transition-colors"
+                                className="size-11 lux-gradient text-white rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center disabled:opacity-50 hover:-translate-y-0.5 transition-all"
                             >
                                 {isCreating ? <Loader2 className="animate-spin" size={20} /> : <Plus size={20} />}
                             </button>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2 min-h-[200px]">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2 min-h-[250px]">
                             {loading ? (
-                                <div className="text-center py-10"><Loader2 className="animate-spin mx-auto text-gray-300" /></div>
+                                <div className="flex flex-col items-center justify-center py-20 gap-4">
+                                    <Loader2 className="animate-spin text-primary" size={32} />
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40">Ładowanie archiwum...</p>
+                                </div>
                             ) : folders.length > 0 ? (
                                 folders.map(folder => (
                                     <button
                                         key={folder.id}
                                         onClick={() => onSelect(folder.id)}
-                                        className="w-full flex items-center gap-3 p-4 rounded-xl border border-gray-100 hover:border-emerald-200 hover:bg-emerald-50 transition-all group text-left"
+                                        className="w-full flex items-center gap-4 p-5 rounded-[24px] bg-white/40 border border-white/60 hover:bg-white hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 transition-all group text-left"
                                     >
-                                        <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                            <Folder size={20} />
+                                        <div className="size-12 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center group-hover:bg-amber-500 group-hover:text-white transition-all shadow-sm">
+                                            <Folder size={22} />
                                         </div>
                                         <div>
-                                            <div className="font-bold text-gray-900 group-hover:text-emerald-700">{folder.nazwa}</div>
-                                            <div className="text-xs text-muted-foreground">{folder.executionCount} zadań</div>
+                                            <div className="text-sm font-black uppercase tracking-tight text-gray-800">{folder.nazwa}</div>
+                                            <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 mt-0.5">{folder.executionCount} pozycji</div>
+                                        </div>
+                                        <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <div className="size-8 rounded-full bg-primary/5 flex items-center justify-center text-primary">
+                                                <X className="rotate-45" size={16} />
+                                            </div>
                                         </div>
                                     </button>
                                 ))
                             ) : (
-                                <div className="text-center py-10 text-muted-foreground italic">Brak folderów. Utwórz pierwszy!</div>
+                                <div className="flex flex-col items-center justify-center py-20 grayscale opacity-40">
+                                    <Folder size={48} className="mb-4 text-muted-foreground" />
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-center">Brak folderów w archiwum</p>
+                                </div>
                             )}
                         </div>
                     </motion.div>
