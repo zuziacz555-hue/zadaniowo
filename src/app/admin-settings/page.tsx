@@ -43,7 +43,8 @@ export default function SettingsPage() {
                     coordinatorTasks: false,
                     coordinatorTeamEditing: false,
                     coordinatorResignationAlerts: true,
-                    enableDirectorRole: false
+                    enableDirectorRole: false,
+                    enableCoordinatorApplications: false
                 });
             }
             setIsLoading(false);
