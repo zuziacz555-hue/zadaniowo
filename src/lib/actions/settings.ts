@@ -102,6 +102,7 @@ export async function updateSystemSettings(data: Partial<Omit<SystemSettingsData
 
         try {
             revalidatePath('/admin-settings');
+            revalidatePath('/admin-users');
             revalidatePath('/dashboard');
         } catch (e) {
             // Likely running in a script/test environment
