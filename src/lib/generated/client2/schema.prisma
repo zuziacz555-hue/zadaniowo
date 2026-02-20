@@ -252,14 +252,15 @@ model TaskExecution {
 }
 
 model SystemSettings {
-  id                           Int     @id @default(autoincrement())
-  alertsTerminy                Boolean @default(true) @map("alerts_terminy")
-  alertsPoprawki               Boolean @default(true) @map("alerts_poprawki")
-  alertsRaporty                Boolean @default(true) @map("alerts_raporty")
-  coordinatorTasks             Boolean @default(false) @map("coordinator_tasks")
-  coordinatorTeamEditing       Boolean @default(false) @map("coordinator_team_editing")
-  coordinatorResignationAlerts Boolean @default(true) @map("coordinator_resignation_alerts")
-  enableDirectorRole           Boolean @default(false) @map("enable_director_role")
+  id                            Int     @id @default(autoincrement())
+  alertsTerminy                 Boolean @default(true) @map("alerts_terminy")
+  alertsPoprawki                Boolean @default(true) @map("alerts_poprawki")
+  alertsRaporty                 Boolean @default(true) @map("alerts_raporty")
+  coordinatorTasks              Boolean @default(false) @map("coordinator_tasks")
+  coordinatorTeamEditing        Boolean @default(false) @map("coordinator_team_editing")
+  coordinatorResignationAlerts  Boolean @default(true) @map("coordinator_resignation_alerts")
+  enableDirectorRole            Boolean @default(false) @map("enable_director_role")
+  enableCoordinatorApplications Boolean @default(false) @map("enable_coordinator_applications")
 
   @@map("ustawienia_systemu")
 }
