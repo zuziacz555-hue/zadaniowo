@@ -65,6 +65,7 @@ export default function UsersClient({ initialUsers, initialTeams, settings }: { 
             case "KOORDYNATORKA":
             case "KOORDYNATOR": return "lux-badge lux-badge-primary";
             case "DYREKTORKA": return "lux-badge bg-purple-100 text-purple-700 border-purple-200";
+            case "SYSTEM": return "lux-badge bg-blue-100 text-blue-700 border-blue-200";
             default: return "lux-badge";
         }
     };
@@ -253,6 +254,7 @@ export default function UsersClient({ initialUsers, initialTeams, settings }: { 
                                             <option value="UCZESTNICZKA">uczestniczka</option>
                                             <option value="ADMINISTRATOR">administrator</option>
                                             {settings?.enableDirectorRole && <option value="DYREKTORKA">dyrektorka</option>}
+                                            <option value="SYSTEM">system</option>
                                         </select>
                                     </div>
                                     {!editingUserId && newUser.role !== "ADMINISTRATOR" && (
@@ -323,6 +325,7 @@ export default function UsersClient({ initialUsers, initialTeams, settings }: { 
                             <option value="UCZESTNICZKA">Uczestniczka</option>
                             <option value="ADMINISTRATOR">Administrator</option>
                             {settings?.enableDirectorRole && <option value="DYREKTORKA">Dyrektorka</option>}
+                            <option value="SYSTEM">System</option>
                         </select>
                     </div>
                     <div className="w-full md:w-72 space-y-3">
@@ -396,7 +399,7 @@ export default function UsersClient({ initialUsers, initialTeams, settings }: { 
                                                             </button>
                                                         )}
                                                         {/* Only System can delete Admins. Admins can delete regular users. NEVER delete System. */}
-                                                        {((user.rola !== "ADMINISTRATOR" || isSystemUser) && (user.imieNazwisko || "").toLowerCase() !== "system" && (user.name || "").toLowerCase() !== "system") && (
+                                                        {((user.rola !== "ADMINISTRATOR" || isSystemUser) && (user.imieNazwisko || "").toLowerCase() !== "system" && user.rola !== "SYSTEM") && (
                                                             <button
                                                                 className="flex-1 py-3 px-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all bg-red-50 text-red-500 border border-red-100 hover:bg-red-500 hover:text-white shadow-sm"
                                                                 onClick={() => handleDeleteUser(user.id)}

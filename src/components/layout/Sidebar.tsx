@@ -239,7 +239,7 @@ export default function Sidebar({ userName, userRole, activeTeamName }: SidebarP
                         <div className="overflow-hidden">
                             <p className="text-sm font-bold truncate text-foreground group-hover:text-primary transition-colors">{displayUser}</p>
                             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider truncate">
-                                {isAdmin ? "Administrator" : (isDirector ? "Dyrektorka" : displayRole)}
+                                {displayRole === "SYSTEM" ? "System" : (isAdmin ? "Administrator" : (isDirector ? "Dyrektorka" : displayRole))}
                             </p>
                             {!isAdmin && displayTeam && (
                                 <p className="text-[10px] font-medium text-primary truncate">{displayTeam}</p>
