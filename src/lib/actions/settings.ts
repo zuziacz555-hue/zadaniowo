@@ -82,16 +82,8 @@ export async function updateSystemSettings(data: Partial<Omit<SystemSettingsData
 
                 // If role was enabled and now is disabled -> demote everyone
                 if (wasEnabled && !nowEnabled) {
-                    console.log('Demoting all directors to participants/coordinators...');
-                    // 1. All global roles "DYREKTORKA" -> "UCZESTNICZKA"
-                    await tx.user.updateMany({
-                        where: { rola: 'DYREKTORKA' },
-                        data: { rola: 'UCZESTNICZKA' }
-                    });
-
-                    // 2. All team roles "dyrektorka" -> "koordynatorka"
-                    // Note: case might vary depending on how it was saved, but usually it's "dyrektorka" in prisma or "DYREKTORKA"
-                    // We check for both common variants just in case
+                    console.log('Demoting all directors to coordinators in teams...');
+                    // 1. All team roles "dyrektorka" -> "koordynatorka"
                     await tx.userTeam.updateMany({
                         where: { rola: { in: ['dyrektorka', 'DYREKTORKA'] } },
                         data: { rola: 'koordynatorka' }

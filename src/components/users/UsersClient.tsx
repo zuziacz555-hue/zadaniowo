@@ -62,9 +62,6 @@ export default function UsersClient({ initialUsers, initialTeams, settings }: { 
     const getRoleBadgeClass = (rola: string) => {
         switch (rola.toUpperCase()) {
             case "ADMINISTRATOR": return "lux-badge lux-badge-danger";
-            case "KOORDYNATORKA":
-            case "KOORDYNATOR": return "lux-badge lux-badge-primary";
-            case "DYREKTORKA": return "lux-badge bg-purple-100 text-purple-700 border-purple-200";
             case "SYSTEM": return "lux-badge bg-blue-100 text-blue-700 border-blue-200";
             default: return "lux-badge";
         }
@@ -253,7 +250,6 @@ export default function UsersClient({ initialUsers, initialTeams, settings }: { 
                                         >
                                             <option value="UCZESTNICZKA">uczestniczka</option>
                                             <option value="ADMINISTRATOR">administrator</option>
-                                            {settings?.enableDirectorRole && <option value="DYREKTORKA">dyrektorka</option>}
                                             <option value="SYSTEM">system</option>
                                         </select>
                                     </div>
@@ -324,7 +320,6 @@ export default function UsersClient({ initialUsers, initialTeams, settings }: { 
                             <option value="">Wszystkie role</option>
                             <option value="UCZESTNICZKA">Uczestniczka</option>
                             <option value="ADMINISTRATOR">Administrator</option>
-                            {settings?.enableDirectorRole && <option value="DYREKTORKA">Dyrektorka</option>}
                             <option value="SYSTEM">System</option>
                         </select>
                     </div>

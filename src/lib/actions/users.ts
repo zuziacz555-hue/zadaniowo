@@ -78,11 +78,16 @@ export async function createUser(data: {
             return { success: false, error: 'Użytkownik o takim imieniu i nazwisku już istnieje.' }
         }
 
+        const validRoles = ['UCZESTNICZKA', 'ADMINISTRATOR', 'SYSTEM'];
+        const roleToSet = (data.rola && validRoles.includes(data.rola.toUpperCase()))
+            ? data.rola.toUpperCase()
+            : 'UCZESTNICZKA';
+
         const user = await prisma.user.create({
             data: {
                 ...data,
                 imieNazwisko: name,
-                rola: data.rola as any,
+                rola: roleToSet as any,
             },
         })
         try { revalidatePath('/admin-users') } catch (e) { }
@@ -114,11 +119,16 @@ export async function updateUser(id: number, data: Partial<{
             }
         }
 
+        const validRoles = ['UCZESTNICZKA', 'ADMINISTRATOR', 'SYSTEM'];
+        const roleToSet = (data.rola && validRoles.includes(data.rola.toUpperCase()))
+            ? data.rola.toUpperCase()
+            : undefined;
+
         const user = await prisma.user.update({
             where: { id },
             data: {
                 ...data,
-                ...(data.rola && { rola: data.rola as any }),
+                ...(roleToSet && { rola: roleToSet as any }),
             },
         })
         try {
