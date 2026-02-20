@@ -142,9 +142,11 @@ export async function createTeam(nazwa: string, kolor: string = '#5400FF', opis?
         const team = await prisma.team.create({
             data: { nazwa, kolor, opis },
         })
-        revalidatePath('/admin-teams')
-        revalidatePath('/admin-users')
-        revalidatePath('/dashboard')
+        try {
+            revalidatePath('/admin-teams')
+            revalidatePath('/admin-users')
+            revalidatePath('/dashboard')
+        } catch (e) { }
         return { success: true, data: team }
     } catch (error) {
         console.error('Error creating team:', error)
@@ -204,9 +206,11 @@ export async function updateTeam(id: number, nazwa: string, kolor?: string, opis
                 ...(opis !== undefined && { opis })
             },
         })
-        revalidatePath('/admin-teams')
-        revalidatePath('/admin-users')
-        revalidatePath('/dashboard')
+        try {
+            revalidatePath('/admin-teams')
+            revalidatePath('/admin-users')
+            revalidatePath('/dashboard')
+        } catch (e) { }
         return { success: true, data: team }
     } catch (error) {
         console.error('Error updating team:', error)
@@ -219,9 +223,11 @@ export async function deleteTeam(id: number) {
         await prisma.team.delete({
             where: { id },
         })
-        revalidatePath('/admin-teams')
-        revalidatePath('/admin-users')
-        revalidatePath('/dashboard')
+        try {
+            revalidatePath('/admin-teams')
+            revalidatePath('/admin-users')
+            revalidatePath('/dashboard')
+        } catch (e) { }
         return { success: true }
     } catch (error) {
         console.error('Error deleting team:', error)
@@ -258,9 +264,11 @@ export async function addUserToTeam(userId: number, teamId: number, rola: string
                 rola,
             },
         })
-        revalidatePath('/admin-teams')
-        revalidatePath('/admin-users')
-        revalidatePath('/dashboard')
+        try {
+            revalidatePath('/admin-teams')
+            revalidatePath('/admin-users')
+            revalidatePath('/dashboard')
+        } catch (e) { }
         return { success: true, data: userTeam }
     } catch (error) {
         console.error('Error adding user to team:', error)
@@ -297,9 +305,11 @@ export async function removeUserFromTeam(userId: number, teamId: number) {
             }
         }
 
-        revalidatePath('/admin-teams')
-        revalidatePath('/admin-users')
-        revalidatePath('/dashboard')
+        try {
+            revalidatePath('/admin-teams')
+            revalidatePath('/admin-users')
+            revalidatePath('/dashboard')
+        } catch (e) { }
         return { success: true }
     } catch (error) {
         console.error('Error removing user from team:', error)
