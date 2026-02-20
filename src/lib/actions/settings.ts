@@ -62,23 +62,50 @@ export async function updateSystemSettings(data: Partial<Omit<SystemSettingsData
                 }
             });
         } else {
+            const wasEnabled = settings.enableDirectorRole;
+            const nowEnabled = data.enableDirectorRole ?? wasEnabled;
+
             // Update existing
-            await prisma.systemSettings.update({
-                where: { id: settings.id },
-                data: {
-                    ...(data.alertsTerminy !== undefined && { alertsTerminy: data.alertsTerminy }),
-                    ...(data.alertsPoprawki !== undefined && { alertsPoprawki: data.alertsPoprawki }),
-                    ...(data.alertsRaporty !== undefined && { alertsRaporty: data.alertsRaporty }),
-                    ...(data.coordinatorTasks !== undefined && { coordinatorTasks: data.coordinatorTasks }),
-                    ...(data.coordinatorTeamEditing !== undefined && { coordinatorTeamEditing: data.coordinatorTeamEditing }),
-                    ...(data.coordinatorResignationAlerts !== undefined && { coordinatorResignationAlerts: data.coordinatorResignationAlerts }),
-                    ...(data.enableDirectorRole !== undefined && { enableDirectorRole: data.enableDirectorRole })
+            await prisma.$transaction(async (tx) => {
+                await tx.systemSettings.update({
+                    where: { id: settings!.id },
+                    data: {
+                        ...(data.alertsTerminy !== undefined && { alertsTerminy: data.alertsTerminy }),
+                        ...(data.alertsPoprawki !== undefined && { alertsPoprawki: data.alertsPoprawki }),
+                        ...(data.alertsRaporty !== undefined && { alertsRaporty: data.alertsRaporty }),
+                        ...(data.coordinatorTasks !== undefined && { coordinatorTasks: data.coordinatorTasks }),
+                        ...(data.coordinatorTeamEditing !== undefined && { coordinatorTeamEditing: data.coordinatorTeamEditing }),
+                        ...(data.coordinatorResignationAlerts !== undefined && { coordinatorResignationAlerts: data.coordinatorResignationAlerts }),
+                        ...(data.enableDirectorRole !== undefined && { enableDirectorRole: data.enableDirectorRole })
+                    }
+                });
+
+                // If role was enabled and now is disabled -> demote everyone
+                if (wasEnabled && !nowEnabled) {
+                    console.log('Demoting all directors to participants/coordinators...');
+                    // 1. All global roles "DYREKTORKA" -> "UCZESTNICZKA"
+                    await tx.user.updateMany({
+                        where: { rola: 'DYREKTORKA' },
+                        data: { rola: 'UCZESTNICZKA' }
+                    });
+
+                    // 2. All team roles "dyrektorka" -> "koordynatorka"
+                    // Note: case might vary depending on how it was saved, but usually it's "dyrektorka" in prisma or "DYREKTORKA"
+                    // We check for both common variants just in case
+                    await tx.userTeam.updateMany({
+                        where: { rola: { in: ['dyrektorka', 'DYREKTORKA'] } },
+                        data: { rola: 'koordynatorka' }
+                    });
                 }
             });
         }
 
-        revalidatePath('/admin-settings');
-        revalidatePath('/dashboard');
+        try {
+            revalidatePath('/admin-settings');
+            revalidatePath('/dashboard');
+        } catch (e) {
+            // Likely running in a script/test environment
+        }
 
         return { success: true };
     } catch (error) {

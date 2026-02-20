@@ -312,8 +312,10 @@ export async function toggleTeamApplications(teamId: number, enabled: boolean) {
             where: { id: teamId },
             data: { allowApplications: enabled }
         });
-        revalidatePath('/dashboard');
-        revalidatePath('/admin-teams');
+        try {
+            revalidatePath('/dashboard');
+            revalidatePath('/admin-teams');
+        } catch (e) { }
         return { success: true };
     } catch (error) {
         console.error('Error toggling team applications:', error);
@@ -328,8 +330,10 @@ export async function resetTeamApplications(teamId: number) {
                 type: 'TEAM_APPLICATION'
             }
         });
-        revalidatePath('/dashboard');
-        revalidatePath('/applications');
+        try {
+            revalidatePath('/dashboard');
+            revalidatePath('/applications');
+        } catch (e) { }
         return { success: true };
     } catch (error) {
         console.error('Error resetting team applications:', error);

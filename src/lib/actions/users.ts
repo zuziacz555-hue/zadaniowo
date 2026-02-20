@@ -85,7 +85,7 @@ export async function createUser(data: {
                 rola: data.rola as any,
             },
         })
-        revalidatePath('/admin-users')
+        try { revalidatePath('/admin-users') } catch (e) { }
         return { success: true, data: user }
     } catch (error: any) {
         console.error('Error creating user:', error)
@@ -121,8 +121,10 @@ export async function updateUser(id: number, data: Partial<{
                 ...(data.rola && { rola: data.rola as any }),
             },
         })
-        revalidatePath('/admin-users')
-        revalidatePath('/admin-teams')
+        try {
+            revalidatePath('/admin-users')
+            revalidatePath('/admin-teams')
+        } catch (e) { }
         return { success: true, data: user }
     } catch (error) {
         console.error('Error updating user:', error)
@@ -160,8 +162,10 @@ export async function deleteUser(id: number, callerId: number) {
             where: { id },
         })
 
-        revalidatePath('/admin-users')
-        revalidatePath('/admin-teams')
+        try {
+            revalidatePath('/admin-users')
+            revalidatePath('/admin-teams')
+        } catch (e) { }
         return { success: true }
     } catch (error) {
         console.error('Error deleting user:', error)
