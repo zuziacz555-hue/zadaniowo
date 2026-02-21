@@ -34,6 +34,7 @@ interface AnnouncementsClientProps {
     activeTeamId: number | null;
     userRole?: string;
     onRefresh?: () => void;
+    enableDirectorRole?: boolean;
 }
 
 export default function AnnouncementsClient({
@@ -47,7 +48,8 @@ export default function AnnouncementsClient({
     currentUserId,
     activeTeamId,
     userRole,
-    onRefresh
+    onRefresh,
+    enableDirectorRole
 }: AnnouncementsClientProps) {
     const router = useRouter();
     const [selectedTeamId, setSelectedTeamId] = useState<number | null>(activeTeamId || teams[0]?.id || null);
@@ -213,7 +215,12 @@ export default function AnnouncementsClient({
     };
 
 
-    const isAuthorizedToManage = isAdmin || isCoord || isDirector;
+    // Kto może pisać ogłoszenia:
+    // Standard (bez dyrektorek): tylko Admin
+    // Tryb dyrektorek: Admin + Dyrektorka (do swoich zespołów) + Koordynatorka (do swojego)
+    const isAuthorizedToManage = enableDirectorRole
+        ? (isAdmin || isCoord || isDirector)
+        : isAdmin;
 
     return (
         <DashboardLayout>

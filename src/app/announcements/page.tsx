@@ -4,6 +4,7 @@ import AnnouncementsClient from "@/components/announcements/AnnouncementsClient"
 import { getAnnouncements } from "@/lib/actions/announcements";
 import { getTeams } from "@/lib/actions/teams";
 import { getTasks } from "@/lib/actions/tasks";
+import { getSystemSettings } from "@/lib/actions/settings";
 import { useEffect, useState } from "react";
 
 export default function AnnouncementsPage() {
@@ -14,6 +15,7 @@ export default function AnnouncementsPage() {
     const [activeRole, setActiveRole] = useState<string>("");
     const [isLoading, setIsLoading] = useState(true);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
+    const [enableDirectorRole, setEnableDirectorRole] = useState(false);
 
     const handleRefresh = () => {
         setRefreshTrigger(prev => prev + 1);
@@ -33,19 +35,20 @@ export default function AnnouncementsPage() {
                 const teamId = storedTeamId ? Number(storedTeamId) : undefined;
                 const annRes = await getAnnouncements(teamId, parsedUser.id);
                 const teamsRes = await getTeams();
-                // Fetch tasks for overdue check
                 const tasksRes = await getTasks({ userId: parsedUser.id, role: parsedUser.role });
+                const settingsRes = await getSystemSettings();
 
                 if (annRes.success) setAnnouncements(annRes.data || []);
                 if (teamsRes.success) setTeams(teamsRes.data || []);
                 if (tasksRes.success) setTasks(tasksRes.data || []);
+                if (settingsRes.success && settingsRes.data) {
+                    setEnableDirectorRole(settingsRes.data.enableDirectorRole);
+                }
             }
             setIsLoading(false);
         };
         loadData();
     }, [refreshTrigger]);
-
-    // ... (rendering)
 
     if (isLoading) {
         return (
@@ -82,6 +85,7 @@ export default function AnnouncementsPage() {
             activeTeamId={localStorage.getItem("activeTeamId") ? Number(localStorage.getItem("activeTeamId")) : null}
             userRole={activeRole || user.role}
             onRefresh={handleRefresh}
+            enableDirectorRole={enableDirectorRole}
         />
     );
 }

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
+// Base menu items visible to ALL roles
 const sidebarItems = [
     { title: "Pulpit", href: "/dashboard", icon: LayoutDashboard },
     { title: "Zadania", href: "/tasks", icon: ClipboardList },
@@ -32,13 +33,7 @@ const sidebarItems = [
     { title: "Ogłoszenia", href: "/announcements", icon: Megaphone },
 ];
 
-const coordItems = [
-    { title: "Mój Zespół", href: "/admin-teams", icon: Users, excludeAdmin: true },
-    { title: "Sprawozdania", href: "/reports", icon: MessageSquareText },
-    { title: "Aplikacje", href: "/applications", icon: Sparkles, requiresApplications: true },
-    { title: "Ustawienia", href: "/admin-settings", icon: Settings },
-];
-
+// Admin management section
 const adminItems = [
     { title: "Wszystkie Zespoły", href: "/admin-teams", icon: Crown },
     { title: "Użytkownicy", href: "/admin-users", icon: UserCog },
@@ -46,11 +41,26 @@ const adminItems = [
     { title: "Ustawienia", href: "/admin-settings", icon: Settings },
 ];
 
+// Director management section (when director role is enabled)
 const directorItems = [
-    { title: "Moje Zespoły", href: "/admin-teams", icon: Users }, // Used to be "Mój Zespół" but for Director it might be multiple
-    { title: "Użytkownicy", href: "/admin-users", icon: UserCog },
+    { title: "Moje Zespoły", href: "/admin-teams", icon: Users },
     { title: "Sprawozdania", href: "/reports", icon: MessageSquareText },
-    // No Settings for now
+    { title: "Aplikacje", href: "/applications", icon: Sparkles, requiresApplications: true },
+    { title: "Ustawienia", href: "/admin-settings", icon: Settings },
+];
+
+// Coordinator management section (standard mode - no director role)
+const coordItems = [
+    { title: "Mój Zespół", href: "/admin-teams", icon: Users },
+    { title: "Sprawozdania", href: "/reports", icon: MessageSquareText },
+    { title: "Aplikacje", href: "/applications", icon: Sparkles, requiresApplications: true },
+    { title: "Ustawienia", href: "/admin-settings", icon: Settings },
+];
+
+// Coordinator management section (director mode - no Ustawienia)
+const coordItemsDirectorMode = [
+    { title: "Mój Zespół", href: "/admin-teams", icon: Users },
+    { title: "Sprawozdania", href: "/reports", icon: MessageSquareText },
 ];
 
 interface SidebarProps {
@@ -173,9 +183,6 @@ export default function Sidebar({ userName, userRole, activeTeamName }: SidebarP
                         <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-4 mb-2">Menu</h3>
                         {sidebarItems.map((item) => {
                             const isActive = pathname === item.href;
-                            // Filter Archive for non-coord/admin
-                            if (item.href === "/archive" && !isAdmin && !isCoord) return null;
-
                             return (
                                 <Link
                                     key={item.href}
@@ -201,29 +208,41 @@ export default function Sidebar({ userName, userRole, activeTeamName }: SidebarP
                             <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-4 mb-2">
                                 {isAdmin ? "Administracja" : "Zarządzanie"}
                             </h3>
-                            {(isAdmin ? adminItems : (isDirector ? directorItems : coordItems)).map((item) => {
-                                const isActive = pathname === item.href;
-                                if ((item as any).excludeAdmin && isAdmin) return null;
-                                // Check if applications are enabled
-                                if ((item as any).requiresApplications && settings && !settings.enableCoordinatorApplications) return null;
+                            {(() => {
+                                let items;
+                                if (isAdmin) {
+                                    items = adminItems;
+                                } else if (isDirector) {
+                                    items = directorItems;
+                                } else if (isCoord && settings?.enableDirectorRole) {
+                                    // Coord in director mode: no Ustawienia
+                                    items = coordItemsDirectorMode;
+                                } else {
+                                    items = coordItems;
+                                }
+                                return items.map((item) => {
+                                    const isActive = pathname === item.href;
+                                    // Check if applications are enabled
+                                    if ((item as any).requiresApplications && settings && !settings.enableCoordinatorApplications) return null;
 
-                                return (
-                                    <Link
-                                        key={item.href}
-                                        href={item.href}
-                                        onClick={() => setIsMobileOpen(false)}
-                                        className={cn(
-                                            "flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm",
-                                            isActive
-                                                ? "bg-purple-100 text-purple-700"
-                                                : "text-gray-500 hover:bg-purple-50 hover:text-purple-600"
-                                        )}
-                                    >
-                                        <item.icon size={20} />
-                                        {item.title}
-                                    </Link>
-                                )
-                            })}
+                                    return (
+                                        <Link
+                                            key={item.href}
+                                            href={item.href}
+                                            onClick={() => setIsMobileOpen(false)}
+                                            className={cn(
+                                                "flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm",
+                                                isActive
+                                                    ? "bg-purple-100 text-purple-700"
+                                                    : "text-gray-500 hover:bg-purple-50 hover:text-purple-600"
+                                            )}
+                                        >
+                                            <item.icon size={20} />
+                                            {item.title}
+                                        </Link>
+                                    )
+                                });
+                            })()}
                         </div>
                     )}
                 </div>

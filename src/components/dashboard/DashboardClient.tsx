@@ -78,6 +78,7 @@ const dashboardInstructions: Record<string, { admin?: string; coord?: string; us
 };
 
 const menuItems = [
+    // === Base items (all roles) ===
     {
         title: "Twoje Zadania",
         description: "Centrum dowodzenia. Zarządzaj, wykonuj i śledź postępy swoich obowiązków.",
@@ -85,7 +86,6 @@ const menuItems = [
         tone: "from-violet-500 to-purple-600",
         href: "/tasks",
         span: "md:col-span-2 lg:col-span-2",
-        bgImage: "/dashboard/tasks-bg.svg" // Placeholder or CSS pattern
     },
     {
         title: "Kalendarz Spotkań",
@@ -119,19 +119,17 @@ const menuItems = [
         href: "/chat",
         span: "md:col-span-1"
     },
+    { title: "Archiwum", description: "Udostępnione pliki i foldery", icon: Archive, tone: "from-gray-500 to-slate-600", href: "/archive", span: "md:col-span-1" },
 
-    // Coordinator Specific
+    // === Coordinator / Director items ===
     { title: "Mój Zespół", description: "Zarządzaj członkami i zadaniami", icon: Users, tone: "from-indigo-500 to-blue-600", href: "/admin-teams", coordOnly: true, excludeAdmin: true, span: "md:col-span-1" },
     { title: "Sprawozdania", description: "Raporty ze spotkań", icon: MessageSquareText, tone: "from-emerald-500 to-teal-500", href: "/reports", coordOnly: true, span: "md:col-span-1" },
-    { title: "Aplikacje", description: "Zgłoszenia do zespołu", icon: Sparkles, tone: "from-fuchsia-500 to-pink-600", href: "/applications", coordOnly: true, requiresApplications: true, span: "md:col-span-2" },
+    { title: "Aplikacje", description: "Zgłoszenia do zespołu", icon: Sparkles, tone: "from-fuchsia-500 to-pink-600", href: "/applications", coordOnly: true, requiresApplications: true, span: "md:col-span-1" },
+    { title: "Ustawienia", description: "Konfiguracja systemu", icon: Settings, tone: "from-gray-400 to-gray-600", href: "/admin-settings", coordOnly: true, special: true, span: "md:col-span-1" },
 
-    // Admin Specific
+    // === Admin only ===
     { title: "Zespoły", description: "Zarządzanie strukturą", icon: Crown, tone: "from-gray-700 to-gray-900", href: "/admin-teams", adminOnly: true, span: "md:col-span-1" },
     { title: "Użytkownicy", description: "Baza użytkowników", icon: UserCog, tone: "from-slate-600 to-slate-800", href: "/admin-users", adminOnly: true, span: "md:col-span-1" },
-
-    // Shared Settings
-    { title: "Archiwum", description: "Zarchiwizowane zadania", icon: Archive, tone: "from-gray-500 to-slate-600", href: "/archive", coordOnly: true, span: "md:col-span-1" },
-    { title: "Ustawienia", description: "Konfiguracja systemu", icon: Settings, tone: "from-gray-400 to-gray-600", href: "/admin-settings", coordOnly: true, special: true, span: "md:col-span-1" },
 ];
 
 import { getUserTeams, getTeamById, removeUserFromTeam, getTeams } from "@/lib/actions/teams";
@@ -272,6 +270,7 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
     }, [initialTeams, user?.id]); // Re-run whenever server data changes
 
     const isSystemAdmin = (user?.name === "system" || user?.imieNazwisko === "System") || user?.rola === "SYSTEM" || user?.role === "SYSTEM" || user?.rola === "ADMINISTRATOR" || user?.role === "ADMINISTRATOR" || user?.role === "admin" || user?.role === "ADMIN";
+    const isTeamDirector = activeRole === "DYREKTORKA" || activeRole === "DYREKTOR";
     const isTeamCoord = activeRole === "KOORDYNATORKA" || isSystemAdmin;
 
     useEffect(() => {
@@ -414,18 +413,22 @@ export default function DashboardClient({ userTeams: initialTeams }: DashboardCl
     const currentActive = activeTeam || (teams.length > 0 ? teams[0]?.team.nazwa : null);
 
     const filteredMenu = menuItems.filter(item => {
+        // Admin-only items
         if (item.adminOnly) return isSystemAdmin;
+        // Hide coord-specific team management from admin (they have their own)
         if (item.excludeAdmin && isSystemAdmin) return false;
 
-        // Coordinator only items
+        // Coordinator / Director items
         if (item.coordOnly) {
-            if (!isTeamCoord) return false;
+            // Must be coord, director, or admin
+            if (!isTeamCoord && !isTeamDirector) return false;
+
+            // In director mode, coordinators lose Ustawienia
+            if ((item as any).special && isTeamCoord && !isSystemAdmin && systemSettings?.enableDirectorRole) return false;
 
             // Check if applications are required and enabled for active team
             if ((item as any).requiresApplications) {
-                // Global setting check first
                 if (systemSettings && !systemSettings.enableCoordinatorApplications) return false;
-
                 const activeTeamId = localStorage.getItem("activeTeamId");
                 const currentTeam = teams.find(t => t.team.id === parseInt(activeTeamId || "0"));
                 return currentTeam?.team.allowApplications === true;

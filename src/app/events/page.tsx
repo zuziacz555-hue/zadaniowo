@@ -2,6 +2,7 @@
 
 import EventsClient from "@/components/events/EventsClient";
 import { getEvents } from "@/lib/actions/events";
+import { getSystemSettings } from "@/lib/actions/settings";
 import { useEffect, useState } from "react";
 
 export default function EventsPage() {
@@ -10,6 +11,7 @@ export default function EventsPage() {
     const [activeRole, setActiveRole] = useState<string>("");
     const [isLoading, setIsLoading] = useState(true);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
+    const [enableDirectorRole, setEnableDirectorRole] = useState(false);
 
     const handleRefresh = () => {
         setRefreshTrigger(prev => prev + 1);
@@ -29,6 +31,11 @@ export default function EventsPage() {
                 const res = await getEvents(storedTeamId ? Number(storedTeamId) : undefined);
                 if (res.success) {
                     setEvents(res.data || []);
+                }
+
+                const settingsRes = await getSystemSettings();
+                if (settingsRes.success && settingsRes.data) {
+                    setEnableDirectorRole(settingsRes.data.enableDirectorRole);
                 }
             }
             setIsLoading(false);
@@ -55,7 +62,8 @@ export default function EventsPage() {
 
     const isSystem = (user.name || "").toLowerCase() === "system" || (user.imieNazwisko || "").toLowerCase() === "system";
     const isAdmin = activeRole === "ADMINISTRATOR" || user.role === "ADMINISTRATOR" || isSystem;
-    const isDirector = activeRole === "DYREKTORKA" || user.role === "DYREKTORKA";
+    // Director can only create events when director mode is enabled
+    const isDirector = enableDirectorRole && (activeRole === "DYREKTORKA" || user.role === "DYREKTORKA");
 
     return (
         <EventsClient
@@ -68,3 +76,4 @@ export default function EventsPage() {
         />
     );
 }
+

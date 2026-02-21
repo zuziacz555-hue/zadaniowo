@@ -121,7 +121,11 @@ export async function getChatContacts(userId: number, role: string) {
     try {
         const uppercaseRole = (role || "").toUpperCase();
 
-        // Pobierz ID użytkowników, z którymi była interakcja w ciągu ostatnich 24h (my do nich lub oni do nas)
+        // Sprawdź czy tryb dyrektorski jest włączony
+        const systemSettings = await localPrisma.systemSettings.findFirst();
+        const directorModeEnabled = systemSettings?.enableDirectorRole ?? false;
+
+        // Pobierz ID użytkowników, z którymi była interakcja w ciągu ostatnich 24h
         const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
         const recentInteractions = await localPrisma.chatMessage.findMany({
             where: {
@@ -137,50 +141,47 @@ export async function getChatContacts(userId: number, role: string) {
 
         let baseContacts: any[] = [];
 
-        // 1. Administrator widzi wszystkich
+        // Pobierz zespoły użytkownika (potrzebne dla większości ról)
+        const userTeams = await localPrisma.userTeam.findMany({
+            where: { userId },
+            select: { teamId: true }
+        });
+        const teamIds = userTeams.map(ut => ut.teamId);
+
+        // ===== ADMINISTRATOR: widzi wszystkich =====
         if (uppercaseRole === 'ADMIN' || uppercaseRole === 'ADMINISTRATOR') {
             baseContacts = await localPrisma.user.findMany({
                 where: { id: { not: userId } },
                 select: { id: true, imieNazwisko: true, rola: true }
             });
-        } else {
-            // Pobierz zespoły do których należy użytkownik
-            const userTeams = await localPrisma.userTeam.findMany({
-                where: { userId },
-                select: { teamId: true }
-            });
-            const teamIds = userTeams.map(ut => ut.teamId);
 
-            if (uppercaseRole === 'KOORDYNATORKA' || uppercaseRole === 'KOORDYNATOR') {
+            // ===== DYREKTORKA: widzi wszystkich (admins, coords, directors, team members) =====
+        } else if (uppercaseRole === 'DYREKTOR' || uppercaseRole === 'DYREKTORKA') {
+            baseContacts = await localPrisma.user.findMany({
+                where: {
+                    OR: [
+                        { rola: { in: ['ADMIN', 'ADMINISTRATOR'] } },
+                        // Wszystkie koordynatorki
+                        { zespoly: { some: { rola: { in: ['koordynatorka', 'KOORDYNATORKA'] } } } },
+                        // Wszystkie dyrektorki
+                        { zespoly: { some: { rola: { in: ['dyrektorka', 'DYREKTORKA'] } } } },
+                        // Uczestniczki z ich zespołów
+                        { zespoly: { some: { teamId: { in: teamIds } } } },
+                        { id: { in: interactionIds } }
+                    ],
+                    id: { not: userId }
+                },
+                select: { id: true, imieNazwisko: true, rola: true }
+            });
+
+            // ===== KOORDYNATORKA =====
+        } else if (uppercaseRole === 'KOORDYNATORKA' || uppercaseRole === 'KOORDYNATOR') {
+            if (directorModeEnabled) {
+                // Tryb dyrektorski: koordynatorka widzi tylko osoby z zespołu + dyrektorkę swojego zespołu
                 baseContacts = await localPrisma.user.findMany({
                     where: {
                         OR: [
                             { zespoly: { some: { teamId: { in: teamIds } } } },
-                            { rola: { in: ['KOORDYNATORKA', 'KOORDYNATOR'] } },
-                            { rola: { in: ['ADMIN', 'ADMINISTRATOR'] } },
-                            { id: { in: interactionIds } } // Zawsze pozwól na kontakt z kimś kto do nas napisał
-                        ],
-                        id: { not: userId }
-                    },
-                    select: { id: true, imieNazwisko: true, rola: true }
-                });
-            } else if (uppercaseRole === 'DYREKTOR' || uppercaseRole === 'DYREKTORKA') {
-                // Dyrektor widzi:
-                // 1. Wszystkich Adminów
-                // 2. Wszystkie Koordynatorki
-                // 3. Uczestniczki ze swoich zespołów
-                baseContacts = await localPrisma.user.findMany({
-                    where: {
-                        OR: [
-                            { rola: { in: ['ADMIN', 'ADMINISTRATOR', 'KOORDYNATOR', 'KOORDYNATORKA'] } },
-                            {
-                                zespoly: {
-                                    some: {
-                                        teamId: { in: teamIds },
-                                        rola: { notIn: ['DYREKTOR', 'DYREKTORKA'] } // Exclude other directors to avoid double counting if they fall here, though not strictly necessary
-                                    }
-                                }
-                            },
                             { id: { in: interactionIds } }
                         ],
                         id: { not: userId }
@@ -188,25 +189,40 @@ export async function getChatContacts(userId: number, role: string) {
                     select: { id: true, imieNazwisko: true, rola: true }
                 });
             } else {
-                // Uczestniczka
+                // Tryb standardowy: koordynatorka widzi zespół + inne koordynatorki + adminów
                 baseContacts = await localPrisma.user.findMany({
                     where: {
                         OR: [
-                            {
-                                zespoly: {
-                                    some: {
-                                        teamId: { in: teamIds },
-                                        rola: { in: ['KOORDYNATORKA', 'KOORDYNATOR', 'koordynatorka', 'koordynator', 'DYREKTOR', 'DYREKTORKA', 'dyrektor', 'dyrektorka'] }
-                                    }
-                                }
-                            },
-                            { id: { in: interactionIds } } // Pozwól odpowiedzieć każdemu kto napisał (np. Adminowi)
+                            { zespoly: { some: { teamId: { in: teamIds } } } },
+                            { zespoly: { some: { rola: { in: ['koordynatorka', 'KOORDYNATORKA'] } } } },
+                            { rola: { in: ['ADMIN', 'ADMINISTRATOR'] } },
+                            { id: { in: interactionIds } }
                         ],
                         id: { not: userId }
                     },
                     select: { id: true, imieNazwisko: true, rola: true }
                 });
             }
+
+            // ===== UCZESTNICZKA: widzi tylko koordynatorkę (+ admins/others who wrote) =====
+        } else {
+            baseContacts = await localPrisma.user.findMany({
+                where: {
+                    OR: [
+                        {
+                            zespoly: {
+                                some: {
+                                    teamId: { in: teamIds },
+                                    rola: { in: ['KOORDYNATORKA', 'koordynatorka'] }
+                                }
+                            }
+                        },
+                        { id: { in: interactionIds } }
+                    ],
+                    id: { not: userId }
+                },
+                select: { id: true, imieNazwisko: true, rola: true }
+            });
         }
 
         // 2. Pobierz ostatnie wiadomości dla każdego kontaktu do sortowania i unread count
