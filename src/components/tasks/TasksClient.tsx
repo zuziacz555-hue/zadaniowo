@@ -481,18 +481,18 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
             setNewTask(prev => ({ ...prev, teamId: teamId.toString() }));
         }
 
-        if (isCoord && activeTab === "do-zrobienia") {
+        if ((isCoord || isDirector) && activeTab === "do-zrobienia") {
             setActiveTab("zlecone");
         }
 
-        if (isAdmin || isCoord) {
+        if (isAdmin || isCoord || isDirector) {
             getTeams().then(res => {
                 if (res.success && res.data) setAllTeams(res.data);
             });
         }
 
         // FIX: Fetch members if we are Coord (using teamId prop) OR Admin (using selected newTask.teamId)
-        const targetTeamId = isCoord ? teamId : (newTask.teamId && newTask.teamId !== "-1" ? Number(newTask.teamId) : null);
+        const targetTeamId = (isCoord || isDirector) ? teamId : (newTask.teamId && newTask.teamId !== "-1" ? Number(newTask.teamId) : null);
 
         if (targetTeamId) {
             getTeamById(targetTeamId).then(res => {
@@ -502,8 +502,13 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                             const role = u.rola?.toUpperCase();
 
                             // Coordinator View: Only Participants
-                            if (isCoord && !isAdmin) {
+                            if (isCoord && !isAdmin && !isDirector) {
                                 return role === 'UCZESTNICZKA';
+                            }
+
+                            // Director View: Participants + Coordinators
+                            if (isDirector) {
+                                return role === 'UCZESTNICZKA' || role === 'KOORDYNATORKA';
                             }
 
                             // Admin View
@@ -517,14 +522,14 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
 
                             return true;
                         })
-                        .map((u: any) => ({ ...u.user, teamRole: u.rola })); // FIX: Pass teamRole
+                        .map((u: any) => ({ ...u.user, teamRole: u.rola }));
                     setTeamMembers(members);
                 }
             });
         } else {
             setTeamMembers([]);
         }
-    }, [isAdmin, isCoord, teamId, newTask.teamId, settings?.coordinatorTasks]);
+    }, [isAdmin, isCoord, isDirector, teamId, newTask.teamId, settings?.coordinatorTasks]);
 
     const handleSubmitWork = async (taskId: number, text: string, isCorrection = false) => {
         if (!text.trim()) return;
@@ -651,7 +656,7 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                         className={cn("lux-input appearance-none", newTask.teamId === "-1" && "bg-primary text-white border-primary")}
                                                         value={newTask.teamId}
                                                         onChange={e => setNewTask(prev => ({ ...prev, teamId: e.target.value }))}
-                                                        disabled={isCoord && !isAdmin}
+                                                        disabled={(isCoord || isDirector) && !isAdmin}
                                                     >
                                                         {!isAdmin && teamId && <option value={teamId}>Mój zespół</option>}
                                                         {isAdmin && (

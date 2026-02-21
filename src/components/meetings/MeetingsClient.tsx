@@ -319,9 +319,9 @@ export default function MeetingsClient({
                         </div>
                         <p className="text-muted-foreground font-medium flex items-center gap-2">
                             Zalogowana jako <span className="text-primary font-bold">{currentUser}</span>
-                            {(isAdmin || isCoord) && (
+                            {(isAdmin || isCoord || isDirector) && (
                                 <span className="px-3 py-1 bg-primary/5 text-primary text-[10px] font-bold uppercase tracking-widest rounded-full border border-primary/20">
-                                    {isAdmin ? "Administrator" : "Koordynatorka"}
+                                    {isAdmin ? "Administrator" : isDirector ? "Dyrektorka" : "Koordynatorka"}
                                 </span>
                             )}
                         </p>
@@ -674,7 +674,7 @@ export default function MeetingsClient({
                                                     </div>
                                                 )}
 
-                                                {!isCoord && (
+                                                {!isCoord && !isDirector && (
                                                     <button
                                                         disabled={selectedMeeting.attendance?.some((a: any) => a.imieNazwisko === currentUser) || (selectedMeeting.signupDeadline && new Date() > new Date(selectedMeeting.signupDeadline))}
                                                         className={cn(
@@ -689,7 +689,7 @@ export default function MeetingsClient({
                                                     </button>
                                                 )}
 
-                                                {(isAdmin || isCoord) && (
+                                                {(isAdmin || isCoord || isDirector) && (
                                                     <div className="space-y-4">
                                                         <div className="grid grid-cols-2 gap-4">
                                                             <button

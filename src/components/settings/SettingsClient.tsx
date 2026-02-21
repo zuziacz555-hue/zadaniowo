@@ -216,48 +216,56 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
                     </div>
                 )}
 
-                {/* Team Specific Settings - FOR COORDS AND ADMINS */}
-                {teamData && (
-                    <div className="lux-card p-8">
-                        <h2 className="text-2xl font-bold mb-8 pb-4 border-b-4 border-purple-500 inline-block">
-                            Ustawienia zespołu: {teamData.nazwa}
-                        </h2>
+                {/* Team Specific Settings - FOR COORDS AND ADMINS (but NOT coord in director mode) */}
+                {teamData && (() => {
+                    const userRole = (user?.rola || user?.role || "").toUpperCase();
+                    const storedRole = typeof window !== 'undefined' ? (localStorage.getItem("activeRole") || "").toUpperCase() : "";
+                    const isCoordinator = storedRole === "KOORDYNATORKA" || userRole === "KOORDYNATORKA";
+                    const directorModeEnabled = settings.enableDirectorRole;
+                    // In director mode, coordinator cannot toggle team applications
+                    if (isCoordinator && !isSystemAdmin && directorModeEnabled) return null;
+                    return (
+                        <div className="lux-card p-8">
+                            <h2 className="text-2xl font-bold mb-8 pb-4 border-b-4 border-purple-500 inline-block">
+                                Ustawienia zespołu: {teamData.nazwa}
+                            </h2>
 
-                        <div className="space-y-6">
-                            <motion.div
-                                className="flex items-center justify-between p-8 bg-purple-50/30 rounded-3xl border border-purple-100 hover:border-purple-200 transition-all"
-                                whileHover={{ scale: 1.005 }}
-                            >
-                                <div className="flex items-center gap-6">
-                                    <div className="w-16 h-16 rounded-2xl bg-purple-100 text-purple-600 flex items-center justify-center shadow-sm">
-                                        <Sparkles size={32} />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-bold text-xl text-gray-900">System aplikowania</h3>
-                                        <p className="text-muted-foreground font-medium max-w-lg">
-                                            Zezwól nowym osobom na wysyłanie zgłoszeń do Twojego zespołu.
-                                            Kandydatki będą widzieć Twój zespół w sekcji "Dostępne zespoły".
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <button
-                                    onClick={handleToggleApplications}
-                                    disabled={saving}
-                                    className={cn(
-                                        "flex items-center gap-3 px-6 py-3 rounded-2xl font-black uppercase tracking-widest transition-all",
-                                        teamData.allowApplications
-                                            ? "bg-green-600 text-white shadow-lg shadow-green-200"
-                                            : "bg-gray-200 text-gray-500"
-                                    )}
+                            <div className="space-y-6">
+                                <motion.div
+                                    className="flex items-center justify-between p-8 bg-purple-50/30 rounded-3xl border border-purple-100 hover:border-purple-200 transition-all"
+                                    whileHover={{ scale: 1.005 }}
                                 >
-                                    {teamData.allowApplications ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
-                                    {teamData.allowApplications ? "Aktywne" : "Wyłączone"}
-                                </button>
-                            </motion.div>
+                                    <div className="flex items-center gap-6">
+                                        <div className="w-16 h-16 rounded-2xl bg-purple-100 text-purple-600 flex items-center justify-center shadow-sm">
+                                            <Sparkles size={32} />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-xl text-gray-900">System aplikowania</h3>
+                                            <p className="text-muted-foreground font-medium max-w-lg">
+                                                Zezwól nowym osobom na wysyłanie zgłoszeń do Twojego zespołu.
+                                                Kandydatki będą widzieć Twój zespół w sekcji "Dostępne zespoły".
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={handleToggleApplications}
+                                        disabled={saving}
+                                        className={cn(
+                                            "flex items-center gap-3 px-6 py-3 rounded-2xl font-black uppercase tracking-widest transition-all",
+                                            teamData.allowApplications
+                                                ? "bg-green-600 text-white shadow-lg shadow-green-200"
+                                                : "bg-gray-200 text-gray-500"
+                                        )}
+                                    >
+                                        {teamData.allowApplications ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
+                                        {teamData.allowApplications ? "Aktywne" : "Wyłączone"}
+                                    </button>
+                                </motion.div>
+                            </div>
                         </div>
-                    </div>
-                )}
+                    );
+                })()}
 
                 {/* Info Box */}
                 <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6 flex items-start gap-4">

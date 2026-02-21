@@ -13,17 +13,12 @@ export default function ArchivePage() {
         const storedUser = localStorage.getItem("user");
         if (storedUser) {
             const parsedUser = JSON.parse(storedUser);
-            // Check permissions
             const storedRole = localStorage.getItem("activeRole");
             let role = (storedRole || parsedUser.role || parsedUser.rola || "").toUpperCase();
 
             const isSystem = (parsedUser.name || "").toLowerCase() === "system" || (parsedUser.imieNazwisko || "").toLowerCase() === "system";
-            if (role !== "ADMINISTRATOR" && role !== "ADMIN" && role !== "KOORDYNATORKA" && role !== "KOORDYNATOR" && !isSystem) {
-                router.push("/dashboard");
-                return;
-            }
             if (isSystem) role = "ADMINISTRATOR";
-            setUser({ ...parsedUser, role: role }); // Update role to activeRole for children
+            setUser({ ...parsedUser, role: role });
         } else {
             router.push("/login");
         }

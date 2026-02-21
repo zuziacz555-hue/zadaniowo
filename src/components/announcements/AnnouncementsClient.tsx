@@ -511,32 +511,42 @@ export default function AnnouncementsClient({
                                             {o.tresc}
                                         </div>
 
-                                        {isAuthorizedToManage && (
-                                            <div className="flex justify-end pt-4 border-t border-black/5 gap-3">
-                                                {o.expiresAt && (
-                                                    <span className="mr-auto flex items-center gap-1.5 text-[10px] font-black uppercase text-orange-500 bg-orange-50 px-3 py-1 rounded-lg">
-                                                        <Timer size={12} /> Wygasa: {new Date(o.expiresAt).toLocaleDateString()}
-                                                    </span>
-                                                )}
-                                                {!o.expiresAt && (
-                                                    <span className="mr-auto flex items-center gap-1.5 text-[10px] font-black uppercase text-green-500 bg-green-50 px-3 py-1 rounded-lg">
-                                                        <CheckCircle size={12} /> Bezterminowo
-                                                    </span>
-                                                )}
-                                                <button
-                                                    className="lux-btn-outline text-xs flex items-center gap-2 bg-orange-50 text-orange-600 border-orange-100 hover:bg-orange-100"
-                                                    onClick={() => handleStartEdit(o)}
-                                                >
-                                                    <Edit2 size={14} /> Edytuj
-                                                </button>
-                                                <button
-                                                    className="lux-btn-outline text-xs flex items-center gap-2"
-                                                    onClick={() => handleDeleteAnnouncement(o.id)}
-                                                >
-                                                    <Trash2 size={14} /> Usuń
-                                                </button>
-                                            </div>
-                                        )}
+                                        {isAuthorizedToManage && (() => {
+                                            // Koordynatorka/Dyrektorka can only edit/delete their own announcements, not admin's or system's
+                                            const creatorName = (o.utworzonePrzez || "").toLowerCase();
+                                            const isOwnAnnouncement = creatorName === (currentUserName || "").toLowerCase();
+                                            const canEditThis = isAdmin || isOwnAnnouncement;
+                                            return (
+                                                <div className="flex justify-end pt-4 border-t border-black/5 gap-3">
+                                                    {o.expiresAt && (
+                                                        <span className="mr-auto flex items-center gap-1.5 text-[10px] font-black uppercase text-orange-500 bg-orange-50 px-3 py-1 rounded-lg">
+                                                            <Timer size={12} /> Wygasa: {new Date(o.expiresAt).toLocaleDateString()}
+                                                        </span>
+                                                    )}
+                                                    {!o.expiresAt && (
+                                                        <span className="mr-auto flex items-center gap-1.5 text-[10px] font-black uppercase text-green-500 bg-green-50 px-3 py-1 rounded-lg">
+                                                            <CheckCircle size={12} /> Bezterminowo
+                                                        </span>
+                                                    )}
+                                                    {canEditThis && (
+                                                        <>
+                                                            <button
+                                                                className="lux-btn-outline text-xs flex items-center gap-2 bg-orange-50 text-orange-600 border-orange-100 hover:bg-orange-100"
+                                                                onClick={() => handleStartEdit(o)}
+                                                            >
+                                                                <Edit2 size={14} /> Edytuj
+                                                            </button>
+                                                            <button
+                                                                className="lux-btn-outline text-xs flex items-center gap-2"
+                                                                onClick={() => handleDeleteAnnouncement(o.id)}
+                                                            >
+                                                                <Trash2 size={14} /> Usuń
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                 </motion.div>
                             ))

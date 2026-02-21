@@ -67,6 +67,7 @@ export default function MeetingReportsPage() {
 
     const isSystem = (user.name || "").toLowerCase() === "system" || (user.imieNazwisko || "").toLowerCase() === "system" || activeRole === "SYSTEM";
     const isAdmin = activeRole === "ADMINISTRATOR" || user.role === "ADMINISTRATOR" || isSystem;
+    const isDirector = activeRole === "DYREKTORKA" || user.role === "DYREKTORKA";
     const isCoord = activeRole === "KOORDYNATORKA" || isAdmin;
 
     return (
@@ -75,7 +76,7 @@ export default function MeetingReportsPage() {
             meetingsWithoutReports={meetingsWithoutReports}
             teams={teams}
             isAdmin={isAdmin}
-            isCoord={isCoord}
+            isCoord={isCoord || isDirector}
             user={user}
             onRefresh={handleRefresh}
         />

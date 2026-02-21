@@ -24,8 +24,9 @@ export default function SettingsPage() {
         const isSystem = (user.name || "").toLowerCase() === "system" || (user.imieNazwisko || "").toLowerCase() === "system" || activeRole === "SYSTEM";
         const isAdmin = user.role === "ADMINISTRATOR" || user.role === "admin" || isSystem;
         const isCoord = activeRole === "KOORDYNATORKA" || activeRole === "koordynatorka";
+        const isDirector = activeRole === "DYREKTORKA" || activeRole === "dyrektorka";
 
-        if (!isAdmin && !isCoord) {
+        if (!isAdmin && !isCoord && !isDirector) {
             router.push("/dashboard");
             return;
         }
