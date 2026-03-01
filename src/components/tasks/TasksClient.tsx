@@ -44,7 +44,8 @@ import {
     addTaskAttachment,
     deleteTaskAttachment,
     uploadTaskFile,
-    forwardTaskToAdmin
+    forwardTaskToAdmin,
+    addTaskAssignee
 } from "@/lib/actions/tasks";
 import { moveExecutionToArchive } from "@/lib/actions/archive";
 import { getTeams, getTeamById } from "@/lib/actions/teams";
@@ -205,6 +206,11 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
     });
     const [attachmentInputs, setAttachmentInputs] = useState<{ nazwa: string, url: string }[]>([]);
     const [newAttachment, setNewAttachment] = useState({ nazwa: "", url: "" });
+
+    useEffect(() => {
+        getTeams().then(data => setAllTeams(data));
+    }, []);
+
     const [newDetailAttachment, setNewDetailAttachment] = useState({ nazwa: "", url: "" });
 
     // --- DERIVED STATE ---
@@ -2127,6 +2133,52 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                                     </div>
                                                 )}
                                             </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Add Assignee Section (New) */}
+                                    <div className="px-8 pb-10 mt-auto border-t border-white/40 bg-white/20 pt-6">
+                                        <h4 className="text-[10px] font-black uppercase text-muted-foreground/60 tracking-widest mb-4 ml-2">Dodaj wykonawcę do zadania</h4>
+                                        <div className="flex gap-3">
+                                            <select
+                                                className="lux-input py-3 text-[10px] bg-white flex-1"
+                                                defaultValue=""
+                                                onChange={async (e) => {
+                                                    const val = e.target.value;
+                                                    if (!val) return;
+                                                    const [uId, uName] = val.split('|');
+                                                    if (confirm(`Czy na pewno przypisać ${uName} do tego zadania?`)) {
+                                                        const res = await addTaskAssignee(selectedTask.id, Number(uId), uName);
+                                                        if (res.success) {
+                                                            setSelectedTask((prev: any) => ({
+                                                                ...prev,
+                                                                executions: [...(prev.executions || []), {
+                                                                    id: Math.random(), // Temporary ID for UI
+                                                                    userId: Number(uId),
+                                                                    imieNazwisko: uName,
+                                                                    status: "AKTYWNE",
+                                                                    user: { imieNazwisko: uName }
+                                                                }]
+                                                            }));
+                                                            e.target.value = "";
+                                                            onRefresh();
+                                                        } else {
+                                                            alert(res.error);
+                                                        }
+                                                    }
+                                                }}
+                                            >
+                                                <option value="" disabled>Wybierz osobę...</option>
+                                                {/* Filter out already assigned users */}
+                                                {allTeams?.find((t: any) => t.id === selectedTask.teamId)?.users
+                                                    ?.filter((u: any) => !selectedTask.executions?.some((ex: any) => ex.userId === u.id))
+                                                    ?.map((u: any) => (
+                                                        <option key={u.id} value={`${u.id}|${u.imieNazwisko}`}>
+                                                            {u.imieNazwisko}
+                                                        </option>
+                                                    ))
+                                                }
+                                            </select>
                                         </div>
                                     </div>
                                 </motion.div>

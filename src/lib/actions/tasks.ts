@@ -484,12 +484,34 @@ export async function deleteTask(id: number) {
 
 export async function deleteTaskExecution(taskId: number, userId: number) {
     try {
-        await prisma.taskExecution.deleteMany({
+        // Check if execution has been added to an archive folder
+        const execution = await prisma.taskExecution.findUnique({
             where: {
-                taskId,
-                userId
-            }
+                taskId_userId: { taskId, userId }
+            },
+            select: { archiveFolderId: true }
         });
+
+        if (execution?.archiveFolderId) {
+            // Task is in an archive folder — preserve the record, just hide from accepted view
+            await prisma.taskExecution.update({
+                where: {
+                    taskId_userId: { taskId, userId }
+                },
+                data: {
+                    isArchived: true,
+                    status: "USUNIETE"
+                }
+            });
+        } else {
+            // Not archived — delete completely
+            await prisma.taskExecution.deleteMany({
+                where: {
+                    taskId,
+                    userId
+                }
+            });
+        }
 
         await prisma.taskSubmission.deleteMany({
             where: {
@@ -610,9 +632,58 @@ export async function uploadTaskFile(formData: FormData) {
             url: uploadResult.secure_url,
             name: file.name
         };
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error uploading file to Cloudinary:', error);
-        return { success: false, error: 'Błąd podczas przesyłania pliku do chmury' };
+        let errorMsg = 'Błąd podczas przesyłania pliku do chmury';
+
+        if (error.message && error.message.includes('body size limit')) {
+            errorMsg = 'Plik jest zbyt duży. Maksymalny rozmiar to 10MB.';
+        } else if (error.http_code === 413) {
+            errorMsg = 'Plik jest zbyt duży dla serwera.';
+        }
+
+        return { success: false, error: errorMsg };
+    }
+}
+
+export async function addTaskAssignee(taskId: number, userId: number, imieNazwisko: string) {
+    try {
+        // 1. Create assignment
+        await prisma.taskAssignment.create({
+            data: {
+                taskId,
+                userId
+            }
+        });
+
+        // 2. Create execution (with unique constraint check)
+        await prisma.taskExecution.upsert({
+            where: {
+                taskId_userId: {
+                    taskId,
+                    userId
+                }
+            },
+            update: {
+                status: "AKTYWNE",
+                dataOznaczenia: new Date(),
+                imieNazwisko: imieNazwisko
+            },
+            create: {
+                taskId,
+                userId,
+                status: "AKTYWNE",
+                imieNazwisko: imieNazwisko,
+                dataOznaczenia: new Date()
+            }
+        });
+
+        revalidatePath('/tasks');
+        revalidatePath('/admin-teams');
+        return { success: true };
+    } catch (error) {
+        console.error('Error adding task assignee:', error);
+        return { success: false, error: 'Nie udało się dodać osoby do zadania' };
     }
 }
 
