@@ -276,9 +276,9 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
             } else {
                 alert("Błąd podczas przesyłania pliku: " + (uploadRes.error || "Nieznany błąd"));
             }
-        } catch (e) {
-            console.error(e);
-            alert("Błąd połączenia podczas przesyłania");
+        } catch (e: any) {
+            console.error('Upload catch error:', e);
+            alert("Błąd połączenia podczas przesyłania: " + (e.message || "Nieznany błąd"));
         } finally {
             setIsUploading(false);
         }

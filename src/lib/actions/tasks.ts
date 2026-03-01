@@ -596,11 +596,22 @@ export async function deleteTaskAttachment(attachmentId: number) {
 import { v2 as cloudinary } from 'cloudinary'
 
 export async function uploadTaskFile(formData: FormData) {
+    console.log('--- START UPLOAD ACTION ---');
     try {
-        const file = formData.get('file') as File;
-        if (!file) {
-            return { success: false, error: 'Nie przesłano pliku' };
+        const file = formData.get('file');
+        console.log('File from formData:', {
+            name: (file as any)?.name,
+            type: (file as any)?.type,
+            size: (file as any)?.size,
+            isBlob: file instanceof Blob,
+            isFile: file instanceof File
+        });
+
+        if (!file || !(file instanceof Blob)) {
+            console.error('No valid file/blob found in formData');
+            return { success: false, error: 'Nie przesłano poprawnego pliku' };
         }
+
         // Configure Cloudinary inside to ensure env vars are fresh
         cloudinary.config({
             cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
