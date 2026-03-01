@@ -662,6 +662,10 @@ export async function uploadTaskFile(formData: FormData) {
             errorMsg = 'Plik jest zbyt duży dla serwera.';
         } else if (error.message) {
             errorMsg = `Błąd chmury: ${error.message}`;
+        } else if (error.error?.message) {
+            errorMsg = `Błąd chmury (nested): ${error.error.message}`;
+        } else {
+            errorMsg = `Błąd chmury (raw): ${JSON.stringify(error, Object.getOwnPropertyNames(error))}`;
         }
 
         return { success: false, error: errorMsg };
