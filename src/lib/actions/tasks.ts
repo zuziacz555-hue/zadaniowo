@@ -595,36 +595,45 @@ export async function deleteTaskAttachment(attachmentId: number) {
 
 import { v2 as cloudinary } from 'cloudinary'
 
-// Cloudinary Configuration
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
 export async function uploadTaskFile(formData: FormData) {
     try {
         const file = formData.get('file') as File;
         if (!file) {
             return { success: false, error: 'Nie przesłano pliku' };
         }
+        // Configure Cloudinary inside to ensure env vars are fresh
+        cloudinary.config({
+            cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+            api_key: process.env.CLOUDINARY_API_KEY,
+            api_secret: process.env.CLOUDINARY_API_SECRET,
+        });
+
+        // Debug log (masking secret)
+        console.log('Cloudinary Config:', {
+            cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+            api_key: process.env.CLOUDINARY_API_KEY ? 'present' : 'missing',
+            api_secret: process.env.CLOUDINARY_API_SECRET ? 'present' : 'missing'
+        });
 
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
 
         // Upload to Cloudinary using promise
         const uploadResult = await new Promise((resolve, reject) => {
-            cloudinary.uploader.upload_stream(
+            const uploadStream = cloudinary.uploader.upload_stream(
                 {
                     folder: 'unionki-tasks',
                     resource_type: 'auto',
                     public_id: `${Date.now()}-${file.name.replace(/\.[^/.]+$/, "").replace(/\s+/g, '_')}`
                 },
                 (error, result) => {
-                    if (error) reject(error);
-                    else resolve(result);
+                    if (error) {
+                        console.error('Cloudinary stream error:', error);
+                        reject(error);
+                    } else resolve(result);
                 }
-            ).end(buffer);
+            );
+            uploadStream.end(buffer);
         }) as any;
 
         return {
@@ -640,6 +649,8 @@ export async function uploadTaskFile(formData: FormData) {
             errorMsg = 'Plik jest zbyt duży. Maksymalny rozmiar to 10MB.';
         } else if (error.http_code === 413) {
             errorMsg = 'Plik jest zbyt duży dla serwera.';
+        } else if (error.message) {
+            errorMsg = `Błąd chmury: ${error.message}`;
         }
 
         return { success: false, error: errorMsg };
