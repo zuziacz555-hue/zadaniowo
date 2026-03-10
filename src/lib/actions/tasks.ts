@@ -631,11 +631,13 @@ export async function uploadTaskFile(formData: FormData) {
 
         // Upload to Cloudinary using promise
         const uploadResult = await new Promise((resolve, reject) => {
+            const fileNameOriginal = (file as any)?.name || 'upload';
+            const safeName = typeof fileNameOriginal === 'string' ? fileNameOriginal.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9_\-\u0104\u0105\u0106\u0107\u0118\u0119\u0141\u0142\u0143\u0144\u00D3\u00F3\u015A\u015B\u0179\u017A\u017B\u017C ]/g, "").replace(/\s+/g, '_') : 'file';
             const uploadStream = cloudinary.uploader.upload_stream(
                 {
                     folder: 'unionki-tasks',
                     resource_type: 'auto',
-                    public_id: `${Date.now()}-${file.name.replace(/\.[^/.]+$/, "").replace(/\s+/g, '_')}`
+                    public_id: `${Date.now()}-${safeName}`
                 },
                 (error, result) => {
                     if (error) {

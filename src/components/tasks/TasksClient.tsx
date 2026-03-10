@@ -208,7 +208,9 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
     const [newAttachment, setNewAttachment] = useState({ nazwa: "", url: "" });
 
     useEffect(() => {
-        getTeams().then(data => setAllTeams(data));
+        getTeams().then(res => {
+            if (res.success && res.data) setAllTeams(res.data);
+        });
     }, []);
 
     const [newDetailAttachment, setNewDetailAttachment] = useState({ nazwa: "", url: "" });
@@ -253,13 +255,19 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
         }
     };
 
-    const handleFileUpload = async (file: File) => {
+    const handleFileUpload = async (file: File | Blob | any) => {
         if (!selectedTask || !file) return;
+
+        // Ensure we don't exceed the new 50MB limit to prevent hard Next.js crash
+        if (file.size > 48 * 1024 * 1024) {
+            alert("Plik jest za duży. Maksymalny rozmiar to 48MB.");
+            return;
+        }
 
         setIsUploading(true);
         try {
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', file, file.name || `mobile_upload_${Date.now()}.bin`);
 
             const uploadRes = await uploadTaskFile(formData);
             if (uploadRes.success && uploadRes.url) {
