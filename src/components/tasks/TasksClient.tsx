@@ -2178,11 +2178,14 @@ export default function TasksClient({ initialTasks, userId, userRole: activeRole
                                             >
                                                 <option value="" disabled>Wybierz osobę...</option>
                                                 {/* Filter out already assigned users */}
-                                                {allTeams?.find((t: any) => t.id === selectedTask.teamId)?.users
-                                                    ?.filter((u: any) => !selectedTask.executions?.some((ex: any) => ex.userId === u.id))
-                                                    ?.map((u: any) => (
-                                                        <option key={u.id} value={`${u.id}|${u.imieNazwisko}`}>
-                                                            {u.imieNazwisko}
+                                                {(selectedTask.teamId
+                                                    ? allTeams?.find((t: any) => t.id === selectedTask.teamId)?.users
+                                                    : allTeams?.flatMap((t: any) => t.users || []).filter((value: any, index: number, self: any[]) => self.findIndex(v => v.userId === value.userId) === index)
+                                                )
+                                                    ?.filter((ut: any) => !selectedTask.executions?.some((ex: any) => ex.userId === ut.userId))
+                                                    ?.map((ut: any) => (
+                                                        <option key={ut.userId} value={`${ut.userId}|${ut.user?.imieNazwisko || "Nieznany"}`}>
+                                                            {ut.user?.imieNazwisko || "Nieznany"} {selectedTask.teamId ? "" : `(${ut.team?.nazwa || "Inny zespół"})`}
                                                         </option>
                                                     ))
                                                 }

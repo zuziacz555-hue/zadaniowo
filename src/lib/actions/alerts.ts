@@ -23,7 +23,10 @@ export async function getParticipantAlerts(teamId: number, userId: number): Prom
                 userId: userId,
                 status: "AKTYWNE",
                 task: {
-                    teamId: teamId,
+                    OR: [
+                        { teamId: teamId },
+                        { teamId: null }
+                    ],
                     termin: {
                         lt: now
                     }
@@ -40,7 +43,10 @@ export async function getParticipantAlerts(teamId: number, userId: number): Prom
                 userId: userId,
                 status: "ODRZUCONE",
                 task: {
-                    teamId: teamId
+                    OR: [
+                        { teamId: teamId },
+                        { teamId: null }
+                    ]
                 }
             },
             include: {

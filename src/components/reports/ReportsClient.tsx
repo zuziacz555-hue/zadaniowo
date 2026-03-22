@@ -44,7 +44,7 @@ export default function ReportsClient({
     // Filter only teams where user is coordinator (or all for admin)
     const teams = useMemo(() => {
         if (isAdmin) return initialTeams;
-        if (isCoord) return initialTeams.filter((t: any) => t.users.some((u: any) => u.userId === user.id && (u.rola === 'KOORDYNATOR' || u.rola === 'ADMIN')));
+        if (isCoord) return initialTeams.filter((t: any) => t.users.some((u: any) => u.userId === user.id && (u.rola?.toUpperCase() === 'KOORDYNATORKA' || u.rola?.toUpperCase() === 'KOORDYNATOR' || u.rola?.toUpperCase() === 'ADMIN')));
         return initialTeams.filter((t: any) => t.id === teamId);
     }, [initialTeams, isAdmin, isCoord, user.id, teamId]);
 
